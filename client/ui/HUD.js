@@ -163,6 +163,11 @@ export class HUD {
       e.stopPropagation();
       this.bus.emit('ui:leave', {});
     });
+    // Volume-slider clicks must not bubble to the overlay, which would fire
+    // ui:resume and re-lock the pointer mid-adjustment.
+    this._pause.querySelector('.volume-section').addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
     for (const slider of this.el.querySelectorAll('.volume-slider')) {
       slider.addEventListener('input', () => {
         this.bus.emit('ui:volume', { channel: slider.dataset.channel, value: parseFloat(slider.value) });

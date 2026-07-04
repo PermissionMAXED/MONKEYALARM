@@ -11,6 +11,8 @@ const BEACON_HEIGHT = 2.2;        // meters above the feet
 const BEACON_RENDER_ORDER = 999;  // draw after everything (depthTest off)
 const BEACON_PULSE_FREQ = 3.2;    // rad/s for the pulse sine
 const BEACON_SPIN_SPEED = 1.4;    // rad/s slow spin
+const BEACON_REF_DISTANCE = 15;   // beyond this, scale up for constant screen size
+const BEACON_MAX_SCALE = 6;       // distance-scale clamp
 
 /**
  * Visual wrapper for a non-local player (human or AI). Owns a role-matched
@@ -95,11 +97,16 @@ export class RemotePlayer {
     this._beacon.position.y = BEACON_HEIGHT;
 
     const coneGeom = new THREE.ConeGeometry(0.16, 0.34, 10);
+    // fog:false / toneMapped:false keep the beacon saturated red at any
+    // distance instead of washing out to the map's fog color.
     const coneMat = new THREE.MeshBasicMaterial({
       color: BEACON_COLOR,
       transparent: true,
       opacity: 0.9,
-      depthTest: false
+      depthTest: false,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false
     });
     const cone = new THREE.Mesh(coneGeom, coneMat);
     cone.rotation.x = Math.PI; // point downward
@@ -111,7 +118,10 @@ export class RemotePlayer {
       color: BEACON_COLOR,
       transparent: true,
       opacity: 0.7,
-      depthTest: false
+      depthTest: false,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false
     });
     const ring = new THREE.Mesh(ringGeom, ringMat);
     ring.rotation.x = Math.PI / 2; // lie flat
@@ -146,8 +156,10 @@ export class RemotePlayer {
   /**
    * Interpolate toward the latest target state and advance avatar animation.
    * @param {number} dt seconds since last frame
+   * @param {THREE.Vector3} [cameraPosition] viewer position; when given, the
+   *   beacon is scaled with distance so it stays readable far away
    */
-  update(dt) {
+  update(dt, cameraPosition) {
     if (!(dt > 0)) {
       return;
     }
@@ -166,7 +178,12 @@ export class RemotePlayer {
     if (this._beacon && this._beacon.visible) {
       this._beaconT += dt;
       const pulse = 0.5 + 0.5 * Math.sin(this._beaconT * BEACON_PULSE_FREQ);
-      const scale = 0.85 + pulse * 0.3;
+      let scale = 0.85 + pulse * 0.3;
+      if (cameraPosition) {
+        // Roughly constant on-screen size beyond BEACON_REF_DISTANCE.
+        const dist = this.group.position.distanceTo(cameraPosition);
+        scale *= Math.min(BEACON_MAX_SCALE, Math.max(1, dist / BEACON_REF_DISTANCE));
+      }
       this._beacon.scale.setScalar(scale);
       this._beacon.rotation.y += BEACON_SPIN_SPEED * dt;
       this._beaconMaterials[0].opacity = 0.6 + pulse * 0.4;

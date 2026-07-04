@@ -8,6 +8,7 @@ const SFX_METHODS = {
   footstep: 'footstep',
   jump: 'jump',
   land: 'land',
+  catch: 'catchSuccess',
   caught_self: 'caughtSelf',
   round_win: 'roundWin',
   round_lose: 'roundLose'
@@ -91,9 +92,6 @@ export default class AudioManager {
       if (p.phase === PHASES.HIDING) this.playOneShot('phaseHiding', 'sfx');
       else if (p.phase === PHASES.SEEKING) this.playOneShot('phaseSeeking', 'sfx');
       else if (p.phase === PHASES.ROUND_END) this.playOneShot('phaseRoundEnd', 'sfx');
-    });
-    on('game:feed', (p) => {
-      if (p.text && p.text.includes('caught')) this.playOneShot('catchSuccess', 'sfx');
     });
     on('game:timer', (p) => {
       if (p.remainingSec != null && p.remainingSec <= 10 && p.remainingSec > 0) {

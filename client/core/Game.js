@@ -35,6 +35,7 @@ const FOOTSTEP_INTERVAL_SPRINT = 0.30;
 const SFX_FOOTSTEP = { name: 'footstep' };
 const SFX_JUMP = { name: 'jump' };
 const SFX_LAND = { name: 'land' };
+const SFX_CATCH = { name: 'catch' };
 
 /**
  * The game engine. Construct with the render canvas, then call start().
@@ -62,7 +63,6 @@ export class Game {
     this._clock = new THREE.Clock();
     this._audioManager = new AudioManager(this.camera);
     this._fx = new EffectsManager(this.scene);
-    this._fxPrevOnGround = false;
     this._time = 0;
 
     this._state = STATES.MENU;
@@ -223,7 +223,6 @@ export class Game {
     this._totalMonkeys = 0;
     this._catchVisible = false;
     this._footstepAccum = 0;
-    this._fxPrevOnGround = false;
 
     bus.emit('game:menu', error ? { error } : {});
   }
@@ -334,7 +333,7 @@ export class Game {
 
     this._totalMonkeys = payload.players.filter((p) => p.role === ROLES.MONKEY).length;
     this._state = STATES.PLAYING;
-    this._fxPrevOnGround = false;
+    this._footstepAccum = 0;
     this._updateFreeze();
     this._updateBeacons();
 
@@ -419,6 +418,9 @@ export class Game {
     }
 
     if (catcherId === selfId) bus.emit('game:flash', { kind: 'catch' });
+    // Catch confirmation chime — except when the local player was the one
+    // caught (that branch plays the 'caught_self' defeat sting instead).
+    if (targetId !== selfId || infected) bus.emit('game:sfx', SFX_CATCH);
     this._updateBeacons();
 
     const catcher = this._players.get(catcherId);
@@ -443,11 +445,15 @@ export class Game {
     else if (payload.winner === 'monkeys') winnerText = 'MONKEYS WIN! 🍌';
     else winnerText = payload.summary || 'TIME!';
 
-    // Time Attack ends with winner 'time', which counts as a win for the player.
+    // Time Attack ends with winner 'time' — a win only if every monkey was
+    // caught; if the timer expired with monkeys still free, it's a loss.
+    const allMonkeysCaught = !payload.players.some(
+      (p) => p.role === ROLES.MONKEY && !p.caught
+    );
     const selfWon =
       (payload.winner === 'police' && this._selfRole === ROLES.POLICE) ||
       (payload.winner === 'monkeys' && this._selfRole === ROLES.MONKEY) ||
-      payload.winner === 'time';
+      (payload.winner === 'time' && allMonkeysCaught);
     bus.emit('game:sfx', { name: selfWon ? 'round_win' : 'round_lose' });
 
     bus.emit('game:roundend', {
@@ -648,7 +654,16 @@ export class Game {
     const dt = Math.min(this._clock.getDelta(), MAX_DT);
     this._time += dt;
 
-    if (this._controller) this._controller.update(dt);
+    // Consume the jump/land edges unconditionally every frame so landings
+    // that happen while unlocked/frozen (spawn, pause, blindfold) never fire
+    // as stale SFX/dust on the next pointer-lock.
+    let justJumped = false;
+    let justLanded = false;
+    if (this._controller) {
+      this._controller.update(dt);
+      justJumped = this._controller.consumeJustJumped();
+      justLanded = this._controller.consumeJustLanded();
+    }
 
     if (this._session) {
       let snapshot = null;
@@ -666,17 +681,9 @@ export class Game {
       this._session.update(dt, snapshot);
     }
 
-    for (const remote of this._remotePlayers.values()) remote.update(dt);
+    for (const remote of this._remotePlayers.values()) remote.update(dt, this.camera.position);
     if (this._map) this._map.update(dt, this._time);
     this._fx.update(dt);
-
-    if (this._controller) {
-      const onGround = this._controller.onGround;
-      if (onGround && !this._fxPrevOnGround && this._state === STATES.PLAYING) {
-        this._fx.spawnDustPuff(this._controller.position);
-      }
-      this._fxPrevOnGround = onGround;
-    }
 
     if (this._state === STATES.PLAYING) {
       const sec = this._remainingSec();
@@ -685,15 +692,20 @@ export class Game {
         bus.emit('game:timer', { remainingSec: sec });
       }
       if (this._controller && this._controller.isLocked && !this._frozen) {
-        if (this._controller.consumeJustJumped()) bus.emit('game:sfx', SFX_JUMP);
-        if (this._controller.consumeJustLanded()) bus.emit('game:sfx', SFX_LAND);
+        if (justJumped) bus.emit('game:sfx', SFX_JUMP);
+        if (justLanded) {
+          // Landing dust shares the land-SFX edge, so it never fires on
+          // spawn/respawn (unlocked) or while frozen.
+          bus.emit('game:sfx', SFX_LAND);
+          this._fx.spawnDustPuff(this._controller.position);
+        }
         if (this._controller.isMoving && this._controller.onGround) {
           this._footstepAccum += dt;
           const interval = this._controller.isSprinting
             ? FOOTSTEP_INTERVAL_SPRINT
             : FOOTSTEP_INTERVAL_WALK;
           if (this._footstepAccum >= interval) {
-            this._footstepAccum = 0;
+            this._footstepAccum -= interval;
             bus.emit('game:sfx', SFX_FOOTSTEP);
           }
         } else {

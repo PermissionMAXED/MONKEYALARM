@@ -24,25 +24,48 @@ const DUST_DRAG = 5.0;
 const DUST_POINT_SIZE = 0.22;
 const DUST_COLOR = new THREE.Color(0x8f8a80);
 
+// Shared radial-falloff sprite so points render as soft round dots instead of
+// hard squares. Built lazily once; every pool material reuses the same texture.
+let _spriteTexture = null;
+function getSpriteTexture() {
+  if (!_spriteTexture) {
+    const size = 64;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const half = size / 2;
+    const gradient = ctx.createRadialGradient(half, half, 0, half, half, half);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(0.4, 'rgba(255,255,255,0.8)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    _spriteTexture = new THREE.CanvasTexture(canvas);
+  }
+  return _spriteTexture;
+}
+
 /**
  * Fixed-capacity ring-buffer particle pool rendered as a single THREE.Points.
- * Dead particles are parked at y = HIDDEN_Y with a black color (invisible
- * under additive blending).
+ * Particles fade out via per-vertex ALPHA (RGBA color attribute); dead
+ * particles are parked at y = HIDDEN_Y with alpha 0, so hiding works under
+ * both additive and normal blending.
  */
 class ParticlePool {
   /**
    * @param {number} pointSize world-space point size (sizeAttenuation on)
    * @param {number} gravity downward acceleration in units/s²
    * @param {number} drag exponential velocity damping rate (0 = none)
+   * @param {number} blending THREE blending mode for the pool material
    */
-  constructor(pointSize, gravity, drag) {
+  constructor(pointSize, gravity, drag, blending) {
     this._gravity = gravity;
     this._drag = drag;
 
     this._positions = new Float32Array(CAPACITY * 3);
-    this._colors = new Float32Array(CAPACITY * 3);
+    this._colors = new Float32Array(CAPACITY * 4); // RGBA — alpha drives the fade
     this._velocities = new Float32Array(CAPACITY * 3);
-    this._baseColors = new Float32Array(CAPACITY * 3);
     this._ages = new Float32Array(CAPACITY);
     this._lifetimes = new Float32Array(CAPACITY); // 0 = dead slot
     this._cursor = 0;
@@ -52,7 +75,7 @@ class ParticlePool {
 
     this._geometry = new THREE.BufferGeometry();
     this._posAttr = new THREE.BufferAttribute(this._positions, 3);
-    this._colorAttr = new THREE.BufferAttribute(this._colors, 3);
+    this._colorAttr = new THREE.BufferAttribute(this._colors, 4);
     this._posAttr.setUsage(THREE.DynamicDrawUsage);
     this._colorAttr.setUsage(THREE.DynamicDrawUsage);
     this._geometry.setAttribute('position', this._posAttr);
@@ -60,9 +83,10 @@ class ParticlePool {
 
     this._material = new THREE.PointsMaterial({
       size: pointSize,
+      map: getSpriteTexture(),
       vertexColors: true,
       transparent: true,
-      blending: THREE.AdditiveBlending,
+      blending,
       depthWrite: false,
       sizeAttenuation: true
     });
@@ -78,23 +102,22 @@ class ParticlePool {
     this._cursor = (i + 1) % CAPACITY;
     if (this._lifetimes[i] === 0) this._live++;
     const i3 = i * 3;
+    const i4 = i * 4;
     this._positions[i3] = x;
     this._positions[i3 + 1] = y;
     this._positions[i3 + 2] = z;
     this._velocities[i3] = vx;
     this._velocities[i3 + 1] = vy;
     this._velocities[i3 + 2] = vz;
-    this._baseColors[i3] = r;
-    this._baseColors[i3 + 1] = g;
-    this._baseColors[i3 + 2] = b;
-    this._colors[i3] = r;
-    this._colors[i3 + 1] = g;
-    this._colors[i3 + 2] = b;
+    this._colors[i4] = r;
+    this._colors[i4 + 1] = g;
+    this._colors[i4 + 2] = b;
+    this._colors[i4 + 3] = 1;
     this._ages[i] = 0;
     this._lifetimes[i] = lifetime;
   }
 
-  /** Integrates velocities/gravity/drag and fades colors. No allocation. */
+  /** Integrates velocities/gravity/drag and fades alpha. No allocation. */
   update(dt) {
     if (this._live === 0) return;
     const damp = this._drag > 0 ? Math.exp(-this._drag * dt) : 1;
@@ -103,14 +126,13 @@ class ParticlePool {
       const life = this._lifetimes[i];
       if (life === 0) continue;
       const i3 = i * 3;
+      const i4 = i * 4;
       const age = this._ages[i] + dt;
       if (age >= life) {
         this._lifetimes[i] = 0;
         this._live--;
         this._positions[i3 + 1] = HIDDEN_Y;
-        this._colors[i3] = 0;
-        this._colors[i3 + 1] = 0;
-        this._colors[i3 + 2] = 0;
+        this._colors[i4 + 3] = 0;
         continue;
       }
       this._ages[i] = age;
@@ -123,10 +145,7 @@ class ParticlePool {
       this._positions[i3] += this._velocities[i3] * dt;
       this._positions[i3 + 1] += this._velocities[i3 + 1] * dt;
       this._positions[i3 + 2] += this._velocities[i3 + 2] * dt;
-      const fade = 1 - age / life;
-      this._colors[i3] = this._baseColors[i3] * fade;
-      this._colors[i3 + 1] = this._baseColors[i3 + 1] * fade;
-      this._colors[i3 + 2] = this._baseColors[i3 + 2] * fade;
+      this._colors[i4 + 3] = 1 - age / life;
     }
     this._posAttr.needsUpdate = true;
     this._colorAttr.needsUpdate = true;
@@ -151,8 +170,9 @@ export class EffectsManager {
 
     /** @type {THREE.Group} container for all effect meshes */
     this.group = new THREE.Group();
-    this._catch = new ParticlePool(CATCH_POINT_SIZE, CATCH_GRAVITY, 0);
-    this._dust = new ParticlePool(DUST_POINT_SIZE, DUST_GRAVITY, DUST_DRAG);
+    // Catch burst pops additively; dust reads as matte dust, not glow.
+    this._catch = new ParticlePool(CATCH_POINT_SIZE, CATCH_GRAVITY, 0, THREE.AdditiveBlending);
+    this._dust = new ParticlePool(DUST_POINT_SIZE, DUST_GRAVITY, DUST_DRAG, THREE.NormalBlending);
     this.group.add(this._catch.points, this._dust.points);
     scene.add(this.group);
   }
