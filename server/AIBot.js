@@ -1,6 +1,11 @@
+import { PLAYER, ROLES } from '../client/core/constants.js';
 import { DIFFICULTY_CONFIG } from './botConstants.js';
 
 const HORIZONTAL_AXES = ['x', 'z'];
+
+// Effective flee speed must stay strictly below the police sprint speed, or a
+// fleeing bot becomes uncatchable in the open (catch-balance invariant).
+const MAX_FLEE_SPEED = PLAYER.SPRINT_SPEED - 0.2;
 
 /**
  * Headless AI bot for server-side simulation. No THREE dependencies.
@@ -20,13 +25,19 @@ export class AIBot {
   constructor({ id, name, spawn: { x, y, z }, colliders, bounds, killY, difficulty }) {
     this.id = id;
     this.name = name;
+    this.role = ROLES.MONKEY;
     this.caught = false;
+    this.score = 0;
+    this.catches = 0;
 
     this._pos = { x, y, z };
     this._spawn = { x, y, z };
+    // Ground reference: without full collider data the bot would free-fall
+    // to killY, so its spawn height acts as the floor it walks on.
+    this._groundY = y;
     this._vel = { x: 0, y: 0, z: 0 };
     this._yaw = Math.random() * Math.PI * 2;
-    this._grounded = false;
+    this._grounded = true;
 
     this._colliders = colliders || [];
     this._bounds = bounds || { min: { x: -80, y: -10, z: -80 }, max: { x: 80, y: 50, z: 80 } };
@@ -128,7 +139,9 @@ export class AIBot {
           dir.x = -Math.sin(this._yaw);
           dir.z = -Math.cos(this._yaw);
         }
-        speed = 7.6 * this._speedMult;
+        // Clamp: the flee speed must stay strictly below police sprint speed
+        // even after the difficulty multiplier (hard = 1.2 would exceed it).
+        speed = Math.min(PLAYER.MONKEY_SPRINT_SPEED * this._speedMult, MAX_FLEE_SPEED);
 
         // Sideways juke to make pursuit harder
         this._jukeTimer -= dt;
@@ -149,7 +162,7 @@ export class AIBot {
         // Hop to clear obstacles
         this._hopTimer -= dt;
         if (this._hopTimer <= 0 && this._grounded) {
-          vel.y = 8.5 * 0.8;
+          vel.y = PLAYER.JUMP_SPEED * 0.8;
           this._hopTimer = this._hopInterval;
         }
       } else {
@@ -177,7 +190,7 @@ export class AIBot {
         if (len > 1e-8) {
           dir.x /= len;
           dir.z /= len;
-          speed = 5.4 * this._speedMult;
+          speed = PLAYER.MONKEY_WALK_SPEED * this._speedMult;
         }
       }
     }
@@ -185,10 +198,18 @@ export class AIBot {
     // --- Physics (gravity + collision) ---
     vel.x = dir.x * speed;
     vel.z = dir.z * speed;
-    vel.y -= 20 * dt;
+    vel.y -= PLAYER.GRAVITY * dt;
 
     const result = moveWithCollisions(pos, vel, dt, this._colliders, { radius: 0.35, height: 1.1, stepHeight: 0.45 });
     this._grounded = result.onGround;
+
+    // Ground clamp: with no colliders loaded, the spawn height is the floor.
+    // Keeps the bot at a catchable height instead of free-falling to killY.
+    if (pos.y <= this._groundY) {
+      pos.y = this._groundY;
+      if (vel.y < 0) vel.y = 0;
+      this._grounded = true;
+    }
 
     if (speed > 0) {
       this._yaw = Math.atan2(-dir.x, -dir.z);
@@ -206,7 +227,7 @@ export class AIBot {
         this._target.x = pos.x + Math.sin(h) * r;
         this._target.z = pos.z + Math.cos(h) * r;
         this._retargetTimer = 2 + Math.random() * 3;
-        if (this._grounded) vel.y = 8.5 * 0.8;
+        if (this._grounded) vel.y = PLAYER.JUMP_SPEED * 0.8;
       }
       this._stuckRef.x = pos.x;
       this._stuckRef.z = pos.z;
@@ -236,6 +257,15 @@ export class AIBot {
     mem.z = this._pos.z;
     this._memIdx = (this._memIdx + 1) % this._memory.length;
     if (this._memCount < this._memory.length) this._memCount++;
+  }
+
+  /**
+   * Live authoritative state in the same shape human members store, so
+   * Room.attemptCatch can distance-check bots exactly like humans.
+   * @returns {{ position: {x:number,y:number,z:number}, yaw: number, animState: string }}
+   */
+  get lastState() {
+    return this.snapshot;
   }
 
   /**

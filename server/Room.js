@@ -332,12 +332,6 @@ export class Room {
     this._clearLoadTimer();
 
     const list = [...this.members.values()];
-    this._createBots();
-    const botsForList = [];
-    for (const [id, bot] of this._bots) {
-      botsForList.push({ id, name: bot.name, isHost: false, ready: true, role: ROLES.MONKEY, caught: false, score: 0, catches: 0 });
-    }
-    const allPlayers = [...this.members.values(), ...botsForList];
     const n = list.length;
     const mode = MODES[this.modeId];
     const policeCount = mode.infection ? 1 : Math.max(1, Math.round(n / 4));
@@ -356,12 +350,17 @@ export class Room {
       spawns[m.id] = m.role === ROLES.POLICE ? policeSpawn++ : monkeySpawn++;
     });
 
+    // Bots spawn after the human monkeys so no two players share a spawn.
+    this._createBots(monkeySpawn);
+    let botSpawn = monkeySpawn;
+    for (const id of this._bots.keys()) spawns[id] = botSpawn++;
+
     this._awaitingLoad = true;
     this._emitAll('game_started', {
       modeId: this.modeId,
       mapId: this.mapId,
       roundNumber: this.roundNumber,
-      players: allPlayers,
+      players: this._playersInfo(),
       spawns
     });
     this._loadTimer = setTimeout(() => this._startPhases(), LOAD_TIMEOUT_MS);
@@ -449,11 +448,14 @@ export class Room {
     for (const m of this.members.values()) {
       if (m.role === ROLES.MONKEY && !m.caught) count++;
     }
+    for (const bot of this._bots.values()) {
+      if (bot.role === ROLES.MONKEY && !bot.caught) count++;
+    }
     return count;
   }
 
   _playersInfo() {
-    return [...this.members.values()].map((m) => ({
+    const players = [...this.members.values()].map((m) => ({
       id: m.id,
       name: m.name,
       isHost: m.isHost,
@@ -463,6 +465,19 @@ export class Room {
       score: m.score,
       catches: m.catches
     }));
+    for (const [id, bot] of this._bots) {
+      players.push({
+        id,
+        name: bot.name,
+        isHost: false,
+        ready: true,
+        role: bot.role,
+        caught: bot.caught,
+        score: bot.score,
+        catches: bot.catches
+      });
+    }
+    return players;
   }
 
   _broadcastRoomUpdated() {
@@ -499,14 +514,19 @@ export class Room {
 
   // ---------------------------------------------------------------- bots
 
-  _createBots() {
+  /**
+   * (Re)creates the AI bots for a round. Bot spawn indices start after the
+   * human monkeys' so no bot shares a spawn point with a player.
+   * @param {number} spawnOffset number of human monkeys already assigned spawns
+   */
+  _createBots(spawnOffset = 0) {
     const md = MAP_COLLIDERS[this.mapId];
-    if (!md) return;
     this._bots.clear();
+    if (!md) return;
     for (let i = 0; i < this.botCount; i++) {
       const botId = 'bot-' + (i + 1);
       const botName = AI_NAMES[i % AI_NAMES.length] + ' (Bot)';
-      const sp = md.spawns[i % md.spawns.length];
+      const sp = md.spawns[(spawnOffset + i) % md.spawns.length];
       this._bots.set(botId, new AIBot({
         id: botId, name: botName, spawn: sp, colliders: [],
         bounds: md.bounds, killY: md.killY, difficulty: this.botDifficulty
