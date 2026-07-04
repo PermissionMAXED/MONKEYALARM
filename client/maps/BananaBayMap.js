@@ -507,8 +507,10 @@ export default class BananaBayMap extends MapBase {
     this._solid('hull', 0.3, 0.9, 11, -21.85, DECK_Y, 51);
     this._solid('hull', 0.3, 0.9, 11, 13.85, DECK_Y, 51);
 
-    // Gangway: 7 steps from the quay edge (z 40, top 0) up to the deck.
-    this._stairs('wood', 7, 2.4, -16, 40, 'z', 1);
+    // Gangway: 7 steps rising from the water bed (-0.4) at the quay edge
+    // (z 40) — first tread flush with the quay top, then 0.4 rises to the
+    // landing plate (2.8). Columns reach the bed so nothing hovers.
+    this._stairs('wood', 7, 2.4, -16, 40, 'z', 1, -0.4);
     this._solid('wood', 2.4, DECK_Y, 0.9, -16, 0, 45.25); // landing plate
 
     // Hold escape: pallet (2.0) -> crate (2.4) -> deck (2.8), 0.4 rises.
@@ -566,12 +568,15 @@ export default class BananaBayMap extends MapBase {
   // ----------------------------------------------------------------- cranes
 
   _buildCrane(cx, cz, hookPhase) {
-    // Portal legs + cross braces.
+    // Portal legs + cross braces + top girders carrying the boom.
     for (const lx of [cx - 10, cx + 10]) {
       for (const lz of [cz - 3, cz + 3]) {
         this._solid('crane', 0.9, 7.9, 0.9, lx, 0, lz);
       }
       this._pushBox('crane', 0.4, 0.4, 6.2, lx, 4.4, cz);
+      // Cross-girder spanning the leg pair into the boom underside, so the
+      // 2.6-deep boom platform is visually supported by the cz +/- 3 legs.
+      this._solid('crane', 1.1, 1.0, 6.9, lx, BOOM_Y - 1.1, cz);
     }
     // Walkable boom platform (top 8.4) with side + end rails.
     this._solid('crane', 24, 0.5, 2.6, cx, BOOM_Y - 0.5, cz);
@@ -644,9 +649,10 @@ export default class BananaBayMap extends MapBase {
     // Rocky point: wadeable ledge (top 0) then slab (top 0.4).
     this._solid('rock', 14, 0.4, 14, 58, -0.4, 58);
     this._solid('rock', 12, 0.8, 12, 58, -0.4, 58);
-    // Tower: tapered white cylinder, square AABB.
+    // Tower: tapered white cylinder (base diameter 4.4), square AABB sized
+    // to the base; the wrapping stair keeps a >= 0.9 lane outside it.
     this._pushCyl('white', 1.7, 2.2, 8.0, 14, 58, 0.4, 58);
-    this._boxCollider(3.4, 8.0, 3.4, 58, 0.4, 58);
+    this._boxCollider(4.2, 8.0, 4.2, 58, 0.4, 58);
     // Wrapping ledge stair: south flight, corner landing, east flight.
     for (let i = 0; i < 6; i++) {
       this._solid('rock', 0.7, (i + 1) * STEP_RISE, 1.4,
@@ -677,22 +683,32 @@ export default class BananaBayMap extends MapBase {
     const beam = new THREE.Mesh(new THREE.BoxGeometry(9, 0.18, 0.18), beamMat);
     this._beamGroup.add(beam);
     this.group.add(this._beamGroup);
-    // Rocks around the point and the south sea-wall (decor).
+    // Rocks around the point and the south sea-wall. Rocks big enough to
+    // hide behind (s >= 0.9) get an AABB so nobody hides *inside* them;
+    // only small pebbles stay collider-free. Base y -0.4 = water-bed top,
+    // height ~0.85*s ends just under the visible tip (centres sit at
+    // ~-0.35 with vertical semi-extent 0.8*s..s).
     const rockGeo = new THREE.IcosahedronGeometry(1, 1);
     const rockMats = [];
     for (let i = 0; i < 12; i++) {
       const a = this._rng() * Math.PI * 2;
       const r = 7.4 + this._rng() * 2.2;
       const s = 0.7 + this._rng() * 1.3;
-      rockMats.push(this._matrixAt(58 + Math.cos(a) * r, -0.35, 58 + Math.sin(a) * r,
+      const rx = 58 + Math.cos(a) * r;
+      const rz = 58 + Math.sin(a) * r;
+      rockMats.push(this._matrixAt(rx, -0.35, rz,
         this._rng() * Math.PI, this._rng() * Math.PI, this._rng() * Math.PI,
         s, s * 0.8, s));
+      if (s >= 0.9) this._boxCollider(1.5 * s, 0.85 * s, 1.5 * s, rx, -0.4, rz);
     }
     for (let i = 0; i < 10; i++) {
       const s = 0.8 + this._rng() * 1.4;
-      rockMats.push(this._matrixAt(-66 + this._rng() * 108, -0.4, 66.5 + this._rng() * 2.4,
+      const rx = -66 + this._rng() * 108;
+      const rz = 66.5 + this._rng() * 2.4;
+      rockMats.push(this._matrixAt(rx, -0.4, rz,
         this._rng() * Math.PI, this._rng() * Math.PI, this._rng() * Math.PI,
         s, s * 0.8, s));
+      if (s >= 0.9) this._boxCollider(1.5 * s, 0.85 * s, 1.5 * s, rx, -0.4, rz);
     }
     this._makeInstanced(rockGeo, this._mats.rock, rockMats);
   }
@@ -718,7 +734,7 @@ export default class BananaBayMap extends MapBase {
     const barrels = [
       [41.5, 33.2], [40.8, 35.1], [42.4, 34.5], [-49.5, -12.4], [-48.2, -11.6],
       [63.4, -18.6], [62.6, -17.2], [64.2, -21.2], [-2.2, -61.8], [-0.9, -62.6],
-      [24.5, 27.2], [-35.4, 30.6], [-36.6, 31.5], [10.8, 41.2]
+      [24.5, 27.2], [-35.4, 30.6], [-36.6, 31.5], [12.2, 38.4]
     ];
     const bMats = [];
     for (const [x, z] of barrels) {
@@ -738,9 +754,11 @@ export default class BananaBayMap extends MapBase {
       [12.4, 0, -58.8, 0.9, 0.9], [44.6, 0, 18.4, 0.85, 0.85],
       [17.2, 0, 30.8, 0.8, 0.8], [-52.4, 0, 34.2, 1.0, 1.0]
     ];
+    // Collidable crates stay axis-aligned (yaw 0) so the visual never pokes
+    // out of its AABB — same convention as JungleTempleMap's supply crates.
     const cMats = [];
     for (const [x, y, z, h, w] of crates) {
-      cMats.push(this._matrixAt(x, y + h / 2, z, 0, this._rng() * 0.4, 0, w, h, w));
+      cMats.push(this._matrixAt(x, y + h / 2, z, 0, 0, 0, w, h, w));
       this._boxCollider(w, h, w, x, y, z);
     }
     this._makeInstanced(crateGeo, this._mats.wood, cMats);

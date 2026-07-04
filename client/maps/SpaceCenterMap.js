@@ -84,6 +84,9 @@ export default class SpaceCenterMap extends MapBase {
     this._dishes = [];
     this._puffs = [];
     this._searchPivot = null;
+    // Populated in _buildLaunchPad, consumed in _buildCheckpoint; initialized
+    // here so a build-call reordering can't throw on an undefined list.
+    this._crateList = [];
   }
 
   // ------------------------------------------------------------------ build
@@ -656,16 +659,31 @@ export default class SpaceCenterMap extends MapBase {
       const zC = -36.3 - (i + 0.5) * STEP_RUN;
       tread(14.55, zC, LVL[0] + (i + 1) * STEP_RISE);    // flight 2 (up, southward)
     }
-    // Landings joining the lanes (north at L1, south at L2).
+    // Landings joining the lanes (L1 at the south end, L2 at the north end).
     this._solid('metal', 3.4, 0.25, 1.5, 13.7, LVL[0] - 0.25, -35.55);
-    this._solid('metal', 3.4, 0.25, 1.4, 13.7, LVL[1] - 0.25, -40.9);
-    // Landing support legs (decor).
+    // The NE column (x 11.3..12, z -41..-40.3) plus the flight-3 treads used
+    // to block the whole landing->platform crossing at the 6.8 level, so the
+    // L2 landing extends one metre further north and an L-shaped walkway
+    // (x 10.4..12, z -42..-41, abutting the platform edge at z -41) wraps
+    // around the column: clear flat lanes z -42..-41 (1.0 wide) then
+    // x 10.4..11.3 (0.9 wide), no jump or auto-step needed.
+    this._solid('metal', 3.4, 0.25, 1.8, 13.7, LVL[1] - 0.25, -41.1);
+    this._solid('metal', 1.6, 0.25, 1.0, 11.2, LVL[1] - 0.25, -41.5);
+    // Landing support legs (decor). The x 15.1 legs hang past the pad edge
+    // (pad ends at x 15), so those drop to the apron at y 0 instead.
     for (const [sx, sz] of [[13.0, -35.2], [15.1, -35.2], [13.0, -41.2], [15.1, -41.2]]) {
-      this._pushCyl('steel', 0.08, 0.08, 6.4, 6, sx, PAD_TOP, sz);
+      const legBase = sx > 15 ? 0 : PAD_TOP;
+      this._pushCyl('steel', 0.08, 0.08, 8.4 - legBase, 6, sx, legBase, sz);
     }
-    // Simple guard rails (decor).
+    this._pushCyl('steel', 0.08, 0.08, 4.55, 6, 10.8, PAD_TOP, -41.6); // walkway leg
+    // Simple guard rails (decor). The L2 north rail stops short of the
+    // walkway crossing (x >= 10.2) so players don't clip through it.
     for (const top of LVL) {
-      this._pushBox('steel', 6, 0.08, 0.08, cx, top + 1.0, -40.95);
+      if (top === LVL[1]) {
+        this._pushBox('steel', 4.2, 0.08, 0.08, 8.1, top + 1.0, -40.95);
+      } else {
+        this._pushBox('steel', 6, 0.08, 0.08, cx, top + 1.0, -40.95);
+      }
       this._pushBox('steel', 6, 0.08, 0.08, cx, top + 1.0, -35.05);
     }
 
@@ -835,14 +853,23 @@ export default class SpaceCenterMap extends MapBase {
     this._makeInstanced(tankGeo, this._mats.tank, tankMats);
     this._makeInstanced(domeGeo, this._mats.tank, domeMats);
 
-    // Pipe runs (decor): row manifolds, risers, a cross-link and one line
-    // running out toward the pad.
+    // Pipe runs (decor, collider-less): row manifolds, risers, a cross-link
+    // and one line running out toward the pad. Horizontal runs sit at
+    // pipe-rack height (centre y 2.2, bottom 1.92) so a 1.8-tall player
+    // walks under them instead of clipping through waist-high tubes; the
+    // tank risers (y 0..2) double as rack stands and the raised runs get
+    // their own vertical stands.
     const pipeGeo = new THREE.CylinderGeometry(0.28, 0.28, 1, 8);
     const pipeMats = [];
-    pipeMats.push(this._matrixAt(-44, 1.0, 38 - 2.9, 0, 0, Math.PI / 2, 1, 22, 1));
-    pipeMats.push(this._matrixAt(-44, 1.0, 48 - 2.9, 0, 0, Math.PI / 2, 1, 22, 1));
-    pipeMats.push(this._matrixAt(-33, 1.0, 40.1, Math.PI / 2, 0, 0, 1, 10, 1));
-    pipeMats.push(this._matrixAt(-26, 1.0, 23, Math.PI / 2, 0, 0, 1, 18, 1));
+    const pipeY = 2.2;
+    pipeMats.push(this._matrixAt(-44, pipeY, 38 - 2.9, 0, 0, Math.PI / 2, 1, 22, 1));
+    pipeMats.push(this._matrixAt(-44, pipeY, 48 - 2.9, 0, 0, Math.PI / 2, 1, 22, 1));
+    pipeMats.push(this._matrixAt(-33, pipeY, 40.1, Math.PI / 2, 0, 0, 1, 10, 1));
+    pipeMats.push(this._matrixAt(-26, pipeY, 23, Math.PI / 2, 0, 0, 1, 18, 1));
+    for (const sz of [16, 23, 30]) {
+      pipeMats.push(this._matrixAt(-26, 1.1, sz, 0, 0, 0, 1, 2.2, 1)); // apron stands
+    }
+    pipeMats.push(this._matrixAt(-33, 1.1, 40.1, 0, 0, 0, 1, 2.2, 1)); // cross-link stand
     for (const [tx, tz] of tanks) {
       pipeMats.push(this._matrixAt(tx, 1.0, tz - 2.9, 0, 0, 0, 1, 2, 1));
     }
@@ -863,14 +890,17 @@ export default class SpaceCenterMap extends MapBase {
   // ------------------------------------------------------------- rover yard
 
   _buildRoverYard() {
-    // Crater rims (decor tori over the carved crater cells).
-    const rimA = new THREE.TorusGeometry(5.3, 0.45, 8, 22);
+    // Crater rims (decor tori over the carved crater cells). They have no
+    // colliders, so they are sunk to show only 0.4 above the sand (within
+    // the 0.45 auto-step) and reading as walk-over humps rather than
+    // solid-looking rings players clip through.
+    const rimA = new THREE.TorusGeometry(5.3, 0.35, 8, 22);
     rimA.rotateX(Math.PI / 2);
-    rimA.translate(35, 0.1, 39);
+    rimA.translate(35, 0.05, 39);
     this._buckets.sand.push(rimA);
-    const rimB = new THREE.TorusGeometry(4.3, 0.4, 8, 20);
+    const rimB = new THREE.TorusGeometry(4.3, 0.35, 8, 20);
     rimB.rotateX(Math.PI / 2);
-    rimB.translate(50, 0.08, 50);
+    rimB.translate(50, 0.05, 50);
     this._buckets.sand.push(rimB);
 
     // Small test rover prop (one collider).
@@ -914,7 +944,11 @@ export default class SpaceCenterMap extends MapBase {
     for (const [x, z, speed, yaw] of dishes) {
       this._pushCyl('steel', 0.4, 0.55, 5.4, 10, x, 0, z);
       this._boxCollider(1.1, 5.4, 1.1, x, 0, z);
-      this._pushStrobe(x, 5.15, z, 0.13);
+      // Side-mounted beacon just below the mast top (mast radius ~0.41
+      // there). It can't sit on the axis: the yoke box (half-width 0.35,
+      // y 5.4..6.2, corner sweep radius ~0.5 as the head yaws) rests
+      // directly on the mast top, so an axial strobe stays hidden.
+      this._pushStrobe(x, 5.18, z + 0.45, 0.13);
 
       const head = new THREE.Group();
       head.position.set(x, 5.7, z);
