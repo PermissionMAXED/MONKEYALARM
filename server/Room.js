@@ -47,6 +47,18 @@ export function sanitizeMapId(mapId) {
   return map ? map.id : MAPS.JUNGLE_TEMPLE.id;
 }
 
+const BOT_DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
+
+/**
+ * Validates a bot difficulty. Client-supplied and later rendered in the
+ * round-end screen, so it must be whitelisted, never passed through raw.
+ * @param {*} difficulty
+ * @returns {string} 'easy' | 'medium' | 'hard', medium as fallback
+ */
+export function sanitizeBotDifficulty(difficulty) {
+  return BOT_DIFFICULTIES.has(difficulty) ? difficulty : 'medium';
+}
+
 /**
  * One multiplayer room: membership (join order preserved), lobby settings,
  * and the full authoritative round state machine.
@@ -70,7 +82,7 @@ export class Room {
     this._phaseTimer = null;
     this._loadTimer = null;
     this.botCount = (typeof botCount === 'number' ? Math.min(10, Math.max(0, botCount)) : 0);
-    this.botDifficulty = botDifficulty || 'medium';
+    this.botDifficulty = sanitizeBotDifficulty(botDifficulty);
     this._bots = new Map();
     this._botInterval = null;
   }
@@ -186,7 +198,7 @@ export class Room {
     if (modeId !== undefined) this.modeId = sanitizeModeId(modeId);
     if (mapId !== undefined) this.mapId = sanitizeMapId(mapId);
     if (botCount !== undefined) this.botCount = Math.min(10, Math.max(0, Number(botCount)||0));
-    if (botDifficulty !== undefined) this.botDifficulty = botDifficulty;
+    if (botDifficulty !== undefined) this.botDifficulty = sanitizeBotDifficulty(botDifficulty);
     this._broadcastRoomUpdated();
   }
 
@@ -228,7 +240,7 @@ export class Room {
     if (this.phase !== PHASES.ROUND_END) {
       return this._error(member, 'No finished round to advance');
     }
-    if (this.members.size < 2) {
+    if (this.members.size + this.botCount < 2) {
       return this._error(member, 'Need at least 2 players to start');
     }
     this.roundNumber += 1;
@@ -304,7 +316,9 @@ export class Room {
     this._emitAll('player_caught', {
       targetId: target.id,
       catcherId: catcher.id,
-      infected,
+      // Bots are never converted server-side (they stay caught in _bots), so
+      // the client must mark them caught, not render them as police.
+      infected: infected && !this._bots.has(targetId),
       remainingMonkeys,
       players: this._playersInfo()
     });
@@ -350,10 +364,11 @@ export class Room {
       spawns[m.id] = m.role === ROLES.POLICE ? policeSpawn++ : monkeySpawn++;
     });
 
-    // Bots spawn after the human monkeys so no two players share a spawn.
+    // Bots avoid human monkey spawns and prefer ground-level spawn points
+    // (see _createBots). Each bot's chosen index is relayed to clients so
+    // remote avatars appear where the server simulates them.
     this._createBots(monkeySpawn);
-    let botSpawn = monkeySpawn;
-    for (const id of this._bots.keys()) spawns[id] = botSpawn++;
+    for (const [id, bot] of this._bots) spawns[id] = bot.spawnIndex;
 
     this._awaitingLoad = true;
     this._emitAll('game_started', {
@@ -515,22 +530,38 @@ export class Room {
   // ---------------------------------------------------------------- bots
 
   /**
-   * (Re)creates the AI bots for a round. Bot spawn indices start after the
-   * human monkeys' so no bot shares a spawn point with a player.
+   * (Re)creates the AI bots for a round. Bots never share a spawn point with
+   * a human monkey (indices 0..spawnOffset-1 are taken) and prefer
+   * ground-level spawns: bots run without colliders, so an elevated spawn
+   * height becomes their permanent floor and they would float mid-air,
+   * uncatchable from the ground.
    * @param {number} spawnOffset number of human monkeys already assigned spawns
    */
   _createBots(spawnOffset = 0) {
     const md = MAP_COLLIDERS[this.mapId];
     this._bots.clear();
     if (!md) return;
+    // Candidate spawn indices sorted by ascending height (index breaks ties
+    // for determinism). Falls back to every spawn if humans took them all.
+    let candidates = md.spawns
+      .map((sp, index) => ({ index, y: sp.y }))
+      .filter(({ index }) => index >= spawnOffset);
+    if (candidates.length === 0) {
+      candidates = md.spawns.map((sp, index) => ({ index, y: sp.y }));
+    }
+    candidates.sort((a, b) => a.y - b.y || a.index - b.index);
     for (let i = 0; i < this.botCount; i++) {
       const botId = 'bot-' + (i + 1);
       const botName = AI_NAMES[i % AI_NAMES.length] + ' (Bot)';
-      const sp = md.spawns[(spawnOffset + i) % md.spawns.length];
-      this._bots.set(botId, new AIBot({
-        id: botId, name: botName, spawn: sp, colliders: [],
+      const spawnIndex = candidates[i % candidates.length].index;
+      const bot = new AIBot({
+        id: botId, name: botName, spawn: md.spawns[spawnIndex], colliders: [],
         bounds: md.bounds, killY: md.killY, difficulty: this.botDifficulty
-      }));
+      });
+      // Room bookkeeping (not used by the bot itself): relayed to clients in
+      // game_started so remote avatars match the server-side position.
+      bot.spawnIndex = spawnIndex;
+      this._bots.set(botId, bot);
     }
   }
 

@@ -669,11 +669,16 @@ export default class SpaceCenterMap extends MapBase {
     // x 10.4..11.3 (0.9 wide), no jump or auto-step needed.
     this._solid('metal', 3.4, 0.25, 1.8, 13.7, LVL[1] - 0.25, -41.1);
     this._solid('metal', 1.6, 0.25, 1.0, 11.2, LVL[1] - 0.25, -41.5);
-    // Landing support legs (decor). The x 15.1 legs hang past the pad edge
-    // (pad ends at x 15), so those drop to the apron at y 0 instead.
-    for (const [sx, sz] of [[13.0, -35.2], [15.1, -35.2], [13.0, -41.2], [15.1, -41.2]]) {
+    // Landing support legs (decor). Each leg tops out at the underside of
+    // the landing it supports (deck bottom = level - 0.25) so it never
+    // pierces the deck. The x 15.1 legs hang past the pad edge (pad ends at
+    // x 15), so those drop to the apron at y 0 instead.
+    for (const [sx, sz, lvl] of [
+      [13.0, -35.2, LVL[0]], [15.1, -35.2, LVL[0]],   // L1 landing (south)
+      [13.0, -41.2, LVL[1]], [15.1, -41.2, LVL[1]]    // L2 landing (north)
+    ]) {
       const legBase = sx > 15 ? 0 : PAD_TOP;
-      this._pushCyl('steel', 0.08, 0.08, 8.4 - legBase, 6, sx, legBase, sz);
+      this._pushCyl('steel', 0.08, 0.08, (lvl - 0.25) - legBase, 6, sx, legBase, sz);
     }
     this._pushCyl('steel', 0.08, 0.08, 4.55, 6, 10.8, PAD_TOP, -41.6); // walkway leg
     // Simple guard rails (decor). The L2 north rail stops short of the
