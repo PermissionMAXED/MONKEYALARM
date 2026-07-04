@@ -11,7 +11,7 @@ import { PlayerController } from '../player/PlayerController.js';
 import { RemotePlayer } from '../entities/RemotePlayer.js';
 import { Network } from '../net/Network.js';
 import { LocalSession } from '../net/LocalSession.js';
-import { AudioManager } from '../audio/AudioManager.js';
+import AudioManager from '../audio/AudioManager.js';
 
 /** Engine states. While PLAYING, the finer-grained round phase lives in `_phase`. */
 const STATES = {

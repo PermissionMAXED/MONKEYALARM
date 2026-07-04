@@ -60,7 +60,7 @@ export default class AudioManager {
 
   stopAmbient() {
     for (const n of this._ambientNodes) {
-      try { n.disconnect(); } catch(e) {}
+      try { n.disconnect(); } catch { /* already disconnected */ }
     }
     this._ambientNodes = [];
   }

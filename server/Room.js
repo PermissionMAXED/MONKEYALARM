@@ -5,7 +5,7 @@
 import { MODES, MAPS, PHASES, ROLES, PLAYER, SCORING } from '../client/core/constants.js';
 import { AIBot } from './AIBot.js';
 import { MAP_COLLIDERS } from './mapColliders.js';
-import { DIFFICULTY_CONFIG, AI_NAMES } from './botConstants.js';
+import { AI_NAMES } from './botConstants.js';
 
 const LOAD_TIMEOUT_MS = 15000;
 const MAX_NAME_LENGTH = 16;
@@ -282,7 +282,7 @@ export class Room {
     const catcher = this.members.get(socketId);
     if (!catcher || catcher.role !== ROLES.POLICE) return;
     const target = this.members.get(targetId) || this._bots.get(targetId);
-    if (!target) return socket.emit('error_msg', { message: 'Target not found' });
+    if (!target) return;
     if (target.role !== ROLES.MONKEY || target.caught) return;
     const a = catcher.lastState && catcher.lastState.position;
     const b = target.lastState && target.lastState.position;
@@ -332,7 +332,7 @@ export class Room {
     this._clearLoadTimer();
 
     const list = [...this.members.values()];
-    const botInfos = this._createBots() || [];
+    this._createBots();
     const botsForList = [];
     for (const [id, bot] of this._bots) {
       botsForList.push({ id, name: bot.name, isHost: false, ready: true, role: ROLES.MONKEY, caught: false, score: 0, catches: 0 });
