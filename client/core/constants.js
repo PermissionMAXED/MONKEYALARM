@@ -86,6 +86,18 @@ export const MAPS = {
     name: 'MonkeyBreak (Prison)',
     theme: 'A maximum-security primate penitentiary. The monkeys have broken out of their cells.',
     load: () => import('../maps/MonkeyBreakMap.js')
+  },
+  BANANA_BAY: {
+    id: 'BANANA_BAY',
+    name: 'Banana Bay Docks',
+    theme: 'A sunset cargo harbor: containers, cranes and a moored freighter.',
+    load: () => import('../maps/BananaBayMap.js')
+  },
+  SPACE_CENTER: {
+    id: 'SPACE_CENTER',
+    name: 'Banana Space Center',
+    theme: 'A night launch site: rocket gantry, hangar and mission control.',
+    load: () => import('../maps/SpaceCenterMap.js')
   }
 };
 
