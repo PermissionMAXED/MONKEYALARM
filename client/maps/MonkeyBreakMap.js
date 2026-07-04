@@ -49,7 +49,8 @@ export default class MonkeyBreakMap extends MapBase {
     // Geometry buckets merged into one mesh per material.
     this._buckets = {
       concrete: [], concreteDark: [], floor: [], gravel: [],
-      bars: [], steel: [], caution: [], pipe: [], dirt: []
+      bars: [], steel: [], caution: [], pipe: [], dirt: [],
+      glass: [], barbedWire: []
     };
     this._steamPuffs = [];
     this._steamMesh = null;
@@ -64,6 +65,7 @@ export default class MonkeyBreakMap extends MapBase {
 
   build() {
     this._makeMaterials();
+    this._placeSpawns(); // early: future scatter/props must avoid spawn points
     this._buildLights();
     this._buildFloorAndPerimeter();
     this._buildGuardTowers();
@@ -73,8 +75,60 @@ export default class MonkeyBreakMap extends MapBase {
     this._buildFence();
     this._buildTunnels();
     // Sektionen folgen hier — _buildCellBlock(), _buildCafeteria(),
-    // _buildWorkshop(), _buildArmory(), _buildGuardTower(), _buildSpawns()
+    // _buildWorkshop(), _buildArmory(), _buildGuardTower()
     this._flushBuckets();
+    this._validateSpawns();
+  }
+
+  // ----------------------------------------------------------------- spawns
+
+  _placeSpawns() {
+    const v = (x, y, z) => new THREE.Vector3(x, y, z);
+    // FEET positions on geometry this map actually builds. Walkable tops:
+    // main floor slab y=0, yard gravel y=0.3, warden office floor y=0.3,
+    // warden upper floor y=3.8, guard tower platforms y=6.3.
+    // Police: centre of the exercise yard, on the gravel pad (top y=0.3).
+    this.policeSpawns = [
+      v(0, 0.3, -17.5), v(-3, 0.3, -14.5), v(3, 0.3, -14.5),
+      v(-3, 0.3, -20.5), v(3, 0.3, -20.5)
+    ];
+    // Monkeys: spread across every built area. The cell blocks, cafeteria and
+    // tunnels are not built yet, so those server-list spots sit on the main
+    // floor slab (y=0); the sealed boiler room interior is avoided entirely.
+    this.monkeySpawns = [
+      v(-45, 0, -45),      // SW quadrant, open floor (cell block A not built)
+      v(-25, 0, -50),      // south floor between the future cell blocks
+      v(-55, 0, 22),       // NW quadrant, open floor
+      v(-65, 0.3, -22),    // west end of the yard gravel
+      v(0, 0.3, -27.5),    // yard gravel, along the north fence line
+      v(-65, 6.3, 55),     // west guard tower platform
+      v(65, 6.3, 55),      // east guard tower platform
+      v(25, 0.3, 12),      // warden's office, ground floor
+      v(32, 3.8, 16),      // warden's office, upper floor ledge
+      v(65, 0, 35),        // alley between boiler room east wall and perimeter
+      v(45, 0, 50),        // behind the boiler room's south wall
+      v(-40, 0, 60),       // SW of the tunnel mounds, open floor
+      v(10, 0, 60),        // south floor near the tunnel mounds
+      v(0, 0, 68),         // nook against the south perimeter wall
+      v(-60, 0, -55),      // far SW corner
+      v(-35, 0, 10)        // future-cafeteria area, open floor
+    ];
+  }
+
+  /** Dev safety net: warn if any spawn overlaps a collider. */
+  _validateSpawns() {
+    const all = [...this.policeSpawns, ...this.monkeySpawns];
+    const box = new THREE.Box3();
+    for (const s of all) {
+      box.min.set(s.x - 0.34, s.y + 0.06, s.z - 0.34);
+      box.max.set(s.x + 0.34, s.y + 1.76, s.z + 0.34);
+      for (const c of this.colliders) {
+        if (box.intersectsBox(c)) {
+          console.warn('[MonkeyBreak] spawn intersects collider', s, c);
+          break;
+        }
+      }
+    }
   }
 
   // ------------------------------------------------------- procedural paint
@@ -342,7 +396,8 @@ export default class MonkeyBreakMap extends MapBase {
       floor: this._mats.floor, gravel: this._mats.gravel,
       bars: this._mats.bars, steel: this._mats.steel,
       caution: this._mats.caution, pipe: this._mats.pipe,
-      dirt: this._mats.dirt
+      dirt: this._mats.dirt,
+      glass: this._mats.glass, barbedWire: this._mats.barbedWire
     };
     for (const key of Object.keys(this._buckets)) {
       const list = this._buckets[key];
