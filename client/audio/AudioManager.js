@@ -3,6 +3,16 @@ import SynthSounds from './SynthSounds.js';
 import { PHASES } from '../core/constants.js';
 import * as THREE from 'three';
 
+// game:sfx payload names → SynthSounds method names.
+const SFX_METHODS = {
+  footstep: 'footstep',
+  jump: 'jump',
+  land: 'land',
+  caught_self: 'caughtSelf',
+  round_win: 'roundWin',
+  round_lose: 'roundLose'
+};
+
 export default class AudioManager {
   constructor(camera) {
     // THREE.AudioListener an Camera hängen
@@ -21,9 +31,10 @@ export default class AudioManager {
     this._uiGain = this._ctx.createGain(); this._uiGain.gain.value = 0.6; this._uiGain.connect(this._masterGain);
 
     this._autoplayResolved = false;
-    this._ambientNodes = [];
+    /** @type {{ output: GainNode, stop: Function } | null} */
+    this._ambient = null;
+    this._ambientId = null;
     this._synth = new SynthSounds(this._ctx);
-    this._bgMusic = null;
     this._handlers = {};
     this._subscribe();
   }
@@ -50,45 +61,25 @@ export default class AudioManager {
   }
 
   startAmbient(mapId) {
+    // game:hud re-fires mid-round (e.g. infection conversion) — don't restart
+    // the bed if the map hasn't changed.
+    if (this._ambient && this._ambientId === mapId) return;
     this.stopAmbient();
-    const node = this._synth.createAmbient(mapId, this._ctx);
-    if (node) {
-      node.connect(this._ambientGain);
-      this._ambientNodes.push(node);
+    const ambient = this._synth.createAmbient(mapId, this._ctx);
+    if (ambient) {
+      ambient.output.connect(this._ambientGain);
+      this._ambient = ambient;
+      this._ambientId = mapId;
     }
   }
 
   stopAmbient() {
-    for (const n of this._ambientNodes) {
-      try { n.disconnect(); } catch { /* already disconnected */ }
+    if (this._ambient) {
+      this._ambient.stop();
+      try { this._ambient.output.disconnect(); } catch { /* already disconnected */ }
+      this._ambient = null;
     }
-    this._ambientNodes = [];
-  }
-
-  playBackgroundMusic() {
-    if (!this._autoplayResolved) return;
-    const loader = new THREE.AudioLoader();
-    loader.load(
-      './audio/monkeys-spinning-monkeys.mp3',
-      (buffer) => {
-        if (this._bgMusic) this.stopBackgroundMusic();
-        const audio = new THREE.Audio(this._listener);
-        audio.setBuffer(buffer);
-        audio.setLoop(true);
-        audio.setVolume(0.3);
-        audio.play();
-        this._bgMusic = audio;
-      },
-      undefined,
-      (err) => console.warn('AudioManager: Background music could not be loaded.', err)
-    );
-  }
-
-  stopBackgroundMusic() {
-    if (this._bgMusic) {
-      this._bgMusic.stop();
-      this._bgMusic = null;
-    }
+    this._ambientId = null;
   }
 
   _subscribe() {
@@ -109,16 +100,22 @@ export default class AudioManager {
         this.playOneShot('timerWarning', 'sfx');
       }
     });
+    on('game:sfx', (p) => {
+      const method = p ? SFX_METHODS[p.name] : null;
+      if (method) this.playOneShot(method, 'sfx');
+    });
     on('game:hud', (p) => {
-      if (p.mapName) this.startAmbient(p.mapName);
+      if (p.mapId) this.startAmbient(p.mapId);
     });
     on('game:menu', () => this.stopAmbient());
+    on('ui:click', () => this.playOneShot('buttonClick', 'ui'));
     on('ui:ready', () => this.playOneShot('readyToggle', 'ui'));
     on('ui:start_game', () => this.playOneShot('gameStart', 'ui'));
   }
 
+  // Full shutdown (app teardown only — the game keeps ONE AudioManager alive
+  // for its whole lifetime and calls stopAmbient() between rounds instead).
   dispose() {
-    this.stopBackgroundMusic();
     this.stopAmbient();
     for (const [event, fn] of Object.entries(this._handlers)) {
       bus.off(event, fn);

@@ -58,6 +58,8 @@ export class PlayerController {
 
     this._frozen = false;
     this._onGround = false;
+    this._justJumped = false;
+    this._justLanded = false;
   }
 
   /**
@@ -94,6 +96,8 @@ export class PlayerController {
     this._position.copy(vec3);
     this._velocity.set(0, 0, 0);
     this._onGround = false;
+    this._justJumped = false;
+    this._justLanded = false;
     this._spawned = true;
     this.camera.position.copy(this._position);
     this.camera.position.y += PLAYER.EYE_HEIGHT;
@@ -142,6 +146,7 @@ export class PlayerController {
 
       if (jumpPressed && this._onGround) {
         this._velocity.y = PLAYER.JUMP_SPEED;
+        this._justJumped = true;
       }
     } else {
       this._velocity.x = 0;
@@ -153,6 +158,7 @@ export class PlayerController {
     const { onGround } = moveWithCollisions(
       this._position, this._velocity, dt, this._colliders, CHARACTER_DIMS
     );
+    if (onGround && !this._onGround) this._justLanded = true;
     this._onGround = onGround;
 
     if (this._position.y < this._killY) {
@@ -196,6 +202,25 @@ export class PlayerController {
   /** @returns {boolean} whether horizontal speed exceeds 0.1 units/sec */
   get isMoving() {
     return Math.hypot(this._velocity.x, this._velocity.z) > MOVING_SPEED_THRESHOLD;
+  }
+
+  /** @returns {boolean} whether Shift is held while moving */
+  get isSprinting() {
+    return this.input.isDown('ShiftLeft') && this.isMoving;
+  }
+
+  /** @returns {boolean} true once after a jump impulse fired; reading resets it */
+  consumeJustJumped() {
+    const fired = this._justJumped;
+    this._justJumped = false;
+    return fired;
+  }
+
+  /** @returns {boolean} true once after an airborne→ground transition; reading resets it */
+  consumeJustLanded() {
+    const fired = this._justLanded;
+    this._justLanded = false;
+    return fired;
   }
 
   /** Disposes controls and input listeners. */

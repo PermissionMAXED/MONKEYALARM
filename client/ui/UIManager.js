@@ -60,6 +60,14 @@ export class UIManager {
     this._toastContainer.className = 'toast-container';
     this.root.appendChild(this._toastContainer);
 
+    // One delegated listener: any button click anywhere in the UI plays the
+    // click sound (AudioManager listens for ui:click).
+    this.root.addEventListener('click', (e) => {
+      if (e.target instanceof HTMLElement && e.target.closest('button')) {
+        bus.emit('ui:click', {});
+      }
+    });
+
     this._subscribe();
 
     // Show the menu right away so there is no blank first frame; the engine

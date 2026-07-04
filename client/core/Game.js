@@ -28,6 +28,13 @@ const CATCH_CHECK_INTERVAL = 0.1; // seconds between crosshair target checks
 const CATCH_AIM_HEIGHT = 0.8;     // aim point above a monkey's feet
 const MAX_DT = 0.05;
 
+const FOOTSTEP_INTERVAL_WALK = 0.40;   // seconds between footstep sounds
+const FOOTSTEP_INTERVAL_SPRINT = 0.30;
+// Reused payloads so the frame loop allocates nothing beyond the timer.
+const SFX_FOOTSTEP = { name: 'footstep' };
+const SFX_JUMP = { name: 'jump' };
+const SFX_LAND = { name: 'land' };
+
 /**
  * The game engine. Construct with the render canvas, then call start().
  */
@@ -88,6 +95,7 @@ export class Game {
     this._lastCatchAt = 0;
     this._catchAccum = 0;
     this._catchVisible = false;
+    this._footstepAccum = 0;
 
     // Scratch objects reused every frame (no per-frame allocation).
     this._forward = new THREE.Vector3();
@@ -103,6 +111,9 @@ export class Game {
   start() {
     window.addEventListener('resize', this._onResize);
     window.addEventListener('mousedown', this._onMouseDown);
+    // Browsers keep the AudioContext suspended until a user gesture; unlock
+    // audio on the very first click anywhere.
+    window.addEventListener('pointerdown', () => this._audioManager.resume(), { once: true });
     this._onResize();
 
     bus.on('ui:solo_start', (p) => this._openSession(new LocalSession(), true, (s) => s.createRoom(p)));
@@ -115,7 +126,7 @@ export class Game {
     bus.on('ui:leave', () => this._teardown());
     bus.on('ui:resume', () => this._resume());
     bus.on('ui:volume', ({ channel, value }) => {
-      if (this._audioManager) this._audioManager.setVolume(channel, value);
+      this._audioManager.setVolume(channel, value);
     });
 
     bus.emit('game:menu', {});
@@ -189,7 +200,9 @@ export class Game {
       this._controller = null;
     }
 
-    if (this._audioManager) { this._audioManager.dispose(); this._audioManager = null; }
+    // The AudioManager lives for the whole app lifetime — only silence the
+    // map ambient bed here so the next game still has audio.
+    this._audioManager.stopAmbient();
     this.scene.fog = null;
     this.scene.background = this._menuBackground;
 
@@ -206,6 +219,7 @@ export class Game {
     this._lastTimerSec = null;
     this._totalMonkeys = 0;
     this._catchVisible = false;
+    this._footstepAccum = 0;
 
     bus.emit('game:menu', error ? { error } : {});
   }
@@ -321,6 +335,7 @@ export class Game {
     bus.emit('game:hud', {
       role: this._selfRole,
       modeId: this._modeId,
+      mapId: this._mapId,
       mapName: map.name,
       roomCode: this._solo ? null : this._roomCode
     });
@@ -374,12 +389,14 @@ export class Game {
         bus.emit('game:hud', {
           role: ROLES.POLICE,
           modeId: this._modeId,
+          mapId: this._mapId,
           mapName: this._map ? this._map.name : '',
           roomCode: this._solo ? null : this._roomCode
         });
         bus.emit('game:banner', { text: "You've been recruited! 🚨" });
       } else {
         this._selfCaught = true;
+        bus.emit('game:sfx', { name: 'caught_self' });
         bus.emit('game:banner', { text: 'CAUGHT!', sticky: true });
       }
       this._updateFreeze();
@@ -412,6 +429,13 @@ export class Game {
     if (payload.winner === 'police') winnerText = 'POLICE WIN! 🚨';
     else if (payload.winner === 'monkeys') winnerText = 'MONKEYS WIN! 🍌';
     else winnerText = payload.summary || 'TIME!';
+
+    // Time Attack ends with winner 'time', which counts as a win for the player.
+    const selfWon =
+      (payload.winner === 'police' && this._selfRole === ROLES.POLICE) ||
+      (payload.winner === 'monkeys' && this._selfRole === ROLES.MONKEY) ||
+      payload.winner === 'time';
+    bus.emit('game:sfx', { name: selfWon ? 'round_win' : 'round_lose' });
 
     bus.emit('game:roundend', {
       winnerText,
@@ -533,6 +557,7 @@ export class Game {
 
   /** Handles ui:resume synchronously so pointer lock keeps the user gesture. */
   _resume() {
+    this._audioManager.resume(); // the context can re-suspend after tab switches
     bus.emit('game:pause', { visible: false });
     if (this._controller && this._state === STATES.PLAYING) this._controller.lock();
   }
@@ -621,6 +646,22 @@ export class Game {
       if (sec !== null && sec !== this._lastTimerSec) {
         this._lastTimerSec = sec;
         bus.emit('game:timer', { remainingSec: sec });
+      }
+      if (this._controller && this._controller.isLocked && !this._frozen) {
+        if (this._controller.consumeJustJumped()) bus.emit('game:sfx', SFX_JUMP);
+        if (this._controller.consumeJustLanded()) bus.emit('game:sfx', SFX_LAND);
+        if (this._controller.isMoving && this._controller.onGround) {
+          this._footstepAccum += dt;
+          const interval = this._controller.isSprinting
+            ? FOOTSTEP_INTERVAL_SPRINT
+            : FOOTSTEP_INTERVAL_WALK;
+          if (this._footstepAccum >= interval) {
+            this._footstepAccum = 0;
+            bus.emit('game:sfx', SFX_FOOTSTEP);
+          }
+        } else {
+          this._footstepAccum = 0;
+        }
       }
       this._catchAccum += dt;
       if (this._catchAccum >= CATCH_CHECK_INTERVAL) {

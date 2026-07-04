@@ -123,6 +123,8 @@ export class HUD {
             <h3 class="volume-title">🔊 Sound</h3>
             <label class="volume-row"><span>Master</span><input type="range" class="volume-slider" data-channel="master" min="0" max="1" step="0.05" value="0.5"></label>
             <label class="volume-row"><span>SFX</span><input type="range" class="volume-slider" data-channel="sfx" min="0" max="1" step="0.05" value="0.8"></label>
+            <label class="volume-row"><span>Ambient</span><input type="range" class="volume-slider" data-channel="ambient" min="0" max="1" step="0.05" value="0.4"></label>
+            <label class="volume-row"><span>UI</span><input type="range" class="volume-slider" data-channel="ui" min="0" max="1" step="0.05" value="0.6"></label>
           </div>
         </div>
       </div>
