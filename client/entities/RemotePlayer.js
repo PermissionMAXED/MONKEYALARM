@@ -5,6 +5,13 @@ import { MonkeyAvatar } from './MonkeyAvatar.js';
 
 const LERP_RATE = 12;
 
+// Police "alarm beacon" floating above un-caught monkeys (seen through walls).
+const BEACON_COLOR = 0xff4a3c;
+const BEACON_HEIGHT = 2.2;        // meters above the feet
+const BEACON_RENDER_ORDER = 999;  // draw after everything (depthTest off)
+const BEACON_PULSE_FREQ = 3.2;    // rad/s for the pulse sine
+const BEACON_SPIN_SPEED = 1.4;    // rad/s slow spin
+
 /**
  * Visual wrapper for a non-local player (human or AI). Owns a role-matched
  * avatar and interpolates toward network/AI state.
@@ -32,6 +39,12 @@ export class RemotePlayer {
     this._hasState = false;
     this._targetPos = new THREE.Vector3();
     this._targetYaw = 0;
+
+    // Alarm beacon (lazily built on first setBeaconVisible(true)).
+    this._beacon = null;
+    this._beaconMaterials = [];
+    this._beaconGeometries = [];
+    this._beaconT = Math.random() * 100;
 
     this._buildAvatar(role);
   }
@@ -76,6 +89,50 @@ export class RemotePlayer {
     }
   }
 
+  /** Builds the beacon group: downward cone + pulsing ring, seen through walls. */
+  _buildBeacon() {
+    this._beacon = new THREE.Group();
+    this._beacon.position.y = BEACON_HEIGHT;
+
+    const coneGeom = new THREE.ConeGeometry(0.16, 0.34, 10);
+    const coneMat = new THREE.MeshBasicMaterial({
+      color: BEACON_COLOR,
+      transparent: true,
+      opacity: 0.9,
+      depthTest: false
+    });
+    const cone = new THREE.Mesh(coneGeom, coneMat);
+    cone.rotation.x = Math.PI; // point downward
+    cone.renderOrder = BEACON_RENDER_ORDER;
+    this._beacon.add(cone);
+
+    const ringGeom = new THREE.TorusGeometry(0.3, 0.035, 8, 24);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: BEACON_COLOR,
+      transparent: true,
+      opacity: 0.7,
+      depthTest: false
+    });
+    const ring = new THREE.Mesh(ringGeom, ringMat);
+    ring.rotation.x = Math.PI / 2; // lie flat
+    ring.renderOrder = BEACON_RENDER_ORDER;
+    this._beacon.add(ring);
+
+    this._beaconGeometries.push(coneGeom, ringGeom);
+    this._beaconMaterials.push(coneMat, ringMat);
+    this.group.add(this._beacon);
+  }
+
+  /**
+   * Show/hide the police alarm beacon. Built lazily on the first show so
+   * monkeys and non-police viewers never pay for it.
+   * @param {boolean} visible
+   */
+  setBeaconVisible(visible) {
+    if (visible && !this._beacon) this._buildBeacon();
+    if (this._beacon) this._beacon.visible = visible;
+  }
+
   /**
    * Toggle caught presentation: 'caught' anim state / grey-out on the avatar.
    * @param {boolean} caught
@@ -105,6 +162,16 @@ export class RemotePlayer {
       this._container.rotation.y = current + delta * k;
     }
     this._avatar.update(dt);
+
+    if (this._beacon && this._beacon.visible) {
+      this._beaconT += dt;
+      const pulse = 0.5 + 0.5 * Math.sin(this._beaconT * BEACON_PULSE_FREQ);
+      const scale = 0.85 + pulse * 0.3;
+      this._beacon.scale.setScalar(scale);
+      this._beacon.rotation.y += BEACON_SPIN_SPEED * dt;
+      this._beaconMaterials[0].opacity = 0.6 + pulse * 0.4;
+      this._beaconMaterials[1].opacity = 0.35 + pulse * 0.5;
+    }
   }
 
   /** @returns {THREE.Vector3} current interpolated feet position */
@@ -112,12 +179,20 @@ export class RemotePlayer {
     return this.group.position;
   }
 
-  /** Dispose the avatar resources, then detach all children. */
+  /** Dispose the avatar and beacon resources, then detach all children. */
   dispose() {
     if (this._avatar) {
       this._container.remove(this._avatar.group);
       this._avatar.dispose();
       this._avatar = null;
+    }
+    if (this._beacon) {
+      this.group.remove(this._beacon);
+      for (const geometry of this._beaconGeometries) geometry.dispose();
+      for (const material of this._beaconMaterials) material.dispose();
+      this._beaconGeometries.length = 0;
+      this._beaconMaterials.length = 0;
+      this._beacon = null;
     }
     this.group.clear();
   }

@@ -12,6 +12,7 @@ import { RemotePlayer } from '../entities/RemotePlayer.js';
 import { Network } from '../net/Network.js';
 import { LocalSession } from '../net/LocalSession.js';
 import AudioManager from '../audio/AudioManager.js';
+import { EffectsManager } from '../fx/EffectsManager.js';
 
 /** Engine states. While PLAYING, the finer-grained round phase lives in `_phase`. */
 const STATES = {
@@ -60,6 +61,8 @@ export class Game {
 
     this._clock = new THREE.Clock();
     this._audioManager = new AudioManager(this.camera);
+    this._fx = new EffectsManager(this.scene);
+    this._fxPrevOnGround = false;
     this._time = 0;
 
     this._state = STATES.MENU;
@@ -220,6 +223,7 @@ export class Game {
     this._totalMonkeys = 0;
     this._catchVisible = false;
     this._footstepAccum = 0;
+    this._fxPrevOnGround = false;
 
     bus.emit('game:menu', error ? { error } : {});
   }
@@ -330,7 +334,9 @@ export class Game {
 
     this._totalMonkeys = payload.players.filter((p) => p.role === ROLES.MONKEY).length;
     this._state = STATES.PLAYING;
+    this._fxPrevOnGround = false;
     this._updateFreeze();
+    this._updateBeacons();
 
     bus.emit('game:hud', {
       role: this._selfRole,
@@ -368,9 +374,11 @@ export class Game {
       }
     } else if (phase === PHASES.SEEKING) {
       bus.emit('game:banner', { text: 'GO! 🚨' });
+      bus.emit('game:flash', { kind: 'go' });
     }
 
     this._updateFreeze();
+    this._updateBeacons();
   }
 
   _onPlayerState(payload) {
@@ -398,15 +406,20 @@ export class Game {
         this._selfCaught = true;
         bus.emit('game:sfx', { name: 'caught_self' });
         bus.emit('game:banner', { text: 'CAUGHT!', sticky: true });
+        bus.emit('game:flash', { kind: 'caught' });
       }
       this._updateFreeze();
     } else {
       const remote = this._remotePlayers.get(targetId);
       if (remote) {
+        this._fx.spawnCatchBurst(remote.position);
         if (infected) remote.setRole(ROLES.POLICE);
         else remote.setCaught(true);
       }
     }
+
+    if (catcherId === selfId) bus.emit('game:flash', { kind: 'catch' });
+    this._updateBeacons();
 
     const catcher = this._players.get(catcherId);
     const target = this._players.get(targetId);
@@ -538,6 +551,21 @@ export class Game {
 
   // ------------------------------------------------------- gameplay helpers
 
+  /**
+   * Shows the through-wall alarm beacon over each un-caught monkey, but only
+   * for police during the seeking phase.
+   */
+  _updateBeacons() {
+    const show =
+      this._selfRole === ROLES.POLICE && this._phase === PHASES.SEEKING;
+    for (const remote of this._remotePlayers.values()) {
+      const info = this._players.get(remote.id);
+      remote.setBeaconVisible(
+        show && Boolean(info) && info.role === ROLES.MONKEY && !info.caught
+      );
+    }
+  }
+
   /** Applies the freeze rules to the local controller. */
   _updateFreeze() {
     this._frozen =
@@ -640,6 +668,15 @@ export class Game {
 
     for (const remote of this._remotePlayers.values()) remote.update(dt);
     if (this._map) this._map.update(dt, this._time);
+    this._fx.update(dt);
+
+    if (this._controller) {
+      const onGround = this._controller.onGround;
+      if (onGround && !this._fxPrevOnGround && this._state === STATES.PLAYING) {
+        this._fx.spawnDustPuff(this._controller.position);
+      }
+      this._fxPrevOnGround = onGround;
+    }
 
     if (this._state === STATES.PLAYING) {
       const sec = this._remainingSec();

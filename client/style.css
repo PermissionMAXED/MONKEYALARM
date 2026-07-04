@@ -1174,3 +1174,51 @@ select:focus-visible {
 
 /* Loading screen enhancement */
 .prison-icon { font-size: 64px; animation: monkey-spin 2s ease-in-out infinite; }
+
+/* --------------------------------------------------------------------------
+   Screen flashes (game:flash) — fullscreen, never intercepts the mouse.
+   -------------------------------------------------------------------------- */
+
+.hud-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.hud-flash.flash-catch {
+  background: radial-gradient(circle at 50% 45%, rgba(251, 215, 91, 0.5), rgba(251, 215, 91, 0) 65%);
+  animation: flash-fade 0.25s ease-out;
+}
+.hud-flash.flash-caught {
+  background: radial-gradient(circle at 50% 50%, rgba(220, 38, 38, 0) 40%, rgba(220, 38, 38, 0.6) 100%);
+  animation: flash-fade 0.6s ease-out;
+}
+.hud-flash.flash-go {
+  animation: flash-go 0.5s ease-out;
+}
+@keyframes flash-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+/* Red→blue alarm strobe: the gradient is non-interpolable so it swaps
+   halfway, reading as one red pulse then one blue pulse. */
+@keyframes flash-go {
+  0% {
+    opacity: 0.85;
+    background: radial-gradient(ellipse at 50% 50%, rgba(220, 38, 38, 0) 45%, rgba(220, 38, 38, 0.55) 100%);
+  }
+  40% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.85;
+    background: radial-gradient(ellipse at 50% 50%, rgba(29, 78, 216, 0) 45%, rgba(29, 78, 216, 0.55) 100%);
+  }
+  100% {
+    opacity: 0;
+  }
+}

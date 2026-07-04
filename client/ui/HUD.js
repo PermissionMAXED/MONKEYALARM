@@ -14,6 +14,13 @@ const FEED_MAX = 4;
 const FEED_FADE_MS = 6000;
 const BANNER_FADE_MS = 2500;
 
+// game:flash kind → CSS animation class on the fullscreen flash overlay.
+const FLASH_CLASSES = {
+  catch: 'flash-catch',
+  caught: 'flash-caught',
+  go: 'flash-go'
+};
+
 function formatTime(sec) {
   const s = Math.max(0, Math.floor(sec));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -87,11 +94,15 @@ export class HUD {
       case 'game:catch_target':
         this._crosshair.classList.toggle('target', Boolean(payload.visible));
         break;
+      case 'game:flash':
+        this._onFlash(payload.kind);
+        break;
     }
   }
 
   _build() {
     this.el.innerHTML = `
+      <div class="hud-flash"></div>
       <div class="hud-top-left">
         <div class="role-badge"></div>
         <div class="hud-mode-line"></div>
@@ -130,6 +141,7 @@ export class HUD {
       </div>
     `;
 
+    this._flash = this.el.querySelector('.hud-flash');
     this._roleBadge = this.el.querySelector('.role-badge');
     this._modeLine = this.el.querySelector('.hud-mode-line');
     this._roomLine = this.el.querySelector('.hud-room-line');
@@ -161,6 +173,7 @@ export class HUD {
   _reset() {
     this.phase = null;
     this._clearBannerTimers();
+    this._flash.className = 'hud-flash';
     this._banner.hidden = true;
     this._blindfold.hidden = true;
     this._pause.hidden = true;
@@ -259,6 +272,19 @@ export class HUD {
         }, BANNER_FADE_MS)
       );
     }
+  }
+
+  /**
+   * Plays a fullscreen screen-flash animation.
+   * @param {'catch'|'caught'|'go'} kind
+   */
+  _onFlash(kind) {
+    const cls = FLASH_CLASSES[kind];
+    if (!cls) return;
+    this._flash.className = 'hud-flash';
+    // Force a reflow so the animation restarts on back-to-back flashes.
+    void this._flash.offsetWidth;
+    this._flash.classList.add(cls);
   }
 
   _onPause({ visible, text }) {

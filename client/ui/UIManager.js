@@ -27,7 +27,8 @@ const UPDATE_EVENTS = [
   'game:banner',
   'game:feed',
   'game:pause',
-  'game:catch_target'
+  'game:catch_target',
+  'game:flash'
 ];
 
 /**
