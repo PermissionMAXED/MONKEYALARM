@@ -360,6 +360,75 @@ export default class SynthSounds {
         });
         break;
       }
+      case 'SKI_RESORT': {
+        // Airy mountain wind (LFO-swept bandpass) + sparse chair-lift ding.
+        const windBand = filter('bandpass', 620, gainNode(0.045), 0.7);
+        noiseLoop(windBand);
+        const lfoDepth = ctx.createGain();
+        lfoDepth.gain.value = 280;
+        lfoDepth.connect(windBand.frequency);
+        osc('sine', 0.09, lfoDepth);
+        schedule(9000, 17000, () => {
+          this._osc('sine', 987.8, 0.03, 0.5, output);
+          later(120, () => this._osc('sine', 1480, 0.015, 0.35, output));
+        });
+        break;
+      }
+      case 'WILD_WEST': {
+        // Dry desert wind + distant hawk cry + occasional wood creak.
+        noiseLoop(filter('lowpass', 350, gainNode(0.04)));
+        schedule(10000, 20000, () => {
+          this._sweep('sine', 1750, 1150, 0.035, 0.7, output);
+        });
+        schedule(7000, 14000, () => {
+          this._sweep('sawtooth', 110, 82, 0.03, 0.35, output);
+        });
+        break;
+      }
+      case 'VOLCANO_LAB': {
+        // Deep volcanic rumble (beating low sines) + intermittent steam hiss.
+        osc('sine', 38, gainNode(0.05));
+        osc('sine', 38.6, gainNode(0.035));
+        noiseLoop(filter('lowpass', 90, gainNode(0.03)));
+        schedule(6000, 13000, () => {
+          this._noise(0.9, 3200, 0.03, output);
+          later(250, () => this._noise(0.5, 2400, 0.02, output));
+        });
+        break;
+      }
+      case 'REEF_DOME': {
+        // Muffled underwater wash (slow LFO on the gain) + rising bubble blips.
+        const wash = gainNode(0.04);
+        const washDepth = ctx.createGain();
+        washDepth.gain.value = 0.025;
+        washDepth.connect(wash.gain);
+        osc('sine', 0.08, washDepth);
+        noiseLoop(filter('lowpass', 180, wash));
+        schedule(4000, 10000, () => {
+          const count = 2 + Math.floor(Math.random() * 3);
+          for (let i = 0; i < count; i++) {
+            later(i * 160, () => {
+              const f = 500 + Math.random() * 500;
+              this._sweep('sine', f, f * 1.8, 0.025, 0.12, output);
+            });
+          }
+        });
+        break;
+      }
+      case 'FUNFAIR': {
+        // Faint drifting calliope phrases + quiet crowd murmur.
+        noiseLoop(filter('lowpass', 480, gainNode(0.012)));
+        const notes = [523.25, 587.33, 659.25, 783.99, 880];
+        schedule(8000, 16000, () => {
+          for (let i = 0; i < 4; i++) {
+            later(i * 220, () => {
+              const f = notes[Math.floor(Math.random() * notes.length)];
+              this._osc('triangle', f, 0.025, 0.2, output);
+            });
+          }
+        });
+        break;
+      }
       default: {
         // Generic bed for unknown map ids: soft low hum + faint air.
         osc('sine', 60, gainNode(0.04));

@@ -109,6 +109,36 @@ export const MAPS = {
     name: 'Banana Space Center',
     theme: 'A night launch site: rocket gantry, hangar and mission control.',
     load: () => import('../maps/SpaceCenterMap.js')
+  },
+  SKI_RESORT: {
+    id: 'SKI_RESORT',
+    name: 'Frostpeak Ski Resort',
+    theme: 'A bright alpine resort: ski lodge, chair-lift and frozen pond.',
+    load: () => import('../maps/SkiResortMap.js')
+  },
+  WILD_WEST: {
+    id: 'WILD_WEST',
+    name: 'Dusty Gulch',
+    theme: 'A high-noon frontier town: saloon, rail depot and dusty mesas.',
+    load: () => import('../maps/WildWestMap.js')
+  },
+  VOLCANO_LAB: {
+    id: 'VOLCANO_LAB',
+    name: 'Volcano Research Lab',
+    theme: 'A smouldering research outpost on an active volcano.',
+    load: () => import('../maps/VolcanoLabMap.js')
+  },
+  REEF_DOME: {
+    id: 'REEF_DOME',
+    name: 'Coral Reef Dome',
+    theme: 'An underwater visitor dome: coral atrium, aquarium halls and a moon pool.',
+    load: () => import('../maps/ReefDomeMap.js')
+  },
+  FUNFAIR: {
+    id: 'FUNFAIR',
+    name: 'Banana Funfair',
+    theme: 'A twilight amusement park: ferris wheel, coaster and glowing midway.',
+    load: () => import('../maps/FunfairMap.js')
   }
 };
 
