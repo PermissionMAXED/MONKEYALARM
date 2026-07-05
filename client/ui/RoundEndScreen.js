@@ -94,7 +94,7 @@ export class RoundEndScreen {
         <td>${roleEmoji}</td>
         <td>${p.catches ?? 0}</td>
         <td class="score">${p.score ?? 0}</td>
-        <td>${p.caught ? '<span class="caught-tag">CAUGHT</span>' : ''}</td>
+        <td>${p.escaped ? '<span class="escaped-tag">ESCAPED 🏃</span>' : p.caught ? '<span class="caught-tag">CAUGHT</span>' : ''}</td>
       </tr>
     `;
   }

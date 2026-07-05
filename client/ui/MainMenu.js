@@ -141,6 +141,8 @@ export class MainMenu {
     this._renderCards('solo-map', Object.values(MAPS), 'mapId', 'solo');
     this._renderCards('multi-mode', modesForTab('multi'), 'modeId', 'multi');
     this._renderCards('multi-map', Object.values(MAPS), 'mapId', 'multi');
+    this._applyMapLock('solo');
+    this._applyMapLock('multi');
 
     this._bind();
     this._setTab(this.activeTab);
@@ -197,7 +199,26 @@ export class MainMenu {
       if (!card) return;
       this.selection[tab][field] = card.dataset.id;
       sync();
+      if (field === 'modeId') this._applyMapLock(tab);
     });
+  }
+
+  /**
+   * Modes with a `fixedMapId` (e.g. Prison Escape) force their map: the fixed
+   * map card is auto-selected and every other map card is locked out. Picking
+   * a mode without `fixedMapId` unlocks the map grid again.
+   * @param {'solo'|'multi'} tab
+   */
+  _applyMapLock(tab) {
+    const grid = this.el.querySelector(`[data-cards="${tab}-map"]`);
+    if (!grid) return;
+    const mode = MODES[this.selection[tab].modeId];
+    const fixedMapId = mode && mode.fixedMapId ? mode.fixedMapId : null;
+    if (fixedMapId) this.selection[tab].mapId = fixedMapId;
+    for (const card of grid.querySelectorAll('.card')) {
+      card.classList.toggle('selected', card.dataset.id === this.selection[tab].mapId);
+      card.classList.toggle('card-locked', Boolean(fixedMapId) && card.dataset.id !== fixedMapId);
+    }
   }
 
   _bind() {

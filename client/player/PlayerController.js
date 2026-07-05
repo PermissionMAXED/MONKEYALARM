@@ -46,6 +46,7 @@ export class PlayerController {
 
     this._walkSpeed = PLAYER.WALK_SPEED;
     this._sprintSpeed = PLAYER.SPRINT_SPEED;
+    this._speedMult = 1;
 
     this._colliders = [];
     this._killY = -Infinity;
@@ -74,6 +75,16 @@ export class PlayerController {
       this._walkSpeed = PLAYER.WALK_SPEED;
       this._sprintSpeed = PLAYER.SPRINT_SPEED;
     }
+    this._speedMult = 1;
+  }
+
+  /**
+   * Scales both walk and sprint speed (e.g. the Escape coffee buff).
+   * Reset to 1 by setRole().
+   * @param {number} mult
+   */
+  setSpeedMultiplier(mult) {
+    this._speedMult = mult;
   }
 
   /**
@@ -140,7 +151,8 @@ export class PlayerController {
       _move.addScaledVector(_right, strafeAmount);
       if (_move.lengthSq() > 0) _move.normalize();
 
-      const speed = this.input.isDown('ShiftLeft') ? this._sprintSpeed : this._walkSpeed;
+      const speed =
+        (this.input.isDown('ShiftLeft') ? this._sprintSpeed : this._walkSpeed) * this._speedMult;
       this._velocity.x = _move.x * speed;
       this._velocity.z = _move.z * speed;
 

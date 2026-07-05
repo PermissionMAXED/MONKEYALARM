@@ -11,7 +11,11 @@ const SFX_METHODS = {
   catch: 'catchSuccess',
   caught_self: 'caughtSelf',
   round_win: 'roundWin',
-  round_lose: 'roundLose'
+  round_lose: 'roundLose',
+  alarm: 'alarmSiren',
+  gate_open: 'gateOpen',
+  pickup: 'itemPickup',
+  escaped: 'escapeStinger'
 };
 
 export default class AudioManager {

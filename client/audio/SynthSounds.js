@@ -160,6 +160,49 @@ export default class SynthSounds {
     });
   }
 
+  /** Prison alarm: two sawtooth up-down whoops back to back. */
+  alarmSiren(gain) {
+    const ctx = this._ctx;
+    for (let i = 0; i < 2; i++) {
+      const t = ctx.currentTime + i * 0.72;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(480, t);
+      o.frequency.linearRampToValueAtTime(960, t + 0.35);
+      o.frequency.linearRampToValueAtTime(480, t + 0.7);
+      g.gain.setValueAtTime(0.14, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.72);
+      o.connect(g); g.connect(gain);
+      o.start(t); o.stop(t + 0.77);
+    }
+  }
+
+  /** Heavy gate: low rumble + metal clank, closed off by a thud. */
+  gateOpen(gain) {
+    this._sweep('sawtooth', 90, 68, 0.2, 0.95, gain); // grinding low rumble
+    this._noise(0.09, 1800, 0.18, gain);              // metal clank
+    setTimeout(() => this._noise(0.07, 1800, 0.12, gain), 320);
+    setTimeout(() => {                                // end thud
+      this._osc('sine', 65, 0.26, 0.25, gain);
+      this._noise(0.1, 500, 0.14, gain);
+    }, 850);
+  }
+
+  /** Bright two-note pickup ding (C6 → E6). */
+  itemPickup(gain) {
+    this._osc('sine', 1046.5, 0.2, 0.18, gain);
+    setTimeout(() => this._osc('sine', 1318.5, 0.2, 0.28, gain), 100);
+  }
+
+  /** Quick descending 3-note sting — a monkey got out. */
+  escapeStinger(gain) {
+    const notes = [659.25, 523.25, 392];
+    notes.forEach((f, i) => {
+      setTimeout(() => this._osc('triangle', f, 0.2, i === notes.length - 1 ? 0.4 : 0.18, gain), i * 110);
+    });
+  }
+
   /**
    * Builds a quiet layered ambient bed for a map id.
    * @param {string} mapId
@@ -264,10 +307,11 @@ export default class SynthSounds {
         break;
       }
       case 'MONKEY_BREAK': {
-        // Deep prison drone + faint distant alarm whoop every ~20s.
+        // Deep prison drone + faint distant alarm whoop every ~12-18s
+        // + a very quiet far-off cell-door clank.
         osc('sine', 55, gainNode(0.045));
         osc('sine', 55.7, gainNode(0.03));
-        schedule(17000, 23000, () => {
+        schedule(12000, 18000, () => {
           const t = ctx.currentTime;
           const o = ctx.createOscillator();
           const g = ctx.createGain();
@@ -279,6 +323,10 @@ export default class SynthSounds {
           g.gain.exponentialRampToValueAtTime(0.001, t + 1.6);
           o.connect(g); g.connect(output);
           o.start(t); o.stop(t + 1.7);
+        });
+        schedule(9000, 17000, () => {
+          this._noise(0.06, 1500, 0.018, output);
+          later(140, () => this._osc('square', 230, 0.008, 0.06, output));
         });
         break;
       }

@@ -28,7 +28,12 @@ const UPDATE_EVENTS = [
   'game:feed',
   'game:pause',
   'game:catch_target',
-  'game:flash'
+  'game:flash',
+  'game:escape',
+  'game:item',
+  'game:cutscene:start',
+  'game:cutscene:sub',
+  'game:cutscene:end'
 ];
 
 /**

@@ -38,8 +38,11 @@ export class HUD {
   constructor(bus) {
     this.bus = bus;
     this.role = null;
+    this.modeId = null;
     this.phase = null;
     this._bannerTimers = [];
+    this._escapedCount = 0;
+    this._cutsceneTimer = null;
 
     this.el = document.createElement('div');
     this.el.className = 'screen hud-screen';
@@ -97,6 +100,21 @@ export class HUD {
       case 'game:flash':
         this._onFlash(payload.kind);
         break;
+      case 'game:escape':
+        this._onEscape(payload);
+        break;
+      case 'game:item':
+        this._onItem(payload);
+        break;
+      case 'game:cutscene:start':
+        this._onCutsceneStart();
+        break;
+      case 'game:cutscene:sub':
+        this._cutsceneSub.textContent = payload && payload.text ? payload.text : '';
+        break;
+      case 'game:cutscene:end':
+        this._onCutsceneEnd();
+        break;
     }
   }
 
@@ -114,8 +132,10 @@ export class HUD {
       </div>
       <div class="hud-top-right">
         <div class="monkey-counter" hidden></div>
+        <div class="hud-objective" hidden></div>
       </div>
       <div class="crosshair"></div>
+      <div class="hud-item-slot" hidden></div>
       <div class="hud-feed"></div>
       <div class="hud-banner" hidden>
         <div class="banner-text"></div>
@@ -124,6 +144,12 @@ export class HUD {
       <div class="blindfold" hidden>
         <div class="blindfold-text">The monkeys are hiding… 🙈</div>
         <div class="blindfold-count"></div>
+      </div>
+      <div class="cutscene-overlay" hidden>
+        <div class="cutscene-bar-top"></div>
+        <div class="cutscene-bar-bottom"></div>
+        <div class="cutscene-sub"></div>
+        <div class="cutscene-skip-hint">SPACE — skip</div>
       </div>
       <div class="pause-overlay" hidden>
         <div class="pause-box">
@@ -148,13 +174,21 @@ export class HUD {
     this._phaseLabel = this.el.querySelector('.phase-label');
     this._timer = this.el.querySelector('.hud-timer');
     this._counter = this.el.querySelector('.monkey-counter');
+    this._objective = this.el.querySelector('.hud-objective');
+    this._itemSlot = this.el.querySelector('.hud-item-slot');
     this._crosshair = this.el.querySelector('.crosshair');
     this._feed = this.el.querySelector('.hud-feed');
     this._banner = this.el.querySelector('.hud-banner');
     this._blindfold = this.el.querySelector('.blindfold');
     this._blindfoldCount = this.el.querySelector('.blindfold-count');
+    this._cutscene = this.el.querySelector('.cutscene-overlay');
+    this._cutsceneSub = this.el.querySelector('.cutscene-sub');
     this._pause = this.el.querySelector('.pause-overlay');
     this._pauseText = this.el.querySelector('.pause-text');
+
+    // ui:cutscene_skip must fire synchronously inside the click handler so the
+    // engine can re-request pointer lock within the same user gesture.
+    this._cutscene.addEventListener('click', () => this.bus.emit('ui:cutscene_skip', {}));
 
     // ui:resume must be emitted synchronously inside the click handler so the
     // engine can request pointer lock within the user gesture.
@@ -188,10 +222,24 @@ export class HUD {
     this._crosshair.classList.remove('target');
     this._feed.innerHTML = '';
     this._phaseLabel.textContent = '';
+    this._escapedCount = 0;
+    this._objective.hidden = true;
+    this._objective.classList.remove('pulse');
+    this._objective.textContent = '';
+    this._itemSlot.hidden = true;
+    this._itemSlot.textContent = '';
+    if (this._cutsceneTimer != null) {
+      clearTimeout(this._cutsceneTimer);
+      this._cutsceneTimer = null;
+    }
+    this._cutscene.hidden = true;
+    this._cutscene.classList.remove('active');
+    this._cutsceneSub.textContent = '';
   }
 
   _applyHudInfo({ role, modeId, mapName, roomCode }) {
     this.role = role;
+    this.modeId = modeId;
     if (role === ROLES.POLICE) {
       this._roleBadge.className = 'role-badge police';
       this._roleBadge.textContent = '👮 POLICE — catch the monkeys!';
@@ -211,7 +259,10 @@ export class HUD {
     this._phaseLabel.textContent = PHASE_LABELS[phase] || '';
     this._onTimer(remainingSec);
 
-    if (phase === PHASES.HIDING && this.role === ROLES.POLICE) {
+    // Escape mode plays an intro cutscene instead of blindfolding the police.
+    const noBlindfold = Boolean(MODES[this.modeId]?.escape);
+
+    if (phase === PHASES.HIDING && this.role === ROLES.POLICE && !noBlindfold) {
       this._blindfold.hidden = false;
       if (remainingSec != null) this._blindfoldCount.textContent = formatTime(remainingSec);
     } else if (!this._blindfold.hidden) {
@@ -237,6 +288,54 @@ export class HUD {
   _onMonkeys({ remaining, total }) {
     this._counter.hidden = false;
     this._counter.textContent = `🐒 ${remaining}/${total}`;
+  }
+
+  /** Escape-mode objective pill; pulses red whenever the count goes up. */
+  _onEscape({ escaped, quota }) {
+    this._objective.hidden = false;
+    this._objective.textContent = `🚔 ESCAPED ${escaped}/${quota}`;
+    if (escaped > this._escapedCount) {
+      this._objective.classList.remove('pulse');
+      // Force a reflow so the pulse animation restarts on back-to-back escapes.
+      void this._objective.offsetWidth;
+      this._objective.classList.add('pulse');
+    }
+    this._escapedCount = escaped;
+  }
+
+  /** Bottom-left held-item slot; a null label clears it. */
+  _onItem({ label }) {
+    if (label) {
+      this._itemSlot.textContent = label;
+      this._itemSlot.hidden = false;
+    } else {
+      this._itemSlot.hidden = true;
+      this._itemSlot.textContent = '';
+    }
+  }
+
+  _onCutsceneStart() {
+    if (this._cutsceneTimer != null) {
+      clearTimeout(this._cutsceneTimer);
+      this._cutsceneTimer = null;
+    }
+    this._cutsceneSub.textContent = '';
+    this._cutscene.hidden = false;
+    // Force a reflow so the letterbox bars transition from their off-screen
+    // resting position instead of popping in.
+    void this._cutscene.offsetWidth;
+    this._cutscene.classList.add('active');
+  }
+
+  _onCutsceneEnd() {
+    this._cutscene.classList.remove('active');
+    if (this._cutsceneTimer != null) clearTimeout(this._cutsceneTimer);
+    // Keep the overlay displayed while the bars slide out, then hide it.
+    this._cutsceneTimer = setTimeout(() => {
+      this._cutscene.hidden = true;
+      this._cutsceneSub.textContent = '';
+      this._cutsceneTimer = null;
+    }, 450);
   }
 
   _onFeed(text) {

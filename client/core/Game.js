@@ -6,7 +6,8 @@
 
 import * as THREE from 'three';
 import { bus } from './EventBus.js';
-import { MAPS, PHASES, PLAYER, ROLES } from './constants.js';
+import { ESCAPE, MAPS, MODES, PHASES, PLAYER, ROLES } from './constants.js';
+import { CutscenePlayer } from './Cutscene.js';
 import { PlayerController } from '../player/PlayerController.js';
 import { RemotePlayer } from '../entities/RemotePlayer.js';
 import { Network } from '../net/Network.js';
@@ -36,6 +37,14 @@ const SFX_FOOTSTEP = { name: 'footstep' };
 const SFX_JUMP = { name: 'jump' };
 const SFX_LAND = { name: 'land' };
 const SFX_CATCH = { name: 'catch' };
+const SFX_ALARM = { name: 'alarm' };
+const SFX_GATE_OPEN = { name: 'gate_open' };
+const SFX_PICKUP = { name: 'pickup' };
+const SFX_ESCAPED = { name: 'escaped' };
+// Reused game:item payload for clearing the held-item label (frame loop).
+const ITEM_CLEAR = { label: null };
+// Escape pickup icons for kill-feed lines.
+const ITEM_ICONS = { KEYCARD: '🔑', BANANA: '🍌', COFFEE: '☕', SMOKE: '💨' };
 
 /**
  * The game engine. Construct with the render canvas, then call start().
@@ -100,6 +109,15 @@ export class Game {
     this._catchVisible = false;
     this._footstepAccum = 0;
 
+    // Escape mode extras: coffee-buff expiry (performance.now() ms), the
+    // last-known escape tallies (fallbacks for partial escape_progress
+    // payloads) and the intro cutscene player.
+    this._buffUntil = null;
+    this._escapeCount = 0;
+    this._escapeQuota = 0;
+    this._escapeRemaining = 0;
+    this._cutscene = new CutscenePlayer(this.camera);
+
     // Scratch objects reused every frame (no per-frame allocation).
     this._forward = new THREE.Vector3();
     this._toTarget = new THREE.Vector3();
@@ -107,6 +125,7 @@ export class Game {
 
     this._onResize = this._onResize.bind(this);
     this._onMouseDown = this._onMouseDown.bind(this);
+    this._onKeyDown = this._onKeyDown.bind(this);
     this._onFrame = this._onFrame.bind(this);
   }
 
@@ -114,6 +133,7 @@ export class Game {
   start() {
     window.addEventListener('resize', this._onResize);
     window.addEventListener('mousedown', this._onMouseDown);
+    window.addEventListener('keydown', this._onKeyDown);
     // Browsers keep the AudioContext suspended until a user gesture; unlock
     // audio on the very first click anywhere.
     window.addEventListener('pointerdown', () => this._audioManager.resume(), { once: true });
@@ -128,6 +148,7 @@ export class Game {
     bus.on('ui:next_round', () => { if (this._session) this._session.nextRound(); });
     bus.on('ui:leave', () => this._teardown());
     bus.on('ui:resume', () => this._resume());
+    bus.on('ui:cutscene_skip', () => this._cutscene.skip());
     bus.on('ui:volume', ({ channel, value }) => {
       this._audioManager.setVolume(channel, value);
     });
@@ -171,6 +192,8 @@ export class Game {
       phase_changed: (p) => this._onPhaseChanged(p),
       player_state: (p) => this._onPlayerState(p),
       player_caught: (p) => this._onPlayerCaught(p),
+      escape_item: (p) => this._onEscapeItem(p),
+      escape_progress: (p) => this._onEscapeProgress(p),
       round_ended: (p) => this._onRoundEnded(p),
       error_msg: (p) => this._onErrorMsg(p),
       disconnected: () => this._teardown({ error: 'Disconnected from server' })
@@ -203,6 +226,10 @@ export class Game {
       this._controller = null;
     }
 
+    // End any running intro cutscene (no-op when inactive). After the
+    // controller teardown so its onEnd guard cannot re-show the pause overlay.
+    this._cutscene.skip();
+
     // The AudioManager lives for the whole app lifetime — only silence the
     // map ambient bed here so the next game still has audio.
     this._audioManager.stopAmbient();
@@ -223,6 +250,10 @@ export class Game {
     this._totalMonkeys = 0;
     this._catchVisible = false;
     this._footstepAccum = 0;
+    this._buffUntil = null;
+    this._escapeCount = 0;
+    this._escapeQuota = 0;
+    this._escapeRemaining = 0;
 
     bus.emit('game:menu', error ? { error } : {});
   }
@@ -286,6 +317,12 @@ export class Game {
     this._lastCatchAt = 0;
     this._catchVisible = false;
 
+    // Clear escape leftovers from a previous round: end any still-running
+    // intro cutscene and drop the coffee buff.
+    this._cutscene.skip();
+    this._buffUntil = null;
+    if (this._controller) this._controller.setSpeedMultiplier(1);
+
     let map = null;
     try {
       map = await this._loadMap(payload.mapId);
@@ -345,6 +382,19 @@ export class Game {
       roomCode: this._solo ? null : this._roomCode
     });
     bus.emit('game:monkeys', { remaining: this._totalMonkeys, total: this._totalMonkeys });
+
+    const escapeMode = Boolean(MODES[this._modeId]?.escape);
+    if (escapeMode) {
+      this._escapeCount = 0;
+      this._escapeQuota = ESCAPE.QUOTA;
+      this._escapeRemaining = this._totalMonkeys;
+      bus.emit('game:escape', {
+        escaped: 0,
+        quota: ESCAPE.QUOTA,
+        remaining: this._totalMonkeys
+      });
+    }
+
     // A phase_changed may have arrived while the map was loading.
     if (this._phase) {
       bus.emit('game:phase', { phase: this._phase, remainingSec: this._remainingSec() });
@@ -352,7 +402,23 @@ export class Game {
 
     session.notifyLoaded();
 
-    if (!this._controller.isLocked) {
+    const intro = escapeMode && this._map.escape ? this._map.escape.intro : null;
+    if (intro) {
+      // Escape intro fly-through: the cutscene owns the camera and the
+      // "click to enter" pause overlay is suppressed until it ends. The
+      // session's phase timers keep running independently, so a soft-lock is
+      // impossible: the script clock is clamped and skippable at any moment.
+      bus.emit('game:cutscene:start', {});
+      this._cutscene.start(intro, {
+        onSub: (text) => bus.emit('game:cutscene:sub', { text }),
+        onEnd: () => {
+          bus.emit('game:cutscene:end', {});
+          if (this._state === STATES.PLAYING && this._controller && !this._controller.isLocked) {
+            bus.emit('game:pause', { visible: true, text: 'Click to enter the hunt' });
+          }
+        }
+      });
+    } else if (!this._controller.isLocked) {
       bus.emit('game:pause', { visible: true, text: 'Click to enter the hunt' });
     }
   }
@@ -374,6 +440,7 @@ export class Game {
     } else if (phase === PHASES.SEEKING) {
       bus.emit('game:banner', { text: 'GO! 🚨' });
       bus.emit('game:flash', { kind: 'go' });
+      if (MODES[this._modeId]?.escape) bus.emit('game:sfx', SFX_ALARM);
     }
 
     this._updateFreeze();
@@ -429,6 +496,63 @@ export class Game {
       text: `👮 ${catcher ? catcher.name : 'Someone'} caught 🐒 ${target ? target.name : 'a monkey'}`
     });
     bus.emit('game:monkeys', { remaining: remainingMonkeys, total: this._totalMonkeys });
+  }
+
+  /** Escape mode: an item was picked up, dropped or expired. */
+  _onEscapeItem(p) {
+    this._updateRoster(p.players);
+    const icon = ITEM_ICONS[p.itemType] || '✨';
+    if (p.kind === 'picked') {
+      bus.emit('game:sfx', SFX_PICKUP);
+      bus.emit('game:feed', { text: `${icon} ${p.byName} grabbed the ${p.itemType}!` });
+    } else if (p.kind === 'dropped') {
+      bus.emit('game:feed', { text: `${icon} ${p.byName} dropped the ${p.itemType}!` });
+    } else if (p.kind === 'expired') {
+      bus.emit('game:feed', { text: `${icon} The ${p.itemType} expired` });
+    }
+
+    if (p.kind === 'picked' && this._session && p.byId === this._session.selfId) {
+      if (p.itemType === 'COFFEE') {
+        if (this._controller) this._controller.setSpeedMultiplier(ESCAPE.COFFEE_MULT);
+        this._buffUntil = performance.now() + ESCAPE.COFFEE_DURATION * 1000;
+        bus.emit('game:item', { label: '☕ SPEED BOOST' });
+      } else if (p.itemType === 'KEYCARD') {
+        bus.emit('game:item', { label: '🔑 KEYCARD SECURED' });
+      }
+    }
+    this._updateBeacons();
+  }
+
+  /** Escape mode: the gate opened, a monkey escaped, or roster status changed. */
+  _onEscapeProgress(p) {
+    this._updateRoster(p.players);
+
+    if (p.kind === 'gate_opened') {
+      bus.emit('game:banner', { text: 'THE MAIN GATE IS OPEN! 🚪' });
+      bus.emit('game:sfx', SFX_GATE_OPEN);
+    } else if (p.kind === 'escaped') {
+      // The escapee is gone for good: remove its avatar like a leaver.
+      const remote = this._remotePlayers.get(p.byId);
+      if (remote) {
+        this.scene.remove(remote.group);
+        remote.dispose();
+        this._remotePlayers.delete(p.byId);
+      }
+      bus.emit('game:flash', { kind: 'caught' });
+      bus.emit('game:sfx', SFX_ESCAPED);
+      bus.emit('game:feed', { text: `🏃 ${p.byName} ESCAPED via ${p.exitName}!` });
+    }
+
+    // Some kinds (e.g. 'status') omit the tallies — fall back to last known.
+    if (typeof p.escaped === 'number') this._escapeCount = p.escaped;
+    if (typeof p.quota === 'number') this._escapeQuota = p.quota;
+    if (typeof p.remainingMonkeys === 'number') this._escapeRemaining = p.remainingMonkeys;
+    bus.emit('game:escape', {
+      escaped: this._escapeCount,
+      quota: this._escapeQuota,
+      remaining: this._escapeRemaining
+    });
+    this._updateBeacons();
   }
 
   _onRoundEnded(payload) {
@@ -567,7 +691,8 @@ export class Game {
     for (const remote of this._remotePlayers.values()) {
       const info = this._players.get(remote.id);
       remote.setBeaconVisible(
-        show && Boolean(info) && info.role === ROLES.MONKEY && !info.caught
+        show && Boolean(info) && info.role === ROLES.MONKEY && !info.caught &&
+        !info.beaconHidden // smoke bomb (Escape mode)
       );
     }
   }
@@ -648,11 +773,21 @@ export class Game {
     bus.emit('game:catch_target', { visible });
   }
 
+  /** Space/Enter/Escape skip the intro cutscene; inert at any other time. */
+  _onKeyDown(event) {
+    if (!this._cutscene.isActive) return;
+    if (event.code === 'Space' || event.code === 'Enter' || event.code === 'Escape') {
+      this._cutscene.skip();
+    }
+  }
+
   // -------------------------------------------------------------- frame loop
 
   _onFrame() {
     const dt = Math.min(this._clock.getDelta(), MAX_DT);
     this._time += dt;
+
+    const cutsceneActive = this._cutscene.isActive;
 
     // Consume the jump/land edges unconditionally every frame so landings
     // that happen while unlocked/frozen (spawn, pause, blindfold) never fire
@@ -660,7 +795,9 @@ export class Game {
     let justJumped = false;
     let justLanded = false;
     if (this._controller) {
-      this._controller.update(dt);
+      // While the intro cutscene owns the camera the controller is skipped;
+      // its next update() re-copies the camera from the resting feet position.
+      if (!cutsceneActive) this._controller.update(dt);
       justJumped = this._controller.consumeJustJumped();
       justLanded = this._controller.consumeJustLanded();
     }
@@ -684,8 +821,15 @@ export class Game {
     for (const remote of this._remotePlayers.values()) remote.update(dt, this.camera.position);
     if (this._map) this._map.update(dt, this._time);
     this._fx.update(dt);
+    if (cutsceneActive) this._cutscene.update(dt);
 
     if (this._state === STATES.PLAYING) {
+      // Coffee buff expiry (Escape mode); _buffUntil is null everywhere else.
+      if (this._buffUntil !== null && performance.now() > this._buffUntil) {
+        this._buffUntil = null;
+        if (this._controller) this._controller.setSpeedMultiplier(1);
+        bus.emit('game:item', ITEM_CLEAR);
+      }
       const sec = this._remainingSec();
       if (sec !== null && sec !== this._lastTimerSec) {
         this._lastTimerSec = sec;
