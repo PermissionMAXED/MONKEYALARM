@@ -50,6 +50,17 @@ export const MODES = {
     infection: false,
     solo: true,
     freeRoam: true
+  },
+  ESCAPE: {
+    id: 'ESCAPE',
+    name: 'Prison Escape',
+    description: 'MonkeyBreak only: the monkeys make a run for the exits. Stop them before 3 get out.',
+    hideSeconds: 10,
+    seekSeconds: 180,
+    infection: false,
+    solo: true,
+    escape: true,
+    fixedMapId: 'MONKEY_BREAK'
   }
 };
 
@@ -118,11 +129,29 @@ export const PLAYER = {
 
 export const CATCH_RANGE = PLAYER.CATCH_RANGE;
 
+// Prison Escape (MODES.ESCAPE) tuning.
+export const ESCAPE = {
+  QUOTA: 3,               // monkeys that must escape for the monkeys to win
+  EXIT_RADIUS: 2.4,       // default horizontal trigger radius of an exit
+  EXIT_Y_BAND: 2.5,       // max |y - exit.y| to count as at the exit
+  PICKUP_RADIUS: 1.6,     // distance at which a character grabs an item
+  GATE_TRIGGER_RADIUS: 5, // keycard carrier distance that opens the main gate
+  KEYCARD_RUNNERS: 2,     // monkeys sent after a grounded keycard
+  // BANANA_SPEED must stay below PLAYER.SPRINT_SPEED (8.4) — catch-balance
+  // invariant: a boosted fleeing monkey must remain catchable in the open.
+  BANANA_SPEED: 8.1,
+  BANANA_DURATION: 8,     // seconds the banana sprint boost lasts
+  COFFEE_MULT: 1.15,      // police speed multiplier from a coffee pickup
+  COFFEE_DURATION: 8,     // seconds the coffee buff lasts
+  SMOKE_DURATION: 10      // seconds a smoke hides a monkey's alarm beacon
+};
+
 export const SCORING = {
   CATCH: 100,             // police points per catch
   SURVIVE: 150,           // monkey points for surviving the round
   LAST_MONKEY: 300,       // bonus for sole survivor in Infection
-  TIME_BONUS_PER_SEC: 10  // Time Attack bonus per remaining second
+  TIME_BONUS_PER_SEC: 10, // Time Attack bonus per remaining second
+  ESCAPE_BONUS: 200       // monkey points for reaching an exit in Escape
 };
 
 export const NET = { PORT: 3010, SEND_HZ: 15 };

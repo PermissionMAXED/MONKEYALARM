@@ -46,6 +46,10 @@ export class MonkeyAI {
     this._yaw = Math.random() * Math.PI * 2;
     this._grounded = false;
 
+    // Instance speeds so subclasses (e.g. EscapeMonkeyAI) can boost them.
+    this._walkSpeed = PLAYER.MONKEY_WALK_SPEED;
+    this._sprintSpeed = PLAYER.MONKEY_SPRINT_SPEED;
+
     this._target = spawn.clone();
     this._retargetTimer = 0;
     this._hopTimer = HOP_INTERVAL * Math.random();
@@ -161,7 +165,7 @@ export class MonkeyAI {
         _dir.set(-Math.sin(this._yaw), 0, -Math.cos(this._yaw));
       }
       _dir.normalize();
-      speed = PLAYER.MONKEY_SPRINT_SPEED;
+      speed = this._sprintSpeed;
 
       // Occasionally juke sideways instead of fleeing in a straight line, so a
       // persistent pursuer can cut the corner and close the gap.
@@ -196,7 +200,7 @@ export class MonkeyAI {
       _dir.set(this._target.x - pos.x, 0, this._target.z - pos.z);
       if (_dir.lengthSq() > 1e-8) {
         _dir.normalize();
-        speed = PLAYER.MONKEY_WALK_SPEED;
+        speed = this._walkSpeed;
       }
     }
 
