@@ -1,6 +1,6 @@
 # MONKEYALARM!
 
-A first-person multiplayer hide-and-seek game built with three.js: a **police** officer hunts escaped **monkeys** across seven elaborate themed maps, with several game modes, a main menu, a lobby, and a hiding→seeking→round-end round system.
+A first-person multiplayer hide-and-seek game built with three.js: a **police** officer hunts escaped **monkeys** across twelve elaborate themed maps, with several game modes, a main menu, a lobby, and a hiding→seeking→round-end round system.
 
 ## Architecture (where things live)
 

@@ -258,7 +258,7 @@ export function buildUnderground(ctx) {
   ctx.addMonkeySpawn(30, FLOOR_Y, -42);        // junction room
   ctx.addMonkeySpawn(39.5, FLOOR_Y, -21);      // stub B2 alcove
   ctx.addMonkeySpawn(53, FLOOR_Y, -53.1);      // behind the outfall pillar
-  ctx.addMonkeySpawn(-40, -1.6, 41.03);        // H2 stairwell mid-landing
+  ctx.addMonkeySpawn(-40, FLOOR_Y, 36.9);      // north branch, at the H2 stair base
   ctx.addMonkeySpawn(-18, FLOOR_Y, -45);       // stub B3 dead end
 
   ctx.addEscapeItem({ id: 'smoke-1', type: 'SMOKE', x: 41.5, y: FLOOR_Y + 0.6, z: -23 });

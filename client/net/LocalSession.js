@@ -59,6 +59,11 @@ export class LocalSession {
     this._selfPos = null;
     /** Escape-mode round state (null outside MODES.*.escape rounds). */
     this._escape = null;
+    /** @type {Map<string, {x:number,y:number,z:number}> | null} designed HOME
+     *  position of every escape item, snapshotted once per map instance. */
+    this._escapeHomes = null;
+    /** Map instance the current _escapeHomes snapshot belongs to. */
+    this._escapeHomeMap = null;
     /** @type {Set<ReturnType<typeof setTimeout>>} */
     this._timers = new Set();
     // Scratch objects reused every frame (threats passed to MonkeyAI.update).
@@ -337,10 +342,12 @@ export class LocalSession {
       this._self.escaped = false;
       this._self.carrying = null;
       this._self.beaconHidden = false;
+      this._self.smokeUntil = 0;
       for (const player of this._aiPlayers) {
         player.escaped = false;
         player.carrying = null;
         player.beaconHidden = false;
+        player.smokeUntil = 0;
       }
     }
 
@@ -365,16 +372,31 @@ export class LocalSession {
       // Escape authority state. Guard all map.escape/map.dynamics access —
       // stub sections may register few (or no) exits/items.
       const mapEscape = this._map.escape;
+      const mapItems = mapEscape && Array.isArray(mapEscape.items) ? mapEscape.items : [];
+      // _dropKeycard mutates the canonical map.escape.items entries (via
+      // dynamics.items.moveTo), so snapshot each item's designed HOME
+      // position once per map instance and respawn items there every round.
+      if (this._escapeHomeMap !== this._map) {
+        this._escapeHomeMap = this._map;
+        this._escapeHomes = new Map();
+        for (const item of mapItems) {
+          this._escapeHomes.set(item.id, { x: item.x, y: item.y, z: item.z });
+        }
+      }
       this._escape = {
         escaped: 0,
-        items: (mapEscape && Array.isArray(mapEscape.items) ? mapEscape.items : [])
-          .map((item) => ({ ...item, taken: false, holderId: null })),
+        items: mapItems.map((item) => {
+          const home = this._escapeHomes.get(item.id) || item;
+          return { ...item, x: home.x, y: home.y, z: home.z, taken: false, holderId: null };
+        }),
         exits: (mapEscape && Array.isArray(mapEscape.exits) ? mapEscape.exits : []).slice(),
         gateOpen: false
       };
-      // Reset map dynamics from a possible previous round: re-show every
-      // pickup, close the main gate and quiet the alarm until seeking starts.
+      // Reset map dynamics from a possible previous round: return every
+      // pickup to its home spot and re-show it, close the main gate and
+      // quiet the alarm until seeking starts.
       for (const item of this._escape.items) {
+        this._map.dynamics?.items?.moveTo(item.id, item.x, item.y, item.z);
         this._map.dynamics?.items?.setTaken(item.id, false);
       }
       this._map.dynamics?.items?.setAllVisible(true);
@@ -487,6 +509,10 @@ export class LocalSession {
    * @param {number} _dt seconds since last frame (durations use _after)
    */
   _updateEscape(_dt) {
+    // Objectives only go live once SEEKING starts: during the hide phase
+    // nothing may be picked up, the gate may not open and nobody may escape,
+    // so the round can never end before seeking begins.
+    if (this._phase !== PHASES.SEEKING) return;
     const esc = this._escape;
     const players = this._aiPlayers;
 
@@ -533,8 +559,12 @@ export class LocalSession {
         takerAi.setSpeedBoost(ESCAPE.BANANA_SPEED, ESCAPE.BANANA_DURATION);
       } else if (item.type === 'SMOKE') {
         taker.beaconHidden = true;
+        // Overlapping smokes extend the effect: each expiry only clears the
+        // beacon once no later-picked smoke is still running.
+        taker.smokeUntil = Date.now() + ESCAPE.SMOKE_DURATION * 1000;
         const smoked = taker;
         this._after(ESCAPE.SMOKE_DURATION, () => {
+          if (Date.now() < smoked.smokeUntil) return;
           smoked.beaconHidden = false;
           this._emitAsync('escape_progress', {
             kind: 'status',

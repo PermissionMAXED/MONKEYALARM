@@ -625,28 +625,33 @@ export default class VolcanoLabMap extends MapBase {
   // ---------------------------------------------------------------- bridges
 
   _buildBridges() {
-    // Raised steel grate bridges (deck top 1.6, bottom 1.4 — a monkey can
-    // crouch-hide UNDER them on the -0.4 lava bed). 4-step flights each end.
+    // Raised steel grate bridges (deck bottom 1.9, top 2.1). Underside sits
+    // >= 1.9 above BOTH the banks (y 0) and the -0.4 lava bed, so even a
+    // standing 1.8 m human monkey can hide UNDER them without the collision
+    // resolver snapping them up onto the deck. 5-step flights each end
+    // (0.4 risers, then a final 0.1 step onto the deck — all auto-steppable).
+    const DECK_Y = 1.9;            // deck underside (> PLAYER.HEIGHT clearance)
+    const DECK_TOP = DECK_Y + 0.2; // 2.1
     const bridge = (axis, cx, cz, span) => {
       const deckW = span + 2.4;
       if (axis === 'x') {
         // deck runs along x, crossing the N-S channel
-        this._solid('grate', deckW, 0.2, 2.8, cx, 1.4, cz);
-        this._solid('metal', deckW, 0.9, 0.14, cx, 1.6, cz - 1.33);
-        this._solid('metal', deckW, 0.9, 0.14, cx, 1.6, cz + 1.33);
-        this._stairs('metal', 'x', cz, cx - deckW / 2, -1, 0, 4, 2.8);
-        this._stairs('metal', 'x', cz, cx + deckW / 2, 1, 0, 4, 2.8);
+        this._solid('grate', deckW, 0.2, 2.8, cx, DECK_Y, cz);
+        this._solid('metal', deckW, 0.9, 0.14, cx, DECK_TOP, cz - 1.33);
+        this._solid('metal', deckW, 0.9, 0.14, cx, DECK_TOP, cz + 1.33);
+        this._stairs('metal', 'x', cz, cx - deckW / 2, -1, 0, 5, 2.8);
+        this._stairs('metal', 'x', cz, cx + deckW / 2, 1, 0, 5, 2.8);
         // support legs on the banks (decor)
-        this._pushCyl('metal', 0.14, 0.16, 1.4, 8, cx - deckW / 2 + 0.3, 0, cz - 1.1);
-        this._pushCyl('metal', 0.14, 0.16, 1.4, 8, cx + deckW / 2 - 0.3, 0, cz + 1.1);
+        this._pushCyl('metal', 0.14, 0.16, DECK_Y, 8, cx - deckW / 2 + 0.3, 0, cz - 1.1);
+        this._pushCyl('metal', 0.14, 0.16, DECK_Y, 8, cx + deckW / 2 - 0.3, 0, cz + 1.1);
       } else {
-        this._solid('grate', 2.8, 0.2, deckW, cx, 1.4, cz);
-        this._solid('metal', 0.14, 0.9, deckW, cx - 1.33, 1.6, cz);
-        this._solid('metal', 0.14, 0.9, deckW, cx + 1.33, 1.6, cz);
-        this._stairs('metal', 'z', cx, cz - deckW / 2, -1, 0, 4, 2.8);
-        this._stairs('metal', 'z', cx, cz + deckW / 2, 1, 0, 4, 2.8);
-        this._pushCyl('metal', 0.14, 0.16, 1.4, 8, cx - 1.1, 0, cz - deckW / 2 + 0.3);
-        this._pushCyl('metal', 0.14, 0.16, 1.4, 8, cx + 1.1, 0, cz + deckW / 2 - 0.3);
+        this._solid('grate', 2.8, 0.2, deckW, cx, DECK_Y, cz);
+        this._solid('metal', 0.14, 0.9, deckW, cx - 1.33, DECK_TOP, cz);
+        this._solid('metal', 0.14, 0.9, deckW, cx + 1.33, DECK_TOP, cz);
+        this._stairs('metal', 'z', cx, cz - deckW / 2, -1, 0, 5, 2.8);
+        this._stairs('metal', 'z', cx, cz + deckW / 2, 1, 0, 5, 2.8);
+        this._pushCyl('metal', 0.14, 0.16, DECK_Y, 8, cx - 1.1, 0, cz - deckW / 2 + 0.3);
+        this._pushCyl('metal', 0.14, 0.16, DECK_Y, 8, cx + 1.1, 0, cz + deckW / 2 - 0.3);
       }
     };
     bridge('x', 11, 8, 6);    // over the N-S channel

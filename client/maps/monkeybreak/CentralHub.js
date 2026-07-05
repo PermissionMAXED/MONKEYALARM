@@ -7,11 +7,16 @@ import { SEEDS } from './shared.js';
  *
  * Frozen contract kept here:
  * - 5 police spawns around the rotunda guard station near (0, y, -10).
- * - addEscapeExit MAIN_GATE at (0, 0, -70), radius 2.4, requiresKeycard true.
+ * - addEscapeExit MAIN_GATE at (0, 0, -68), radius 2.4, requiresKeycard true.
+ *   The trigger sits just behind the gate slab (z -64) so a keycard carrier
+ *   stopped at the closed slab is within ESCAPE.GATE_TRIGGER_RADIUS (5).
  * - dynamics mainGate / sallyGateA / sallyGateB, each { open(), close(),
- *   get isOpen() }, all CLOSED by default. The dead-end tunnel behind the
- *   main gate ends in a STATIC barred grille so the map stays sealed.
- * - addEscapeItem 'keycard-1' (KEYCARD) hovering above the warden's safe.
+ *   get isOpen() }. mainGate and sallyGateB start CLOSED; sallyGateA starts
+ *   OPEN (breakout state) so the corridor to the main gate is passable. The
+ *   dead-end tunnel behind the main gate ends in a STATIC barred grille so
+ *   the map stays sealed no matter what the sliding gates do.
+ * - addEscapeItem 'keycard-1' (KEYCARD) floating beside the warden's desk,
+ *   low enough to grab from the office floor (ESCAPE.PICKUP_RADIUS 1.6, 3D).
  *
  * SEAM_GATE stays walkable end to end; the main gate (plus the section-spec'd
  * inner sally gate) are its only openable blockers.
@@ -31,19 +36,25 @@ function scaleUV(geo, su, sv) {
  * Standalone sliding-slab gate. The mesh eases sideways over `duration`
  * seconds via a registered updater; the collider parks at y-5000 the moment
  * open() is called and is restored EXACTLY (Box3.copy of its home) on close().
+ * `startOpen: true` builds the gate already parked open (mesh at the open
+ * position, collider parked) with no first-frame slide animation.
  */
-function slidingGate(ctx, { w, h, d, x, z, mat, dx = 0, dz = 0, duration = 1.5 }) {
+function slidingGate(ctx, { w, h, d, x, z, mat, dx = 0, dz = 0, duration = 1.5, startOpen = false }) {
   const geo = new THREE.BoxGeometry(w, h, d);
   scaleUV(geo, Math.max(w, d) / 3, h / 3);
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set(x, h / 2, z);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   ctx.addMesh(mesh);
   const collider = ctx.boxCollider(w, h, d, x, 0, z);
   const home = collider.clone();
-  let isOpen = false;
-  let t = 0; // 0 = closed .. 1 = fully open
+  let isOpen = startOpen;
+  let t = startOpen ? 1 : 0; // 0 = closed .. 1 = fully open
+  mesh.position.set(x + dx * t, h / 2, z + dz * t);
+  if (startOpen) {
+    collider.min.y = home.min.y - 5000;
+    collider.max.y = home.max.y - 5000;
+  }
   ctx.registerUpdater((dt) => {
     const target = isOpen ? 1 : 0;
     if (t === target) return;
@@ -104,9 +115,13 @@ export function buildCentralHub(ctx) {
   ctx.registerDynamic('mainGate', slidingGate(ctx, {
     w: 10, h: 5, d: 0.6, x: 0, z: -64, mat: ctx.mats.steelDark, dx: 11
   }));
-  // Inner sally gate across the corridor, forming the sally chamber.
+  // Inner sally gate across the corridor, forming the sally chamber. It
+  // starts OPEN (breakout state, like the cell doors) so SEAM_GATE stays
+  // walkable up to the main gate slab; the static grille — not this gate —
+  // is what seals the map, so an open sally gate never unseals the perimeter.
   ctx.registerDynamic('sallyGateA', slidingGate(ctx, {
-    w: 12.4, h: 4.4, d: 0.4, x: 0, z: -58, mat: ctx.mats.bars, dx: 13
+    w: 12.4, h: 4.4, d: 0.4, x: 0, z: -58, mat: ctx.mats.bars, dx: 13,
+    startOpen: true
   }));
 
   // Guard booth off the sally corridor (door gap in the east wall, z -56..-54).
@@ -116,9 +131,13 @@ export function buildCentralHub(ctx) {
   ctx.pushBox('steelDark', 0.9, 1.05, 3.4, 9.8, 0, -55); // duty counter
   ctx.boxCollider(0.9, 1.05, 3.4, 9.8, 0, -55);
 
+  // Exit trigger just behind the gate slab (z -64): a keycard carrier stopped
+  // at the closed slab (~z -63.35) is within GATE_TRIGGER_RADIUS (5) of z -68,
+  // and the exit disc (z -70.4..-65.6) stays inside the tunnel — behind the
+  // slab, in front of the static grille at z -71.7.
   ctx.addEscapeExit({
     id: 'MAIN_GATE', name: 'Main Gate',
-    x: 0, y: 0, z: -70, radius: 2.4, requiresKeycard: true
+    x: 0, y: 0, z: -68, radius: 2.4, requiresKeycard: true
   });
 
   // ------------------------------------------------------------- rotunda
@@ -173,8 +192,10 @@ export function buildCentralHub(ctx) {
   ctx.solid('steelDark', 2, 0.85, 0.9, 14, 3.2, -11.5);            // desk
   ctx.solid('steel', 1.0, 1.2, 1.0, 16.6, 3.2, -13.05);            // safe
   ctx.pushBox('steel', 0.08, 1.1, 0.85, 16.06, 3.25, -12.15);      // safe door ajar
-  // Keycard hovers above the safe.
-  ctx.addEscapeItem({ id: 'keycard-1', type: 'KEYCARD', x: 16.6, y: 4.75, z: -13.05 });
+  // Keycard floats knee-high beside the desk (floor top y 3.2): 0.7 m above
+  // the floor, so a character standing next to it is within the 1.6 m 3D
+  // PICKUP_RADIUS.
+  ctx.addEscapeItem({ id: 'keycard-1', type: 'KEYCARD', x: 14, y: 3.9, z: -10.5 });
 
   // Sally gate on the east ground corridor's outer door (x=22 wall, z -12..-8).
   ctx.registerDynamic('sallyGateB', slidingGate(ctx, {
@@ -184,7 +205,8 @@ export function buildCentralHub(ctx) {
   // -------------------------------------------------- cafeteria + kitchen
   ctx.pushBox('tile', 21.2, 0.06, 19.2, -11, 0, 12); // floor pad
   ctx.solid('concrete', 0.5, WALL_H, 16, 0, 0, 14);  // divider, passage at z 2..6
-  // Serving counter: top slab collider only, so monkeys can hide underneath.
+  // Serving counter: only the top slab gets a collider (end panels are
+  // visual), so small props/pickups can sit in the open bay underneath.
   ctx.pushBox('steel', 6, 0.14, 1.5, -16, 1.02, 4.5);
   ctx.boxCollider(6, 0.2, 1.5, -16, 1.0, 4.5);
   ctx.pushBox('steel', 0.14, 1.0, 1.5, -18.95, 0, 4.5);
@@ -218,7 +240,7 @@ export function buildCentralHub(ctx) {
   ctx.pushBox('tile', 0.1, 1.7, 1.6, 19.1, 0, 16.25);
 
   // -------------------------------------------------------- monkey spawns
-  ctx.addMonkeySpawn(-16, 0, 4.5);      // under the cafeteria serving counter
+  ctx.addMonkeySpawn(-16, 0, 3.2);      // kitchen side of the serving counter
   ctx.addMonkeySpawn(-20.3, 0, 19.5);   // walk-in freezer
   ctx.addMonkeySpawn(20.4, 0, 18.75);   // between infirmary beds
   ctx.addMonkeySpawn(9.1, 3.2, -12.5);  // rotunda gallery

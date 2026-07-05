@@ -110,9 +110,12 @@ export class Game {
     this._footstepAccum = 0;
 
     // Escape mode extras: coffee-buff expiry (performance.now() ms), the
-    // last-known escape tallies (fallbacks for partial escape_progress
-    // payloads) and the intro cutscene player.
+    // persistent held-item HUD label (police keep the keycard for the whole
+    // round, so a coffee expiry must not erase it), the last-known escape
+    // tallies (fallbacks for partial escape_progress payloads) and the intro
+    // cutscene player.
     this._buffUntil = null;
+    this._heldItemLabel = null;
     this._escapeCount = 0;
     this._escapeQuota = 0;
     this._escapeRemaining = 0;
@@ -251,6 +254,7 @@ export class Game {
     this._catchVisible = false;
     this._footstepAccum = 0;
     this._buffUntil = null;
+    this._heldItemLabel = null;
     this._escapeCount = 0;
     this._escapeQuota = 0;
     this._escapeRemaining = 0;
@@ -318,9 +322,10 @@ export class Game {
     this._catchVisible = false;
 
     // Clear escape leftovers from a previous round: end any still-running
-    // intro cutscene and drop the coffee buff.
+    // intro cutscene and drop the coffee buff + held-item label.
     this._cutscene.skip();
     this._buffUntil = null;
+    this._heldItemLabel = null;
     if (this._controller) this._controller.setSpeedMultiplier(1);
 
     let map = null;
@@ -517,7 +522,8 @@ export class Game {
         this._buffUntil = performance.now() + ESCAPE.COFFEE_DURATION * 1000;
         bus.emit('game:item', { label: '☕ SPEED BOOST' });
       } else if (p.itemType === 'KEYCARD') {
-        bus.emit('game:item', { label: '🔑 KEYCARD SECURED' });
+        this._heldItemLabel = '🔑 KEYCARD SECURED';
+        bus.emit('game:item', { label: this._heldItemLabel });
       }
     }
     this._updateBeacons();
@@ -828,7 +834,9 @@ export class Game {
       if (this._buffUntil !== null && performance.now() > this._buffUntil) {
         this._buffUntil = null;
         if (this._controller) this._controller.setSpeedMultiplier(1);
-        bus.emit('game:item', ITEM_CLEAR);
+        // Fall back to the persistent held-item label (Escape: a secured
+        // keycard) instead of always blanking the HUD slot.
+        bus.emit('game:item', this._heldItemLabel ? { label: this._heldItemLabel } : ITEM_CLEAR);
       }
       const sec = this._remainingSec();
       if (sec !== null && sec !== this._lastTimerSec) {

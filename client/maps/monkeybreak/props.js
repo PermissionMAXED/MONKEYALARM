@@ -231,14 +231,15 @@ export function buildProps(ctx) {
     gg.translate(x, y, z);
     signGeos.push(gg);
   };
-  // Flush against OUTER faces of the section keep-out rects (no colliders).
-  sign(0, 0, -23.95, 1.8, -30, HPI);
-  sign(0, 0, -23.95, 1.8, 4, HPI);
-  sign(1, 0, 38, 1.8, -27.95, 0);
-  sign(1, 0, 32, 1.8, 23.95, 0);
-  sign(0, 1, 22.05, 1.8, -14, HPI);
-  sign(0, 1, -22.05, 1.8, -30, HPI);
-  sign(1, 1, 23.95, 1.8, -40, HPI);
+  // Mounted just proud of REAL wall faces (0.06-thick sign centred 0.10 m
+  // off each face -> 0.07 m air gap), facing the walkable side. No colliders.
+  sign(0, 0, -24.1, 1.8, -30, HPI); // cell-wing east wall (face x -24.2), west seam strip
+  sign(0, 0, -24.1, 1.8, 4, HPI);   // cell-wing east wall (face x -24.2), between D1/D2
+  sign(1, 0, 38, 1.8, -31.7, 0);    // workshop north wall (face z -31.8), yard side
+  sign(1, 0, 18, 1.8, 22.5, 0);     // hub south wall (face z 22.4), divider strip
+  sign(0, 1, 22.5, 1.8, -14, HPI);  // hub east wall (face x 22.4), east seam strip
+  sign(0, 1, -22.5, 1.8, -30, HPI); // hub west wall (face x -22.4), west seam strip
+  sign(1, 1, 25.7, 1.8, -40, HPI);  // workshop west wall (face x 25.8)
   const signMesh = new THREE.Mesh(mergeGeometries(signGeos, false), signMat);
   signMesh.castShadow = true;
   signMesh.receiveShadow = true;

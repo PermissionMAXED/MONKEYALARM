@@ -500,6 +500,14 @@ export default class WildWestMap extends MapBase {
     this._solid('rock', 146, H, 2.6, 0, -1.5, 71);
     this._solid('rock', 2.6, H, 146, -71, -1.5, 0);
     this._solid('rock', 2.6, H, 146, 71, -1.5, 0);
+    // SE rim raise: the mesa top (y 7.2) is close enough to the east/south
+    // walls that a jump (apex ~0.96) plus the 0.45 auto-step could land on
+    // the base rim top (y 8.0) and walk out of the arena. Raise the rim to
+    // y 11.5 alongside the mesa — max reachable feet height from the mesa
+    // is ~8.61 — and extend it well past the mesa edges (max airborne
+    // horizontal reach ~5.4 m vs ~8.8 m to the nearest unraised rim top).
+    this._solid('rock', 2.6, 3.6, 38, 71, 7.9, 54);  // east rim,  z 35..73
+    this._solid('rock', 36, 3.6, 2.6, 55, 7.9, 71);  // south rim, x 37..73
     // Uneven crags along the rim + occasional buttresses (decor / cover).
     for (let i = 0; i < 40; i++) {
       const t = this._rng() * 4;
