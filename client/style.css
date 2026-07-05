@@ -793,6 +793,10 @@ select:focus-visible {
   position: absolute;
   top: 16px;
   right: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
 }
 .monkey-counter {
   font-family: var(--font-display);
@@ -1221,4 +1225,142 @@ select:focus-visible {
   100% {
     opacity: 0;
   }
+}
+
+/* --------------------------------------------------------------------------
+   Prison Escape mode — objective pill, item slot, cutscene letterbox.
+   -------------------------------------------------------------------------- */
+
+.hud-objective {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: 0.08em;
+  color: #ffe4e4;
+  background: rgba(127, 15, 15, 0.78);
+  backdrop-filter: blur(4px);
+  border: 2px solid rgba(220, 38, 38, 0.55);
+  border-radius: 12px;
+  padding: 4px 14px;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+}
+.hud-objective.pulse {
+  animation: objective-pulse 0.9s ease-out;
+}
+@keyframes objective-pulse {
+  0% {
+    transform: scale(1.28);
+    background: rgba(220, 38, 38, 0.95);
+    box-shadow: 0 0 28px rgba(220, 38, 38, 0.95);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(220, 38, 38, 0);
+  }
+}
+
+.hud-item-slot {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: 0.06em;
+  color: var(--banana);
+  background: var(--panel-soft);
+  backdrop-filter: blur(4px);
+  border: 2px solid rgba(255, 210, 74, 0.45);
+  border-radius: 12px;
+  padding: 8px 16px;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+}
+/* Only while an item is held does the kill-feed slide up to make room. */
+.hud-item-slot:not([hidden]) ~ .hud-feed {
+  bottom: 76px;
+}
+
+/* Cutscene overlay: letterbox bars slide in from off-screen; the overlay is
+   clickable (click = skip), unlike the rest of the HUD. */
+.cutscene-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.cutscene-bar-top,
+.cutscene-bar-bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 12vh;
+  background: #000;
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.35, 1);
+}
+.cutscene-bar-top {
+  top: 0;
+  transform: translateY(-100%);
+}
+.cutscene-bar-bottom {
+  bottom: 0;
+  transform: translateY(100%);
+}
+.cutscene-overlay.active .cutscene-bar-top,
+.cutscene-overlay.active .cutscene-bar-bottom {
+  transform: translateY(0);
+}
+.cutscene-sub {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 3.2vh;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.cutscene-overlay.active .cutscene-sub {
+  opacity: 1;
+}
+.cutscene-skip-hint {
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.14em;
+  color: var(--ink-dim);
+  opacity: 0;
+}
+.cutscene-overlay.active .cutscene-skip-hint {
+  animation: skip-blink 1.4s ease-in-out infinite;
+}
+@keyframes skip-blink {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Map cards locked out by a fixedMapId mode (e.g. Prison Escape). */
+.card-locked {
+  pointer-events: none;
+  opacity: 0.35;
+  filter: grayscale(0.7);
+}
+
+/* Round-end tag for monkeys that made it out. */
+.escaped-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  background: #16a34a;
+  color: #fff;
+  border-radius: 6px;
+  padding: 2px 8px;
 }
