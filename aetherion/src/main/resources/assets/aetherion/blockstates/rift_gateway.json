@@ -1,0 +1,11 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "aetherion:block/rift_gateway"
+    },
+    "axis=z": {
+      "model": "aetherion:block/rift_gateway",
+      "y": 90
+    }
+  }
+}

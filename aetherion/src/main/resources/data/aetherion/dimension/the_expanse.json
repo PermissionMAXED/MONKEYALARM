@@ -1,0 +1,11 @@
+{
+  "type": "aetherion:the_expanse",
+  "generator": {
+    "type": "minecraft:noise",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "aetherion:starlit_wastes"
+    },
+    "settings": "aetherion:the_expanse"
+  }
+}

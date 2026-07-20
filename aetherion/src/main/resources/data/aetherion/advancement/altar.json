@@ -1,0 +1,35 @@
+{
+  "parent": "aetherion:aetherium",
+  "display": {
+    "icon": {
+      "id": "aetherion:astral_altar"
+    },
+    "title": {
+      "translate": "advancement.aetherion.altar.title"
+    },
+    "description": {
+      "translate": "advancement.aetherion.altar.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "has_altar": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "aetherion:astral_altar"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_altar"
+    ]
+  ]
+}

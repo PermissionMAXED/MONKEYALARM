@@ -1,0 +1,36 @@
+{
+  "parent": "aetherion:sigil",
+  "display": {
+    "icon": {
+      "id": "aetherion:sentinel_heart"
+    },
+    "title": {
+      "translate": "advancement.aetherion.aster.title"
+    },
+    "description": {
+      "translate": "advancement.aetherion.aster.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "killed_aster": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": {
+        "entity": {
+          "type": "aetherion:aster"
+        }
+      }
+    }
+  },
+  "requirements": [
+    [
+      "killed_aster"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  }
+}

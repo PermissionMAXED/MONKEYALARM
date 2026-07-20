@@ -1,0 +1,35 @@
+{
+  "parent": "aetherion:altar",
+  "display": {
+    "icon": {
+      "id": "aetherion:astral_lens"
+    },
+    "title": {
+      "translate": "advancement.aetherion.lens.title"
+    },
+    "description": {
+      "translate": "advancement.aetherion.lens.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "has_lens": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "aetherion:astral_lens"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_lens"
+    ]
+  ]
+}

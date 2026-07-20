@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "A": "aetherion:aetherium_ingot",
+    "H": "aetherion:sentinel_heart",
+    "L": "aetherion:astral_lens",
+    "S": "minecraft:blaze_rod"
+  },
+  "pattern": [
+    " L ",
+    "AHA",
+    " S "
+  ],
+  "result": {
+    "count": 1,
+    "id": "aetherion:starcaller_staff"
+  }
+}

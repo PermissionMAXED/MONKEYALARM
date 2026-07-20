@@ -1,0 +1,35 @@
+{
+  "parent": "aetherion:expanse",
+  "display": {
+    "icon": {
+      "id": "aetherion:sundered_sigil"
+    },
+    "title": {
+      "translate": "advancement.aetherion.sigil.title"
+    },
+    "description": {
+      "translate": "advancement.aetherion.sigil.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "has_sigil": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "aetherion:sundered_sigil"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_sigil"
+    ]
+  ]
+}

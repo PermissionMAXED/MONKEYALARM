@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "S": "aetherion:starshard",
+    "A": "minecraft:amethyst_shard",
+    "B": "minecraft:amethyst_block",
+    "D": "minecraft:polished_deepslate"
+  },
+  "pattern": [
+    " S ",
+    "ABA",
+    "DDD"
+  ],
+  "result": {
+    "count": 1,
+    "id": "aetherion:astral_pedestal"
+  }
+}

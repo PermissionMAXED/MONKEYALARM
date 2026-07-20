@@ -1,0 +1,32 @@
+{
+  "parent": "aetherion:rift_key",
+  "display": {
+    "icon": {
+      "id": "aetherion:rift_gateway"
+    },
+    "title": {
+      "translate": "advancement.aetherion.expanse.title"
+    },
+    "description": {
+      "translate": "advancement.aetherion.expanse.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "entered_expanse": {
+      "trigger": "minecraft:changed_dimension",
+      "conditions": {
+        "from": "minecraft:overworld",
+        "to": "aetherion:the_expanse"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "entered_expanse"
+    ]
+  ]
+}

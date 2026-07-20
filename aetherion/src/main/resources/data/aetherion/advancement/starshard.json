@@ -1,0 +1,35 @@
+{
+  "parent": "aetherion:root",
+  "display": {
+    "icon": {
+      "id": "aetherion:starshard"
+    },
+    "title": {
+      "translate": "advancement.aetherion.starshard.title"
+    },
+    "description": {
+      "translate": "advancement.aetherion.starshard.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "has_starshard": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "aetherion:starshard"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_starshard"
+    ]
+  ]
+}

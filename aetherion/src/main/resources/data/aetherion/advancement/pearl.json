@@ -1,0 +1,35 @@
+{
+  "parent": "aetherion:altar",
+  "display": {
+    "icon": {
+      "id": "aetherion:phase_pearl"
+    },
+    "title": {
+      "translate": "advancement.aetherion.pearl.title"
+    },
+    "description": {
+      "translate": "advancement.aetherion.pearl.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "has_pearl": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "aetherion:phase_pearl"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_pearl"
+    ]
+  ]
+}

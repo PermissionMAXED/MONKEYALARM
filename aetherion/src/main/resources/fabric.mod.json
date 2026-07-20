@@ -1,0 +1,36 @@
+{
+	"schemaVersion": 1,
+	"id": "aetherion",
+	"version": "${version}",
+	"name": "AETHERION",
+	"description": "The foundation of the AETHERION Fabric mod.",
+	"authors": [
+		"AETHERION Team"
+	],
+	"license": "All-Rights-Reserved",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"dev.aetherion.Aetherion"
+		],
+		"client": [
+			"dev.aetherion.client.AetherionClient"
+		],
+		"fabric-datagen": [
+			"dev.aetherion.datagen.AetherionDataGenerator"
+		]
+	},
+	"mixins": [
+		"aetherion.mixins.json",
+		{
+			"config": "aetherion.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~1.21.9",
+		"java": ">=21",
+		"fabric-api": ">=0.134.1"
+	}
+}

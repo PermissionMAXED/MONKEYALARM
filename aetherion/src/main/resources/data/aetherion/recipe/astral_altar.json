@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "S": "aetherion:starshard",
+    "A": "minecraft:amethyst_block",
+    "G": "minecraft:gold_ingot",
+    "O": "minecraft:obsidian",
+    "D": "minecraft:deepslate_tiles"
+  },
+  "pattern": [
+    "SAS",
+    "GOG",
+    "DDD"
+  ],
+  "result": {
+    "count": 1,
+    "id": "aetherion:astral_altar"
+  }
+}

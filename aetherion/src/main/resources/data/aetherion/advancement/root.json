@@ -1,0 +1,28 @@
+{
+  "display": {
+    "icon": {
+      "id": "aetherion:astral_codex"
+    },
+    "title": {
+      "translate": "advancement.aetherion.root.title"
+    },
+    "description": {
+      "translate": "advancement.aetherion.root.description"
+    },
+    "background": "minecraft:textures/gui/advancements/backgrounds/end.png",
+    "frame": "task",
+    "show_toast": false,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "awaken": {
+      "trigger": "minecraft:tick"
+    }
+  },
+  "requirements": [
+    [
+      "awaken"
+    ]
+  ]
+}

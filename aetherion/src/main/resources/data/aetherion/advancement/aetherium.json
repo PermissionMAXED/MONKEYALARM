@@ -1,0 +1,35 @@
+{
+  "parent": "aetherion:starshard",
+  "display": {
+    "icon": {
+      "id": "aetherion:aetherium_ingot"
+    },
+    "title": {
+      "translate": "advancement.aetherion.aetherium.title"
+    },
+    "description": {
+      "translate": "advancement.aetherion.aetherium.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "has_aetherium": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "aetherion:aetherium_ingot"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_aetherium"
+    ]
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "cookingtime": 200,
+  "experience": 1.0,
+  "group": "aetherium_ingot",
+  "ingredient": "aetherion:starshard",
+  "result": {
+    "id": "aetherion:aetherium_ingot"
+  }
+}

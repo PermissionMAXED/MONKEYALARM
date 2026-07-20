@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "equipment",
+  "ingredients": [
+    "minecraft:ender_pearl",
+    "aetherion:starshard",
+    "minecraft:amethyst_shard",
+    "aetherion:aetherium_ingot"
+  ],
+  "result": {
+    "count": 1,
+    "id": "aetherion:phase_pearl"
+  }
+}

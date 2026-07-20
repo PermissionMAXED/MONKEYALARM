@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "aetherion:block/rift_gateway"
+  }
+}

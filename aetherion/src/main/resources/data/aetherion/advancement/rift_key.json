@@ -1,0 +1,35 @@
+{
+  "parent": "aetherion:altar",
+  "display": {
+    "icon": {
+      "id": "aetherion:rift_key"
+    },
+    "title": {
+      "translate": "advancement.aetherion.rift_key.title"
+    },
+    "description": {
+      "translate": "advancement.aetherion.rift_key.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "has_rift_key": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "aetherion:rift_key"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_rift_key"
+    ]
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "parent": "aetherion:altar",
+  "display": {
+    "icon": {
+      "id": "aetherion:starcaller_staff"
+    },
+    "title": {
+      "translate": "advancement.aetherion.staff.title"
+    },
+    "description": {
+      "translate": "advancement.aetherion.staff.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "has_staff": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "aetherion:starcaller_staff"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_staff"
+    ]
+  ]
+}
