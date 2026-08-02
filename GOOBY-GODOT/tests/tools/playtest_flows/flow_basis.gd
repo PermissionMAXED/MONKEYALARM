@@ -70,6 +70,17 @@ func onboarding_schritte() -> Array[Dictionary]:
 			"timeout_s": 6.0,
 			"pflicht": false,
 		},
+		# „Was nun?"-Hinweiskarte (oben mittig, tippbar → öffnet das Quest-
+		# Panel!) lag im Pionier-Lauf 2 ÜBER der Küchentür und fing den
+		# Tür-Tap ab. Wie ein Spieler: einmal aufs × — dann ist der Tages-
+		# vorschlag für heute weggedrückt und die Kopf-Zone frei.
+		{
+			"name": "wasnun_wegdruecken",
+			"aktion": "tipp_falls_da",
+			"node": "WasNunSchliessen",
+			"timeout_s": 8.0,
+			"pflicht": false,
+		},
 	]
 
 

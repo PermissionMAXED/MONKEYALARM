@@ -57,7 +57,11 @@ extends SceneTree
 ##                Vector2(0..1, 0..1)} relativ zur Canvas-Größe
 ##     tipp_3d    {"node": String} oder {"finder": Callable() -> Node3D},
 ##                optional {"offset": Vector3} — Weltpunkt wird über die aktive
-##                Kamera auf den Schirm projiziert und dort getippt
+##                Kamera auf den Schirm projiziert und dort getippt. Liegt ein
+##                klick-schluckendes Control (mouse_filter STOP) über dem
+##                Punkt, wartet der Schritt, bis es weg ist (Overlays räumen
+##                sich oft selbst weg) — bleibt es, nennt der FAIL den Deckel
+##                BEIM NAMEN statt stumm ins Leere zu tippen.
 ##     wisch      {"von"/"nach": Vector2} bzw. "von_rel"/"nach_rel" bzw.
 ##                "von_funktion"/"nach_funktion" (Callable() -> Vector2, wird
 ##                erst bei Ausführung ausgewertet), {"dauer_s": float}
@@ -66,6 +70,11 @@ extends SceneTree
 ##     taste      {"keycode": Key}
 ##     tue        {"funktion": Callable() -> bool/void} — Freiform (Zustand
 ##                merken/prüfen); false = FAIL des Schritts
+##     affe       {"taps": int (25), "seed": int (fest), "pause_s": float
+##                (0.35), "rel_min"/"rel_max": Vector2 (0..1)} — Zufalls-Affe:
+##                tippt seeded-reproduzierbar wild im Rechteck herum
+##                (Robustheit: Script-Errors landen im Log, Hänger im
+##                Watchdog). Nachbedingung z. B. „Router wieder ruhig".
 ##
 ## ── Parallel laufen (10 Instanzen) ───────────────────────────────────────────
 ##   Jeder Lauf braucht (1) eine EIGENE Lauf-Id und (2) ein EIGENES user://
@@ -237,6 +246,7 @@ func _dispatch(schritt: Dictionary, aktion: String) -> Dictionary:
 		"eingabe": _aktion_eingabe,
 		"taste": _aktion_taste,
 		"tue": _aktion_tue,
+		"affe": _aktion_affe,
 	}
 	if not handler.has(aktion):
 		var text := "unbekannt: " + aktion
@@ -292,27 +302,41 @@ func _aktion_tipp_pos(schritt: Dictionary) -> Dictionary:
 	return {"ok": true}
 
 
+## Wartet auf das 3D-Ziel UND einen freien Bildschirmpunkt darüber: liegt ein
+## klick-schluckendes Control auf dem projizierten Punkt (z. B. eine
+## „Was nun?"-Karte über der Tür — Pionier-Befund Lauf 2), wird weiter
+## gewartet (Overlays räumen sich oft selbst weg). Bleibt der Deckel bis zum
+## Timeout, nennt der FAIL ihn beim Namen statt stumm ins Leere zu tippen.
 func _aktion_tipp_3d(schritt: Dictionary) -> Dictionary:
 	var timeout_s := float(schritt.get("timeout_s", STANDARD_TIMEOUT_S))
 	var deadline := Time.get_ticks_msec() + int(timeout_s * 1000.0)
+	var offset: Vector3 = schritt.get("offset", Vector3.ZERO)
 	var ziel: Node3D = null
-	while ziel == null and Time.get_ticks_msec() < deadline and not _global_deadline_erreicht():
+	var deckel: Control = null
+	while Time.get_ticks_msec() < deadline and not _global_deadline_erreicht():
 		ziel = _finde_node3d(schritt)
-		if ziel == null:
-			await process_frame
+		if ziel != null:
+			var kamera := root.get_camera_3d()
+			if kamera == null:
+				return {"ok": false, "erwartung": "aktive 3D-Kamera", "beobachtung": "keine Kamera"}
+			var canvas := kamera.unproject_position(ziel.global_position + offset)
+			deckel = _finde_ui_deckel(canvas)
+			if deckel == null:
+				await _tippe_canvas(canvas)
+				return {"ok": true}
+		_nebenbei_tippen(schritt)
+		await process_frame
 	if ziel == null:
 		return {
 			"ok": false,
 			"erwartung": "3D-Ziel %s" % str(schritt.get("node", schritt.get("finder", "?"))),
 			"beobachtung": "nicht gefunden — %s" % _zustand_text(),
 		}
-	var offset: Vector3 = schritt.get("offset", Vector3.ZERO)
-	var kamera := root.get_camera_3d()
-	if kamera == null:
-		return {"ok": false, "erwartung": "aktive 3D-Kamera", "beobachtung": "keine Kamera"}
-	var canvas := kamera.unproject_position(ziel.global_position + offset)
-	await _tippe_canvas(canvas)
-	return {"ok": true}
+	return {
+		"ok": false,
+		"erwartung": "freier Bildschirmpunkt über dem 3D-Ziel",
+		"beobachtung": "UI-Deckel '%s' schluckt den Tap — %s" % [deckel.name, _zustand_text()],
+	}
 
 
 func _aktion_wisch(schritt: Dictionary) -> Dictionary:
@@ -384,6 +408,31 @@ func _aktion_tue(schritt: Dictionary) -> Dictionary:
 	return {"ok": true}
 
 
+## Zufalls-Affe: seeded-reproduzierbare Wild-Taps im rel-Rechteck. Er urteilt
+## selbst NICHT (jeder Tap ist „ok") — die Beute sind Script-Errors im Log,
+## Watchdog-Hänger und die Nachbedingung des Schritts (z. B. „Router ruhig").
+func _aktion_affe(schritt: Dictionary) -> Dictionary:
+	var anzahl := int(schritt.get("taps", 25))
+	var pause := float(schritt.get("pause_s", 0.35))
+	var rel_min: Vector2 = schritt.get("rel_min", Vector2(0.03, 0.03))
+	var rel_max: Vector2 = schritt.get("rel_max", Vector2(0.97, 0.97))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(schritt.get("seed", 20260802))
+	for i in anzahl:
+		if _global_deadline_erreicht():
+			break
+		var rel := Vector2(
+			rng.randf_range(rel_min.x, rel_max.x), rng.randf_range(rel_min.y, rel_max.y)
+		)
+		var canvas := rel * _canvas_groesse()
+		_log("  Affe %02d/%02d tippt bei %s" % [i + 1, anzahl, str(canvas.round())])
+		await _tippe_canvas(canvas)
+		var deadline := Time.get_ticks_msec() + int(pause * 1000.0)
+		while Time.get_ticks_msec() < deadline and not _global_deadline_erreicht():
+			await process_frame
+	return {"ok": true}
+
+
 # ── Bedingungen & Warten ──────────────────────────────────────────────────────
 
 
@@ -422,12 +471,16 @@ func _bedingung_erfuellt(quelle: Dictionary) -> bool:
 	return erfuellt
 
 
+## „bedingung" MUSS zuerst kommen: bei warte_bis ist die Quelle der ganze
+## Schritt, dessen "name"-Schlüssel (Schritt-Kürzel) sonst fälschlich als
+## Bedingungstext gemeldet wird (Befund Pionier-Lauf 2: „name =
+## 'hunger_gestiegen'" statt der echten Callable-Erwartung).
 func _bedingung_text(quelle: Dictionary) -> String:
+	if quelle.has("bedingung"):
+		return str(quelle.get("erwartung", "eigene Bedingung (Callable)"))
 	for schluessel in ["route", "klasse", "weg_klasse", "text", "weg_text", "name"]:
 		if quelle.has(schluessel):
 			return "%s = '%s'" % [schluessel, str(quelle[schluessel])]
-	if quelle.has("bedingung"):
-		return "eigene Bedingung (Callable)"
 	return "?"
 
 
@@ -598,6 +651,26 @@ func _finde_control(node: Node, node_name: String) -> Control:
 	var treffer := node.find_child(node_name, true, false)
 	if treffer is Control and (treffer as Control).is_visible_in_tree():
 		return treffer
+	return null
+
+
+## Sichtbares klick-schluckendes Control (mouse_filter STOP) über einer
+## Canvas-Position — der „UI-Deckel", der einen Welt-Tap abfangen würde.
+## Labels/Container (IGNORE/PASS) stören nicht. null = Punkt ist frei.
+func _finde_ui_deckel(pos: Vector2) -> Control:
+	var stapel: Array[Node] = [root]
+	while not stapel.is_empty():
+		var aktuell: Node = stapel.pop_back()
+		if aktuell is Control:
+			var control := aktuell as Control
+			if (
+				control.is_visible_in_tree()
+				and control.mouse_filter == Control.MOUSE_FILTER_STOP
+				and control.get_global_rect().has_point(pos)
+			):
+				return control
+		for kind in aktuell.get_children():
+			stapel.append(kind)
 	return null
 
 

@@ -267,6 +267,15 @@ Subagents parallel — das ist das harte Plattform-Limit, die Pipeline bleibt vo
       spielt das Spiel"-Werkzeug (eigene Instanz, echte Eingaben,
       Screenshot-Serie, Hänger-/Fehler-Detektor) und spielt den ersten
       kompletten Durchlauf im Leitformat → Bug-Report Nr. 1
+- [x] **P59 Playtest-Ausbau „Subagents spielen"** — `run_playtest.sh alle`:
+      JEDER Flow ist ein eigener Spieler-Agent, alle 10 laufen PARALLEL (je
+      eigenes user:// + Display, Übersichts-Tabelle am Ende); 4 neue Spieler
+      (Telefon, Tagesquests-Blatt, Garderobe-Kauf, Affen-Chaostest) + neue
+      Harness-Fähigkeiten (UI-Deckel-Wache bei 3D-Taps, Affen-Aktion). Dabei
+      2 ECHTE Bugs gefunden UND gefixt: das Tagesquests-Blatt kam beim
+      zweiten Öffnen als leerer Stummel hoch (PanelSheet zerstörte
+      wiederverwendete Inhalte), und die Telefon-Statuszeile schluckte den
+      Runterwisch-zum-Schließen. Report: `docs/playtests/PT-ui-loops.md`
 
 **Danach sofort (Warteschlange):**
 - [ ] **Welle H: PLAYTEST ×10** — 10 Spieler-Agents, jeder spielt seinen
