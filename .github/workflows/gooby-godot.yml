@@ -63,6 +63,23 @@ on:
         required: false
         default: ""
 
+# CI-35: Branch-Pushes teilen sich pro Ref eine Gruppe und verdrängen
+# einander (cancel-in-progress) — schnelle Push-Folgen verbrennen so keine
+# Runner-Minuten mehr für überholte Stände. Release-Läufe (Tag-Push ipa-v*
+# oder workflow_dispatch MIT release_version) bekommen über github.run_id
+# eine EIGENE Gruppe: sie werden NIE abgebrochen (weder von Nachzüglern
+# verdrängt noch verdrängen sie selbst) — ein halb veröffentlichtes Release
+# ließe sich nicht sauber aufräumen.
+concurrency:
+  group: >-
+    gooby-godot-${{ github.ref }}-${{
+      (startsWith(github.ref, 'refs/tags/ipa-v') ||
+       (github.event_name == 'workflow_dispatch' && inputs.release_version != ''))
+      && github.run_id || 'ci' }}
+  cancel-in-progress: >-
+    ${{ !(startsWith(github.ref, 'refs/tags/ipa-v') ||
+          (github.event_name == 'workflow_dispatch' && inputs.release_version != '')) }}
+
 env:
   GODOT_VERSION: "4.4.1"
 
@@ -245,6 +262,20 @@ jobs:
             echo "::error::Export meldet nicht importierte Ressourcen"
             exit 1
           fi
+
+      # CI-35: DerivedData über Läufe hinweg cachen — der Löwenanteil der
+      # xcodebuild-Zeit ist das Kompilieren der pro Godot-Version identischen
+      # iOS-Template-Sourcen/xcframeworks. Key pro Commit (Cache ändert sich
+      # nach jedem Build), restore-keys holen den jüngsten Vorgänger derselben
+      # Godot-Version — Xcode baut dann nur inkrementell weiter. Der Pfad
+      # entspricht exakt dem -derivedDataPath des xcodebuild-Steps.
+      - name: Xcode DerivedData cachen
+        uses: actions/cache@v4
+        with:
+          path: build/ios/dd
+          key: xcode-dd-${{ env.GODOT_VERSION }}-${{ github.sha }}
+          restore-keys: |
+            xcode-dd-${{ env.GODOT_VERSION }}-
 
       - name: xcodebuild (unsigned)
         run: |
