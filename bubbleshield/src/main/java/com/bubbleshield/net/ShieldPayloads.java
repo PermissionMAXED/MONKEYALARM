@@ -20,6 +20,9 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+
 /**
  * Custom payloads for shield settings (C2S) and client-side shield replication (S2C).
  */
@@ -344,7 +347,31 @@ public final class ShieldPayloads {
 		}
 	}
 
-	// TODO(W3): register every payload above through NeoForge's
-	// RegisterPayloadHandlersEvent (PayloadRegistrar.playToServer/playToClient),
-	// replacing upstream Fabric's PayloadTypeRegistry.registerTypes() flow.
+	/**
+	 * Protocol version for the payload channel; bump whenever a codec above changes
+	 * shape so mismatched client/server builds fail the connection handshake instead
+	 * of desyncing mid-play.
+	 */
+	public static final String PROTOCOL_VERSION = "1";
+
+	/**
+	 * Registers every payload above with NeoForge, replacing upstream Fabric's
+	 * {@code PayloadTypeRegistry.registerTypes()} + per-payload global receivers:
+	 * type + codec + handler are bound in one {@code PayloadRegistrar} call. C2S
+	 * payloads are handled by {@link ServerNet}, S2C payloads by the Dist-safe
+	 * {@link ClientNet} stubs (TODO(W5): ClientShieldManager). Handlers run on the
+	 * receiving side's main thread (registrar default), matching upstream's
+	 * threading. Listener for {@code RegisterPayloadHandlersEvent} on the MOD bus.
+	 */
+	public static void registerHandlers(final RegisterPayloadHandlersEvent event) {
+		PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);
+		registrar.playToServer(SetSettingsC2S.TYPE, SetSettingsC2S.CODEC, ServerNet::handleSetSettings);
+		registrar.playToServer(WhitelistModifyC2S.TYPE, WhitelistModifyC2S.CODEC, ServerNet::handleWhitelistModify);
+		registrar.playToServer(SetNameC2S.TYPE, SetNameC2S.CODEC, ServerNet::handleSetName);
+		registrar.playToServer(SetColorC2S.TYPE, SetColorC2S.CODEC, ServerNet::handleSetColor);
+		registrar.playToServer(SetActiveC2S.TYPE, SetActiveC2S.CODEC, ServerNet::handleSetActive);
+		registrar.playToClient(ShieldSyncS2C.TYPE, ShieldSyncS2C.CODEC, ClientNet::handleShieldSync);
+		registrar.playToClient(ShieldRemoveS2C.TYPE, ShieldRemoveS2C.CODEC, ClientNet::handleShieldRemove);
+		registrar.playToClient(ImpactBatchS2C.TYPE, ImpactBatchS2C.CODEC, ClientNet::handleImpactBatch);
+	}
 }
