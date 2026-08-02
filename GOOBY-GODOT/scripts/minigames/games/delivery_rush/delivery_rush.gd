@@ -20,6 +20,7 @@ const World := preload("res://scripts/minigames/games/delivery_rush/delivery_rus
 const Feel := preload("res://scripts/minigames/games/delivery_rush/delivery_rush_feel.gd")
 const Models := preload("res://scripts/minigames/games/_3db_stage/model_bank.gd")
 const Stage3D := preload("res://scripts/minigames/games/_3db_stage/stage3d.gd")
+const ChaseCam := preload("res://scripts/minigames/games/_3db_stage/chase_cam.gd")
 const SpeedLines := preload("res://scripts/minigames/games/_3db_stage/speed_lines.gd")
 const GoobyMount := preload("res://scripts/minigames/games/_3db_stage/gooby_mount.gd")
 const MultiProp := preload("res://scripts/minigames/games/_3db_stage/multi_prop.gd")
@@ -942,15 +943,25 @@ func _sync_camera(delta: float) -> void:
 	var look := here + fwd * ahead + Vector3(0.0, aim_y, 0.0)
 	# G5 M1: im Intro hebt sich die Kamera zur Stadt-Totale und schwebt dann
 	# in die Verfolger-Pose (Reduced Motion überspringt den Flug).
-	if _intro_left > 0.0 and not _reduced_motion():
+	var flight := _intro_left > 0.0 and not _reduced_motion()
+	if flight:
 		var e := 1.0 - ease(clampf(1.0 - _intro_left / INTRO_S, 0.0, 1.0), 0.4)
 		wanted += Vector3(0.0, INTRO_LIFT, 0.0) * e - fwd * (INTRO_BACK * e)
+	else:
+		# PT-minigames-a F2: an Hausecken stand der Kamera-Boom IN einem
+		# Gebäude (Vollbild-Wand für Sekunden). Ziel gegen die Kollider
+		# clippen; die Intro-Totale hoch über den Dächern bleibt frei.
+		wanted = ChaseCam.clip_xz(here, wanted, _colliders)
 	if not _cam_ready:
 		_cam_pos = wanted
 		_cam_look = look
 		_cam_ready = true
 	_cam_pos = _cam_pos.lerp(wanted, minf(1.0, delta * 6.0))
 	_cam_look = _cam_look.lerp(look, minf(1.0, delta * 9.0))
+	if not flight:
+		# F2: auch die GEGLÄTTETE Pose clippen — der Lerp-Pfad selbst darf
+		# nie durch eine Wand laufen (die Erholung bleibt trotzdem weich).
+		_cam_pos = ChaseCam.clip_xz(here, _cam_pos, _colliders)
 	cam.position = _cam_pos
 	if _cam_pos.distance_to(_cam_look) > 0.05:
 		cam.look_at(_cam_look, Vector3.UP)

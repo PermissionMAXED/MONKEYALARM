@@ -30,6 +30,7 @@ const Logic := preload("res://scripts/minigames/games/city_drive/city_drive_logi
 const World := preload("res://scripts/minigames/games/city_drive/city_drive_world.gd")
 const Models := preload("res://scripts/minigames/games/_3db_stage/model_bank.gd")
 const Stage3D := preload("res://scripts/minigames/games/_3db_stage/stage3d.gd")
+const ChaseCam := preload("res://scripts/minigames/games/_3db_stage/chase_cam.gd")
 const SpeedLines := preload("res://scripts/minigames/games/_3db_stage/speed_lines.gd")
 const GoobyMount := preload("res://scripts/minigames/games/_3db_stage/gooby_mount.gd")
 const Fx := preload("res://scripts/minigames/games/_3db_stage/fx3d.gd")
@@ -830,12 +831,17 @@ func _sync_camera(delta: float) -> void:
 	var ahead := CAM_LOOK_AHEAD - (0.0 if landscape else CAM_PORTRAIT_AHEAD)
 	var aim_y := 1.6 - (0.0 if landscape else CAM_PORTRAIT_AIM_DOWN)
 	var look := here + fwd * ahead + Vector3(0.0, aim_y, 0.0)
+	# PT-minigames-a F2 (dasselbe Rig wie deliveryRush): Kamera-Boom gegen
+	# die Haus-Kollider clippen — Ziel UND geglättete Pose, damit weder das
+	# Wunschziel noch der Lerp-Pfad je in einer Hauswand steht.
+	wanted = ChaseCam.clip_xz(here, wanted, _colliders)
 	if not _cam_ready:
 		_cam_pos = wanted
 		_cam_look = look
 		_cam_ready = true
 	_cam_pos = _cam_pos.lerp(wanted, minf(1.0, delta * 6.0))
 	_cam_look = _cam_look.lerp(look, minf(1.0, delta * 9.0))
+	_cam_pos = ChaseCam.clip_xz(here, _cam_pos, _colliders)
 	cam.position = _cam_pos
 	if _cam_pos.distance_to(_cam_look) > 0.05:
 		cam.look_at(_cam_look, Vector3.UP)
