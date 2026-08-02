@@ -6,8 +6,10 @@ extends PanelContainer
 ## Vorrats-Badge (×n), Stat-Vorschau-Pillen (+Hunger/+Spaß) und Zucker-Warn-
 ## Symbol bei Junk. Kategorien-Chips (aus FoodCatalog.kategorie abgeleitet)
 ## filtern das Regal. Leerer Vorrat = knuffiger Leerzustand („Der Kühlschrank
-## gähnt vor Leere…") + Direkt-Knopf „Zu REHWEI fahren" (nur Route-Aufruf,
-## der Kühlschrank verdrahtet ihn).
+## gähnt vor Leere…") mit illustriertem Wunschzettel (Paper-Well im
+## UIFINAL-Sticker-Karten-Muster, echte 3D-Vorschauen der günstigsten
+## REHWEI-Waren statt leerer Fläche) + Direkt-Knopf „Zu REHWEI fahren"
+## (nur Route-Aufruf, der Kühlschrank verdrahtet ihn).
 
 signal speise_gewaehlt(food_id: String)
 signal schliessen_gewuenscht
@@ -20,6 +22,11 @@ const KARTE_MIN := Vector2(150, 172)
 const REGAL_BREITE := 500.0
 const REGAL_HOEHE_MAX := 384.0
 const WARN_SYMBOL := "res://assets/fx/symbols/ausrufezeichen.svg"
+## Leerzustands-Wunschzettel: so viele Speise-Vorschauen, so groß.
+const TEASER_ANZAHL := 3
+const TEASER_ICON_PX := 56
+## Falls das Sortiment nicht lesbar ist: Starter-Trio statt leerem Well.
+const TEASER_NOTNAGEL: Array[String] = ["carrot", "apple", "cupcake"]
 
 var _entries: Array[Dictionary] = []
 var _vorschau: FuetterVorschau
@@ -42,6 +49,30 @@ static func chips_fuer(entries: Array[Dictionary]) -> Array[String]:
 	if vorhanden.size() >= 2:
 		vorhanden.push_front(CHIP_ALLE)
 	return vorhanden
+
+
+## Wunschzettel-Ids für den Leerzustand: die günstigsten REHWEI-Waren mit
+## Katalog-Deckung (Preis aufsteigend, bei Gleichstand Sortiments-Reihenfolge
+## — sort_custom allein ist NICHT stabil). Die Möhre (5 Coins UND Liebling)
+## steht damit von selbst vorn. PURE (testbar ohne Szene).
+static func leer_teaser_ids(anzahl := TEASER_ANZAHL) -> Array[String]:
+	var waren := CitySortiment.laden(CitySortiment.REHWEI_PFAD)
+	var kandidaten: Array[Dictionary] = []
+	for index in waren.size():
+		var eintrag: Dictionary = waren[index]
+		var food_id := str(eintrag.get("id", ""))
+		if FoodCatalog.FOODS.has(food_id):
+			kandidaten.append({"id": food_id, "preis": int(eintrag.get("preis", 0)), "i": index})
+	kandidaten.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool:
+			if int(a["preis"]) != int(b["preis"]):
+				return int(a["preis"]) < int(b["preis"])
+			return int(a["i"]) < int(b["i"])
+	)
+	var out: Array[String] = []
+	for eintrag: Dictionary in kandidaten.slice(0, anzahl):
+		out.append(str(eintrag["id"]))
+	return out if not out.is_empty() else TEASER_NOTNAGEL.slice(0, anzahl)
 
 
 func setup(entries: Array[Dictionary], vorschau: FuetterVorschau = null) -> void:
@@ -94,6 +125,7 @@ func _baue_leerzustand(box: VBoxContainer) -> void:
 	gaehnen.text = I18nService.t("fuettern.leer_titel")
 	gaehnen.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(gaehnen)
+	box.add_child(_baue_teaser_well())
 	var tipp := Label.new()
 	tipp.theme_type_variation = &"CaptionLabel"
 	tipp.text = I18nService.t("fuettern.leer_tipp")
@@ -109,6 +141,57 @@ func _baue_leerzustand(box: VBoxContainer) -> void:
 	rehwei.focus_mode = Control.FOCUS_NONE
 	rehwei.pressed.connect(rehwei_gewuenscht.emit)
 	box.add_child(rehwei)
+
+
+## Illustrierter Leerzustand (UIFINAL-Muster „Sticker-Karte", s. FriendListUi.
+## build_empty_state): ein Paper-Well rahmt echte 3D-Speise-Vorschauen — der
+## Wunschzettel zeigt appetitlich, was der REHWEI-Einkauf bringt, statt den
+## Gähn-Text allein auf leerer Fläche stehen zu lassen.
+func _baue_teaser_well() -> Control:
+	var reihe := HBoxContainer.new()
+	reihe.alignment = BoxContainer.ALIGNMENT_CENTER
+	var well := PanelContainer.new()
+	well.name = "TeaserWell"
+	var stil := StyleBoxFlat.new()
+	stil.bg_color = AcTokens.PAPER
+	stil.set_corner_radius_all(AcTokens.RADIUS_CARD)
+	stil.set_content_margin_all(12.0)
+	stil.shadow_color = AcTokens.SHADOW_SOFT_COLOR
+	stil.shadow_size = AcTokens.SHADOW_SOFT_SIZE
+	stil.shadow_offset = Vector2(0.0, AcTokens.SHADOW_SOFT_OFFSET_Y)
+	well.add_theme_stylebox_override("panel", stil)
+	reihe.add_child(well)
+	var spalte := VBoxContainer.new()
+	spalte.add_theme_constant_override("separation", 4)
+	well.add_child(spalte)
+	var beschriftung := Label.new()
+	beschriftung.theme_type_variation = &"CaptionLabel"
+	beschriftung.text = I18nService.t("fuettern.leer_teaser")
+	beschriftung.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	spalte.add_child(beschriftung)
+	var icons := HBoxContainer.new()
+	icons.name = "TeaserIcons"
+	icons.alignment = BoxContainer.ALIGNMENT_CENTER
+	icons.add_theme_constant_override("separation", 8)
+	spalte.add_child(icons)
+	var kacheln: Array = []
+	for food_id: String in leer_teaser_ids():
+		var icon := TextureRect.new()
+		icon.name = "Teaser_" + food_id
+		icon.custom_minimum_size = Vector2.ONE * TEASER_ICON_PX
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture = _vorschau.hole_speise(food_id)
+		icons.add_child(icon)
+		_icons[food_id] = icon
+		kacheln.append(icon)
+	# Gestaffeltes Aufpoppen (RM-gated in UiMotion); das Panel hängt beim
+	# Kühlschrank-Aufruf erst NACH setup() im Baum → dann beim ready-Moment.
+	if icons.is_inside_tree():
+		UiMotion.stagger_in(kacheln)
+	else:
+		icons.ready.connect(UiMotion.stagger_in.bind(kacheln), CONNECT_ONE_SHOT)
+	return reihe
 
 
 # ── Kategorien-Chips ──────────────────────────────────────────────────────────

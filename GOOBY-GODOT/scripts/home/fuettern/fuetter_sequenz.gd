@@ -26,6 +26,11 @@ const BISS_MS := 350
 const SCHLUCK_MS := 300
 const EMOTION_MS := 450
 const BISSE_VOLL := 3
+## LOOP-Timing: die Mampf-Takte laufen NICHT im Metronom — sie beschleunigen
+## pro Biss um diesen Schritt (420 → 350 → 280 ms), so wie auch die
+## Nom-Pitch-Treppe der Regie steigt. Symmetrisch um BISS_MS gebaut, damit
+## die Takt-Summe (und damit dauer_ms) EXAKT bei BISSE × BISS_MS bleibt.
+const BISS_ACCEL_MS := 70
 ## Reduced Motion: Kurzfassung — kürzerer Anflug + genau EIN Biss (1500 ms).
 const SCHWEBEN_REDUZIERT_MS := 400
 const BISSE_REDUZIERT := 1
@@ -57,6 +62,14 @@ static func refusal(state: Dictionary, food_id: String) -> String:
 	if count <= 0:
 		return "leer"
 	return ""
+
+
+## Mampf-Takt NACH Biss `index` (1-basiert, von `von`): erst genüsslich,
+## dann immer gieriger. Für die RM-Kurzfassung (1 Biss) exakt BISS_MS —
+## deren Gesamtlänge bleibt unangetastet. PURE (headless testbar).
+static func biss_takt_ms(index: int, von: int) -> int:
+	var mitte := (float(von) + 1.0) * 0.5
+	return BISS_MS + int(roundf(BISS_ACCEL_MS * (mitte - float(index))))
 
 
 ## Emotion am Ende: Lieblingsessen → verliebt, Junk → Zucker-Zittern-Gag,
@@ -149,7 +162,7 @@ static func _baue_zeitplan(food_id: String, reduziert: bool) -> Array[Dictionary
 	var t := schweben
 	for i in bisse:
 		out.append({"at": t, "typ": "biss", "index": i + 1, "von": bisse})
-		t += BISS_MS
+		t += biss_takt_ms(i + 1, bisse)
 	out.append({"at": t, "typ": "schluck"})
 	t += SCHLUCK_MS
 	out.append({"at": t, "typ": "emotion", "art": emotion_fuer(food_id)})

@@ -81,6 +81,38 @@ func test_reduced_motion_kurzfassung_ein_biss() -> void:
 	assert_eq(typen, ["schwebt", "biss", "schluck", "emotion", "buchen"])
 
 
+func test_mampf_beschleunigt_bei_konstanter_gesamtlaenge() -> void:
+	# LOOP-Timing: die Takte werden pro Biss kürzer (wie die Nom-Pitch-Treppe
+	# steigt), die Takt-Summe bleibt EXAKT BISSE × BISS_MS → dauer_ms
+	# unverändert (Wache oben: 2500/1500 ms).
+	assert_eq(FuetterSequenz.biss_takt_ms(1, 3), 420, "erster Takt: genüsslich")
+	assert_eq(FuetterSequenz.biss_takt_ms(2, 3), 350, "Mitte = Basis-Takt")
+	assert_eq(FuetterSequenz.biss_takt_ms(3, 3), 280, "letzter Takt: gierig")
+	var summe := 0
+	for i in 3:
+		summe += FuetterSequenz.biss_takt_ms(i + 1, 3)
+		if i > 0:
+			assert_true(
+				FuetterSequenz.biss_takt_ms(i + 1, 3) < FuetterSequenz.biss_takt_ms(i, 3),
+				"Takte streng fallend"
+			)
+	assert_eq(summe, 3 * FuetterSequenz.BISS_MS, "Summe invariant → Gesamtlänge stabil")
+	assert_eq(FuetterSequenz.biss_takt_ms(1, 1), FuetterSequenz.BISS_MS, "RM-Kurzfassung: Basis")
+	var sequenz := FuetterSequenz.new()
+	sequenz.start("bread", 0)
+	var biss_zeiten: Array = []
+	var anker := {}
+	for ev: Dictionary in sequenz.tick(2500):
+		match str(ev["typ"]):
+			"biss":
+				biss_zeiten.append(int(ev["at"]))
+			"schluck", "buchen":
+				anker[str(ev["typ"])] = int(ev["at"])
+	assert_eq(biss_zeiten, [700, 1120, 1470], "Bisse rücken zusammen")
+	assert_eq(int(anker["schluck"]), 1750, "Schluck-Anker unverändert")
+	assert_eq(int(anker["buchen"]), 2500, "Buchung unverändert bei 2,5 s")
+
+
 func test_refusal_kurzschluss_ueber_bestehende_gates() -> void:
 	assert_eq(FuetterSequenz.refusal(_state({"apple": 1}, 99.9), "apple"), "satt")
 	assert_eq(FuetterSequenz.refusal(_state({}), "apple"), "leer")
@@ -189,6 +221,34 @@ func test_leerzustand_gaehnt_und_bietet_rehwei_route() -> void:
 	(rehwei as Button).pressed.emit()
 	assert_eq(int(getroffen["n"]), 1, "Knopf feuert den Route-Wunsch")
 	assert_eq(grid.find_child("Regal", true, false), null, "kein Regal im Leerzustand")
+	tree.root.remove_child(grid)
+	grid.free()
+
+
+func test_leerzustand_wunschzettel_ids_pur() -> void:
+	var ids := FuetterGrid.leer_teaser_ids()
+	assert_eq(ids.size(), FuetterGrid.TEASER_ANZAHL, "drei Teaser-Speisen")
+	# Spiegelt das Sortiment: günstigste Waren zuerst, Gleichstand (6 Coins)
+	# in Sortiments-Reihenfolge — die 5-Coins-Möhre (Liebling!) steht vorn.
+	assert_eq(ids, ["carrot", "apple", "banana"], "Preis-Reihenfolge stabil")
+	for id: String in ids:
+		assert_true(FoodCatalog.FOODS.has(id), "Teaser ohne Katalog-Deckung: %s" % id)
+
+
+func test_leerzustand_zeigt_wunschzettel_mit_vorschauen() -> void:
+	var grid := FuetterGrid.new()
+	tree.root.add_child(grid)
+	var leer: Array[Dictionary] = []
+	grid.setup(leer)
+	var well := grid.find_child("TeaserWell", true, false)
+	assert_true(well is PanelContainer, "Sticker-Karten-Well statt leerer Fläche")
+	var icons := grid.find_child("TeaserIcons", true, false)
+	assert_true(icons is HBoxContainer, "Teaser-Reihe da")
+	if icons is HBoxContainer:
+		assert_eq(icons.get_child_count(), FuetterGrid.TEASER_ANZAHL, "drei 3D-Vorschauen")
+		for kind in icons.get_children():
+			assert_true(kind is TextureRect, "Teaser ist eine Vorschau-Kachel")
+			assert_true(str(kind.name).begins_with("Teaser_"), "Kachel trägt die Speise-Id")
 	tree.root.remove_child(grid)
 	grid.free()
 
