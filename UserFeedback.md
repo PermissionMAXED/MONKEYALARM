@@ -246,7 +246,9 @@ _(gerade nichts offen — alle bisherigen Punkte stehen unten unter „Erledigt"
 Welle G7 „SPIELGEFÜHL" ist komplett gelandet (alle Pakete unten abgehakt,
 dein 1.8.-Feedback damit umgesetzt). W18 macht weiter mit den Spieler-
 Playtests, den Planner-Ideen und den restlichen G6-Paketen — Improve-Loop-
-Welle 5 ist gelandet (Pakete unten), der Loop läuft weiter:
+Wellen 5 UND 6 sind gelandet (Pakete unten), der Loop läuft weiter;
+parallel hat Runde W19 die letzten EVAL-Reste geschlossen (Recovery-Toast,
+Corn-Dog, Laden-Schilder — unten abgehakt):
 
 - [~] **Welle H: PLAYTEST ×10** — läuft: die Spieler-Agents haben ihre
       Bereiche KOMPLETT durchgespielt — Haus (Füttern/Bau/Schlaf, flow_schlaf
@@ -272,6 +274,61 @@ Welle 5 ist gelandet (Pakete unten), der Loop läuft weiter:
 
 **Schon in W18 gelandet** (vorgezogene Warteschlangen-Pakete + Playtest-Funde):
 
+- [x] **Results-Feier mit echtem Juice (Loop-Welle 6)** — das Konfetti im
+      Ergebnisbildschirm sind jetzt echte Papier-Schnipsel in 6 Bonbon-
+      Farben (vorher: nackte Quadrate, die durch einen Godot-Fallstrick
+      ALLE gold wurden), und jede Feier würfelt Seitenwind, Flattern und
+      Streuung neu — keine sieht zweimal gleich aus; der Punkte-Zähler
+      rast los und rollt aufs Ziel aus (er lief in Wahrheit LINEAR — die
+      Ease-Kurve griff nie, stille Godot-Falle), die Hör-Ticks folgen der
+      Kurve wie ein Spielautomat und ein heller Bestätigungs-Tick setzt
+      den Schlusspunkt; 2 neue Dauer-Wachen, Voll-Lauf 3550 Tests / 0 rot.
+- [x] **W19: Laden-Schilder stapeln nicht mehr (PT-Stadt F4)** — bei
+      flachen Fahr-Winkeln schoben sich REHWEI/GOOBYTHEKE/IKEA-Schriftzüge
+      perspektivisch zu Buchstabensalat übereinander; jetzt blendet ein
+      deutlich näheres Schild das fernere in gleicher Sichtlinie weich aus
+      (das vorderste bleibt IMMER voll lesbar, die hinteren tauchen beim
+      Näherkommen von selbst wieder auf); Beweisfotos vorher/nachher,
+      2 neue Dauer-Wachen.
+- [x] **W19: Corn Dog — die LETZTE der 39 Web-Speisen komplett** — echtes
+      3D-Modell aus dem Kenney Food Kit (CC0, wie der Bestand), landet
+      automatisch in Kühlschrank-Regal und Mampf-Sequenz, REHWEI führt ihn
+      für 15 Münzen (Web-Preis), Werte 1:1 aus der alten Web-Version;
+      style_gate jetzt 700 Modelle / 0 Fehler, eigene Dauer-Wache.
+- [x] **W19: Recovery-Toast verdrahtet** — wenn dein Spielstand mal kaputt
+      war und aus einem Backup zurückgeholt wurde, sagt dir das Spiel das
+      jetzt beim Boot ehrlich per Toast („Spielstand aus Sicherung
+      wiederhergestellt") statt still zu schweigen; die Texte lagen seit
+      W4 ungenutzt im Spiel, jetzt hat sie einen echten Konsumenten;
+      2 neue Dauer-Wachen, STATUS/EVAL-Doku nachgezogen.
+- [x] **Tagesquests-Blatt poliert (Loop-Welle 6)** — langer Quest-Inhalt
+      endet nicht mehr als harte Schnittkante (Scroll-Fade-Kanten zeigen,
+      dass es weitergeht — für ALLE Blätter, weil das Basis-Blatt sie
+      erbt), der Belohnung-Abholen-Moment feiert (Fortschrittsbalken
+      GLEITET auf voll, Karten-Hüpfer, Gold-Sparkle), und das Blatt
+      beginnt jetzt IMMER unter der ECHTEN Status-Zeile (große Schriften
+      konnten die Design-Reserve überbauen — dein Screenshot-Befund damit
+      an der Wurzel dicht); 4 neue Dauer-Wachen.
+- [x] **Radio-Politur (Loop-Welle 6)** — Radio AUS erklärt im Ticker den
+      Einschalt-Schritt, 0 Lieblingssongs laden zum Merken ein statt kahl
+      „0" zu zeigen, der Like-Knopf ist ein ECHTER Toggle mit ♥-Look
+      (vorher konnte er nie gedrückt aussehen), und der Senderwechsel
+      flackert nicht mehr (kein UI-Neubau/Scroll-Reset pro Tap, dafür ein
+      Bestätigungs-Toast); eigene Dauer-Wache.
+- [x] **Album-Rarity-Politur (Loop-Welle 6)** — jede Album-Seite sortiert
+      ihre Sticker jetzt wie im Panini-Heft (häufig → selten → episch →
+      geheim, die Schätze stehen am Seitenende), gesperrte Mystery-Slots
+      verraten die Rarity nicht mehr über den farbigen Rand (Leak-Fix:
+      erst der Unlock bringt die Farbe), und das Detail-Sheet zeigt die
+      Rarity als farbige Kapsel; 2 neue Dauer-Wachen.
+- [x] **Stadt-Verkehr-Politur, 3 Pakete (Loop-Welle 6)** — Loop-Autos
+      bremsen vor 90°-Ecken ab und drehen die Nase weich ein statt mit
+      Reisetempo durch die Kurve zu springen; die Bordstein-Parker werden
+      zu PARKREIHEN mit echten Parklücken und Rangier-Luft zwischen den
+      Stoßstangen (nie Stoßstange-an-Stoßstange, Draw-Calls unverändert);
+      und die Passanten sind eine bunte Schar (10 AC-Fellfarben statt 6,
+      Tempo-Mix aus Schlenderern, Trödlern und Eiligen statt
+      Gleichschritt); 4 neue Dauer-Wachen.
 - [x] **Telefon-Politur: Freunde-App im IGohbie (LOOP)** — der leere
       Freunde-Screen kennt jetzt den GRUND (offline erklärt er das fehlende
       Internet, statt zum Code-Teilen aufzurufen, obwohl es offline gar
@@ -597,7 +654,7 @@ gewandert — Welle H läuft bereits, Ball-Wurf und Warn-Sweep sind gelandet.)_
 
 | | |
 |---|---|
-| **Qualität (Stand 2.8., W18)** | Hauptsuite **3538 Tests / 0 rot** (voller Preflight nach dem Sprechblasen-Sweep), Server-Tests **157 / 0**, UI-Audit **204 Screens / 0 Befunde** — Leitformat iPhone 17 Pro Max quer (2868×1320) |
+| **Qualität (Stand 2.8., W18/W19)** | Hauptsuite **3550 Tests / 0 rot** (voller Preflight nach der Results-Juice-Landung), Server-Tests **157 / 0**, UI-Audit **204 Screens / 0 Befunde**, style_gate **700 Modelle / 0 Fehler** — Leitformat iPhone 17 Pro Max quer (2868×1320) |
 | **Playtests** | Subagents SPIELEN das Spiel wirklich (eigene Instanz, echte Taps/Wische, Screenshots): Reports unter `docs/playtests/` (PT-home, PT-ui-loops, PT-stadt, PT-minigames-a/b, PT-meta), Start per `tools/ci/run_playtest.sh alle` |
 | **Testen** | GitHub → Actions → Lauf „GOOBY Godot" → Artefakt `GOOBY-godot-unsigned-ipa` herunterladen, mit AltStore/Sideloadly installieren. Anleitung: `docs/godot-rewrite/IOS-BUILD.md` — Release-Notes werden jetzt automatisch aus den Commits generiert |
 | **Spielstand von früher** | Einstellungen → Spielstand → „Alten Spielstand übertragen"; Anleitung: `docs/godot-rewrite/SAVE-TRANSFER.md` |
