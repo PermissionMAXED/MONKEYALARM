@@ -453,6 +453,11 @@ G6-Pakete wurden neu einsortiert (zwei davon sind oben schon gelandet)._
       Maxbreite, bricht nur an WORT-Grenzen und reserviert die Endgröße vor
       dem Typewriter (kein Nachruckeln); Dauer-Wache mit den längsten
       DE/EN-Sprüchen.
+      → VERIFY-Nachtrag: Katalog-Sweep-Wache über ALLE ~4290 Strings je
+      Sprache (inkl. Spruch-Listen) gegen die echten Blasen-Messkontexte —
+      kein Wort breiter als die Blasen-Zeile, WORD_SMART hat nie einen
+      Abriss-Grund; dabei gefundenes Rest-Nachruckeln mittellanger Sprüche
+      (stale Label-Minimalbreite nach Font-Override) in AcBubble gefixt.
 - [x] **P52 IGohbie-Telefon-Rework** — kaputtes Dunkel-Icon, unklare Symbole,
       App-Labels, Öffnen-Animation, Wisch-zum-Schließen.
       → GELANDET: das Dunkel-Icon war ein SVG-Füllfehler (gefixt), alle

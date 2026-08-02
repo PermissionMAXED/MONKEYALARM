@@ -428,6 +428,14 @@ func _layout_messen() -> void:
 	_label.add_theme_font_size_override("font_size", int(maxf(AcTokens.FONT_SIZE_BODY * tf, 12.0)))
 	_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_label.custom_minimum_size = Vector2.ZERO
+	# G7-P51-Verify (Katalog-Sweep-Befund): Nach einem font_size-Override
+	# liefert Godots Label die Minimal-BREITE noch einen Frame lang stale
+	# (die Höhe sofort) — Blasen mittlerer Länge reservierten dadurch eine
+	# zu schmale Kapsel und ruckelten im Nachmess-Frame auf die Endgröße.
+	# Text-Reset erzwingt das frische Shaping SOFORT (Muster
+	# MinigameHudTypo.set_hint_size); visible_characters bleibt erhalten.
+	_label.text = ""
+	_label.text = _voller_text
 	var canvas := Vector2(get_viewport().get_visible_rect().size)
 	var insets := UiScale.safe_insets_canvas(get_viewport())
 	# G7-P51: Deckel gegen die SAFE-Fläche rechnen (nicht die volle Canvas),

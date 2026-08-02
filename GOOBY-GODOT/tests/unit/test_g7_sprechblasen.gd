@@ -10,11 +10,20 @@ extends TestCase
 ## bleiben kompakt — plus Ellipsis-Wachen der Text-Fit-Stellen (Album/
 ## Sammlungen/Füttern) mit den längsten ECHTEN Strings beider Sprachen.
 ##
+## P51-VERIFY dazu: KATALOG-SWEEP über ALLE Strings beider Locales (inkl.
+## Array-Zeilen — Spruch-Listen wie fuettern.sprueche/urlaub.bubble/
+## city_leben.sprueche) gegen die ECHTEN Blasen-Messkontexte: kein String
+## enthält ein Wort, das breiter ist als die Blasen-Zeile — damit hat
+## WORD_SMART (AcBubble) nie einen Adaptive-(mitten-im-Wort)-Grund und
+## AUTOWRAP_WORD (DialogBubble) nie einen Überlauf.
+##
 ## Konvention: Fenster pinnen + zurückstellen; lange Test-Strings sind
 ## ECHTE Strings aus strings/ (Keys als Fixtures unten).
 
 const QUER := Vector2i(2868, 1320)
 const HOCH := Vector2i(1179, 2556)
+
+const DIALOG_BUBBLE_SZENE := preload("res://scripts/ui/dialog_bubble.tscn")
 
 ## Fixtures: echte Spruch-Keys (strings/de|en) — längster Spruch, der über
 ## room.say/AcBubble läuft, und der kürzeste aus den User-Screenshots.
@@ -27,6 +36,22 @@ const MEGA_SPRUCH := (
 	+ " Ob die Lichter da WIRKLICH funkeln? Ich wünsch mir, dass wir"
 	+ " uns mal sieben Tage am Stück sehen. Eine ganze Woche wir zwei!"
 )
+
+## Sweep-Selbstcheck: so viele Katalog-Strings muss die Enumeration je
+## Locale mindestens liefern (aktuell ~4290) — bricht die Aufzählung,
+## wird der Sweep rot statt leise leer zu laufen.
+const SWEEP_MIN_STRINGS := 4000
+## Spruch-Domains, die sicher im Sweep stecken müssen (die Blasen-Feeder:
+## SoulLinien/SoulService, FuetterSprueche, UrlaubsSprueche, OrtLeben).
+const SWEEP_SENTINEL_PREFIXES: Array[String] = [
+	"soul.linie.",
+	"soul.wunsch.",
+	"soul.gruss.",
+	"fuettern.sprueche.",
+	"fuettern.kommentar.",
+	"urlaub.bubble.",
+	"city_leben.sprueche.",
+]
 
 var _prev_size := Vector2i()
 var _prev_insets := Rect2()
@@ -177,9 +202,7 @@ func test_acbubble_kurzer_spruch_bleibt_kompakt() -> void:
 func test_dialogbubble_zeilen_hoehe_waechst_und_schrumpft() -> void:
 	await _pin_window(QUER)
 	UiAnchors.reset_for_tests()
-	var db := (
-		(load("res://scripts/ui/dialog_bubble.tscn") as PackedScene).instantiate() as DialogBubble
-	)
+	var db := DIALOG_BUBBLE_SZENE.instantiate() as DialogBubble
 	db.sofort_override = 1
 	tree.root.add_child(db)
 	await wait_frames(1)
@@ -298,7 +321,183 @@ func test_textfit_album_namensband() -> void:
 	album.free()
 
 
+## P51-Dauer-Wache: Katalog-Sweep über ALLE Strings beider Locales gegen die
+## echten Blasen-Messkontexte (AcBubble hoch + quer, DialogBubble Stadt).
+## Invariante pro String: an WORT-Grenzen gewickelt (BREAK_WORD_BOUND ohne
+## ADAPTIVE) ragt KEINE Zeile über die Wickel-Breite hinaus — also ist kein
+## Wort breiter als die Zeile, WORD_SMART fällt nie in den Adaptive-Zweig
+## (Abriss mitten im Wort) und AUTOWRAP_WORD läuft nie über. Der härteste
+## Fund je Locale läuft danach als ECHTE Blase durch die Kern-Wache.
+func test_sweep_alle_sprueche_kein_wort_abriss() -> void:
+	var kontexte: Array[Dictionary] = []
+	await _pin_window(HOCH)
+	kontexte.append(await _acbubble_mess_kontext("acbubble/hoch"))
+	await _unpin_window()
+	await _pin_window(QUER)
+	kontexte.append(await _acbubble_mess_kontext("acbubble/quer"))
+	kontexte.append(await _dialogbubble_mess_kontext("dialogbubble/stadt"))
+	await _unpin_window()
+	var schlimmste: Dictionary = {}
+	for locale: String in ["de", "en"]:
+		I18nService.set_locale(locale)
+		var strings := _alle_katalog_strings()
+		assert_true(
+			strings.size() >= SWEEP_MIN_STRINGS,
+			"%s: Sweep deckt den Katalog (%d < %d)" % [locale, strings.size(), SWEEP_MIN_STRINGS]
+		)
+		for prefix: String in SWEEP_SENTINEL_PREFIXES:
+			assert_true(
+				_sweep_enthaelt_prefix(strings, prefix),
+				"%s: Spruch-Domain %s steckt im Sweep" % [locale, prefix]
+			)
+		for kontext: Dictionary in kontexte:
+			var fund := _sweep_gegen_kontext(strings, kontext, locale)
+			# Für den End-zu-End-Nachweis zählt der AcBubble-hoch-Kontext
+			# (die schmalste Standard-Blase — dort wickelt am meisten).
+			if String(kontext["name"]) == "acbubble/hoch":
+				schlimmste[locale] = fund
+	# End-zu-End: der am knappsten wickelnde Katalog-String je Locale als
+	# ECHTE Blase durch die volle Geometrie-Wache (hochkant = engster Fall).
+	await _pin_window(HOCH)
+	for locale: String in ["de", "en"]:
+		I18nService.set_locale(locale)
+		var fund: Dictionary = schlimmste[locale]
+		await _pruefe_blase_passt(
+			String(fund["text"]), "sweep/%s/%s" % [locale, String(fund["key"])]
+		)
+	I18nService.set_locale("de")
+	await _unpin_window()
+
+
 # ── Helfer ───────────────────────────────────────────────────────────────────
+
+
+## Mess-Kontext (Font, Größe, Wickel-Breite) einer ECHTEN AcBubble im
+## aktuell gepinnten Fenster — der Sweep misst danach pur gegen diese
+## Handles (kein Node-Aufbau pro String).
+func _acbubble_mess_kontext(kontext_name: String) -> Dictionary:
+	AcBubble.warteschlange = AcBubble.Warteschlange.new()
+	UiAnchors.reset_for_tests()
+	var layer := Control.new()
+	tree.root.add_child(layer)
+	var teile := _zeige_blase(layer, MEGA_SPRUCH)
+	var label: Label = teile["label"]
+	await wait_frames(2)
+	assert_eq(
+		label.autowrap_mode,
+		TextServer.AUTOWRAP_WORD_SMART,
+		"%s: Mega-Spruch wickelt an Wortgrenzen" % kontext_name
+	)
+	var kontext := {
+		"name": kontext_name,
+		"font": label.get_theme_font("font"),
+		"size": label.get_theme_font_size("font_size"),
+		"wrap_w": label.custom_minimum_size.x,
+	}
+	assert_true(float(kontext["wrap_w"]) > 60.0, "%s: echte Wickel-Breite" % kontext_name)
+	layer.queue_free()
+	await wait_frames(2)
+	UiAnchors.reset_for_tests()
+	AcBubble.warteschlange = AcBubble.Warteschlange.new()
+	return kontext
+
+
+## Mess-Kontext der DialogBubble im Stadt-Modus (ohne HUD: Szenen-Breite,
+## Label wickelt mit AUTOWRAP_WORD in dieser festen Breite).
+func _dialogbubble_mess_kontext(kontext_name: String) -> Dictionary:
+	UiAnchors.reset_for_tests()
+	var db := DIALOG_BUBBLE_SZENE.instantiate() as DialogBubble
+	db.sofort_override = 1
+	tree.root.add_child(db)
+	await wait_frames(1)
+	var label := db.get_node("%BubbleText") as Label
+	var zeilen: Array[String] = [MEGA_SPRUCH]
+	db.show_lines(zeilen)
+	await wait_frames(2)
+	var kontext := {
+		"name": kontext_name,
+		"font": label.get_theme_font("font"),
+		"size": label.get_theme_font_size("font_size"),
+		"wrap_w": label.size.x,
+	}
+	assert_true(float(kontext["wrap_w"]) > 60.0, "%s: echte Wickel-Breite" % kontext_name)
+	db.queue_free()
+	await wait_frames(2)
+	UiAnchors.reset_for_tests()
+	return kontext
+
+
+## Alle Katalog-Strings der AKTIVEN Locale (inkl. Array-Zeilen). Sprüche
+## mit {essen}-Platzhalter zusätzlich formatiert wie in
+## FuetterSprueche.naechster (längster echter Speise-Name — der Platzhalter
+## klebt im Satz an Nachbarzeichen und verlängert so das Wort).
+func _alle_katalog_strings() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var essen := FoodCatalog.display_name(_laengste_food_id())
+	var tbl := I18nService.table(I18nService.get_locale())
+	for key: String in tbl:
+		var wert: Variant = tbl[key]
+		var texte: Array = []
+		if wert is String:
+			texte = [wert]
+		elif wert is Array:
+			texte = wert
+		for i in texte.size():
+			if not (texte[i] is String):
+				continue
+			var text := String(texte[i])
+			out.append({"key": "%s[%d]" % [key, i], "text": text})
+			if text.contains("{essen}"):
+				out.append(
+					{"key": "%s[%d]+essen" % [key, i], "text": text.format({"essen": essen})}
+				)
+	return out
+
+
+func _sweep_enthaelt_prefix(strings: Array[Dictionary], prefix: String) -> bool:
+	for eintrag: Dictionary in strings:
+		if String(eintrag["key"]).begins_with(prefix):
+			return true
+	return false
+
+
+## Kern-Invariante des Sweeps (s. test_sweep_…): Wort-gewickelte Breite
+## bleibt in der Wickel-Breite. Gibt den knappsten Fund zurück (für den
+## End-zu-End-Nachweis mit einer echten Blase).
+func _sweep_gegen_kontext(
+	strings: Array[Dictionary], kontext: Dictionary, locale: String
+) -> Dictionary:
+	var font: Font = kontext["font"]
+	var font_size: int = kontext["size"]
+	var wrap_w: float = kontext["wrap_w"]
+	var brk := TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND
+	var fails := 0
+	var fund := {"key": "", "text": "", "breite": 0.0}
+	for eintrag: Dictionary in strings:
+		var text := String(eintrag["text"])
+		var breite := (
+			font
+			. get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, wrap_w, font_size, -1, brk)
+			. x
+		)
+		if breite > float(fund["breite"]):
+			fund = {"key": eintrag["key"], "text": text, "breite": breite}
+		if breite > wrap_w + 0.5:
+			fails += 1
+			if fails <= 8:
+				fail_test(
+					(
+						(
+							"%s/%s: „%s“ (%s) hat ein Wort breiter als die Blasen-Zeile"
+							+ " (%.1f > %.1f px) — Abriss mitten im Wort droht."
+						)
+						% [locale, kontext["name"], text, eintrag["key"], breite, wrap_w]
+					)
+				)
+	assert_eq(
+		fails, 0, "%s/%s: %d String(s) mit Überbreite-Wort" % [locale, kontext["name"], fails]
+	)
+	return fund
 
 
 ## Erstes Label mit clip_text unterhalb von `wurzel` (Aufbau-Reihenfolge).
