@@ -142,6 +142,24 @@ Pastell-Palette aller übrigen Spiele (Nachbar shoppingSurf: hell und
 freundlich). Material/Belichtung, kein Layout-Thema — Kandidat für die
 Politur-/Belichtungswelle, nicht blind per Konstante fixbar.
 
+**GEFIXT (Nachtrag, Politur-Welle):** Wurzel war MATERIAL, nicht Belichtung —
+die Nature-Kit-GLBs (Bäume/Büsche/Blumen/Findlinge) tragen ihre Farbe als
+`baseColorFactor` MIT `metallicFactor: 1`, die City-/Car-Kits dagegen eine
+colormap-Textur mit Metall 0. Auf der reflexionslosen 3D-B-Bühne
+(`stage3d.gd`: REFLECTION_SOURCE_DISABLED) hat Voll-Metall fast keine
+diffuse Antwort — daher das Fast-Schwarz, das auch die W14-Sonnen-/
+Fill-Nachschärfung nicht heilen konnte. Fix in der geteilten 3D-B-Modellbank
+(`model_bank.gd`): Metall-Materialien werden beim Backen entmetallisiert und
+über `Props3D.pastel` + NATURE-Tabelle auf die Pastellpalette der
+3D-A-Spiele gezogen (Kenney-Türkis → warmes Laubgrün); colormap-Kits bleiben
+unangetastet. Heilt neben dem runner auch die Stadt-Bäume von
+cityDrive/deliveryRush (gleiche Bank). Wache:
+`tests/unit/test_3db_pastell.gd` (entmetallisiert + Palette + colormap
+unberührt; Mutations-Probe rot ohne Fix). Beweis: xvfb-Screenshots
+runner/cityDrive/deliveryRush — Laub lesbar grün, Stämme warm braun;
+Ranch-Welt und Ranch-Minispiele geprüft und unauffällig (eigene
+Baum-Pipelines, kein Fast-Schwarz).
+
 ### Nicht-Bugs (geprüft, unauffällig)
 
 - pancakeTower/starHopper enden blind mitten im Play-Fenster — die

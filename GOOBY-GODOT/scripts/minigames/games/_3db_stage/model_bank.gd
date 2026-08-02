@@ -15,10 +15,25 @@ extends RefCounted
 ## ALLES ist statisch gecacht: ein GLB wird pro Sitzung einmal geladen und
 ## einmal vermessen, egal wie viele Spiele/Runden es anfassen.
 
+## Pastell-Angleich der flachfarbigen Kenney-Kits (PT-MG-B F5b, Politur-Welle):
+## Die City-/Car-/Watercraft-Kits tragen eine colormap-Textur mit
+## `metallicFactor: 0` — die Nature-Kit-GLBs (Bäume, Büsche, Blumen, Findlinge)
+## dagegen nackte `baseColorFactor`-Farben MIT `metallicFactor: 1`. Godot
+## übernimmt das Metall 1:1, und weil die 3D-B-Bühne OHNE Spiegelquelle rendert
+## (stage3d: REFLECTION_SOURCE_DISABLED), hat eine Voll-Metall-Fläche dort fast
+## keine diffuse Antwort mehr: die Laubbäume des Runners kippten ins
+## Fast-Schwarze. Der Web-Vorgänger rendert durchweg Lambert (Metall 0) —
+## entmetallisieren ist also auch die WEB-TREUE Zahl. Die 3D-A-Bühne löst
+## exakt dasselbe Problem seit jeher über `Props3D.pastel` + NATURE-Tabelle
+## (Türkis-Laub → warme Pastellpalette); wiederverwenden statt neu erfinden.
+const Props3D := preload("res://scripts/minigames/games/_3da_stage/props3d.gd")
+
 ## path → PackedScene
 static var _scenes: Dictionary = {}
 ## path → {aabb: AABB, parts: Array[{mesh, xform}]}
 static var _baked: Dictionary = {}
+## Kit-Material → entmetallisierter Pastell-Ersatz (ein Ersatz je Quelle).
+static var _pastell: Dictionary = {}
 
 
 ## Roh-AABB des Modells (Modellkoordinaten, ohne Skalierung).
@@ -155,6 +170,35 @@ static func _collect(node_in: Node, xform: Transform3D, out: Array) -> void:
 	if node_in is Node3D:
 		here = xform * (node_in as Node3D).transform
 	if node_in is MeshInstance3D and (node_in as MeshInstance3D).mesh != null:
-		out.append({"mesh": (node_in as MeshInstance3D).mesh, "xform": here})
+		out.append({"mesh": _entmetallisiert((node_in as MeshInstance3D).mesh), "xform": here})
 	for child in node_in.get_children():
 		_collect(child, here, out)
+
+
+## Kenney-Metall-Materialien einer Mesh in Pastell ziehen (siehe Props3D oben).
+## Colormap-Kits (metallic 0) bleiben unangetastet — nur wenn mindestens eine
+## Oberfläche Metall trägt, wird eine Kopie mit Ersatz-Materialien gebacken.
+static func _entmetallisiert(mesh: Mesh) -> Mesh:
+	var braucht := false
+	for i in mesh.get_surface_count():
+		var base := mesh.surface_get_material(i) as BaseMaterial3D
+		if base != null and base.metallic > 0.0 and base.albedo_texture == null:
+			braucht = true
+			break
+	if not braucht:
+		return mesh
+	var kopie: Mesh = mesh.duplicate()
+	for i in kopie.get_surface_count():
+		var base := kopie.surface_get_material(i) as BaseMaterial3D
+		if base == null or base.metallic <= 0.0 or base.albedo_texture != null:
+			continue
+		kopie.surface_set_material(i, _pastell_mat(base))
+	return kopie
+
+
+static func _pastell_mat(quelle: BaseMaterial3D) -> StandardMaterial3D:
+	if _pastell.has(quelle):
+		return _pastell[quelle]
+	var mat := Props3D.pastel(quelle, Props3D.NATURE)
+	_pastell[quelle] = mat
+	return mat
