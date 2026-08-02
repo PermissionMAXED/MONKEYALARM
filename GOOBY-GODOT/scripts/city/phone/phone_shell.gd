@@ -25,15 +25,39 @@ extends Control
 ## alle Labels über dem Scroll-Falz bleiben. (3) Öffnen poppt federnd
 ## (RM = sofort), Grid staffelt, Apps gleiten rein. (4) Zusätzliche
 ## Zurück-Geste: Wisch VON LINKS in einer App führt zurück aufs Grid.
+##
+## G7/P52 RUNDE 2 — Wisch-Grammatik auf PanelSheet-Parität (P53):
+## (a) Der Runterwisch ZIEHT das Gerät mit dem Finger mit (Scrim hellt
+## proportional auf); losgelassen wird an der Weg- ODER Flick-Schwelle
+## entschieden — darunter schnappt das Gerät federnd zurück (RM: sofort).
+## (b) Schließen fährt animiert aus (Gerät sinkt mit Restschwung + Fade,
+## Scrim blendet ab, FadeBlocker schluckt Rest-Taps) statt hart zu
+## verschwinden; `geschlossen` feuert nach dem Fade (RM/kein Baum: sofort).
+## (c) Sound-Grammatik an EINER Stelle: `zurueck()` klingt ui_back,
+## `schliesse()` ui_close — ESC, HomeBalken, Geste und Scrim-Tap klingen
+## damit identisch. Wisch-Erfolg tippt haptisch (Muster PanelSheet).
+## (d) Gesten laufen NUR noch über Touch-Events (Maus kommt über die
+## projektweite Touch-Emulation an) — der alte Doppel-Pfad MouseMotion+
+## ScreenDrag zählte jeden Wisch DOPPELT und halbierte real die Schwelle.
+## (e) Der Scrim schließt auch per Touch-Tap (P53-Backdrop-Befund: ohne
+## Maus-Emulation kam auf dem Gerät kein MouseButton-Event an).
 
 signal app_geoeffnet(app_id: String)
 signal geschlossen
 
 const HUD_ACTION := &"igohbie"
-## Wischweg (Design-px, ×f), ab dem die Zurück-Geste auslöst.
+## Wischweg (Design-px, ×f), ab dem die Zurück-Geste beim Loslassen auslöst.
 const GESTE_PX := 90.0
 ## Startzone der Links-Wisch-Geste (Design-px ×f vom linken Geräterand).
 const GESTE_RAND_PX := 64.0
+## Flick-Schwelle (Design-px/s ×f nach unten): ein Schwung-Wisch löst auch
+## unterhalb des Wegs aus (PanelSheet.SWIPE_FLICK_PXPS, P53-Grammatik).
+const GESTE_FLICK_PXPS := 900.0
+## Wie stark der Scrim beim Mitziehen aufhellt (0.6 = bei voller Strecke
+## bleiben 40 % Abdunkelung — identisch PanelSheet.SWIPE_DIM_ANTEIL).
+const ZUG_DIM_ANTEIL := 0.6
+## Ausfahrweg der Schließ-Animation unter die Loslass-Position (Design-px).
+const SCHLIESS_SLIDE := 48.0
 ## Design-Basis des Geräts — die echte Größe liefert `geraet_groesse()`.
 ## G7/P52: im Querformat eine BREITE Basis (Leitformat iPhone 2868×1320),
 ## damit das Grid die Breite nutzt statt als schmale Hochkant-Karte im
@@ -71,6 +95,7 @@ var host: Node
 var aktive_app := ""
 
 var _geraet: PanelContainer
+var _scrim: ColorRect
 var _inhalt: VBoxContainer
 var _titel: Label
 var _uhr: Label
@@ -80,8 +105,19 @@ var _home: Button
 var _status_icons: Array[TextureRect] = []
 var _geste_x := 0.0
 var _geste_y := 0.0
+var _geste_tempo_y := 0.0
 var _geste_aktiv := false
 var _geste_von_links := false
+## Finger-Folgen des Runterwischens (P52 R2): Ruhelage-y des Geräts beim
+## Gestenstart, aktuell angewandter Zug-Offset (≥ 0) und der Snap-Tween.
+var _folge_rest_y := 0.0
+var _folge_offset := 0.0
+var _folge_tween: Tween
+## Öffnen-Pop-Tween — wird beim Schließen gekappt, damit sein modulate:a-
+## Ziel (1,0) nicht gegen das Ausblenden (0,0) kämpft.
+var _auf_tween: Tween
+## Schließen läuft (Ausfahr-Animation) — schützt vor Doppel-schliesse().
+var _schliesst := false
 ## Zuletzt angewandte ScreenShell-Metriken (f, canvas, insets, floor_px).
 var _m: Dictionary = {}
 
@@ -244,6 +280,8 @@ func _ready() -> void:
 	_baue_geraet()
 	zeige_grid()
 	get_viewport().size_changed.connect(_on_canvas_geaendert)
+	# P52 R2: Öffnen klingt wie jedes Blatt (PanelSheet-Grammatik ui_open).
+	AudioDirector.try_play(self, "ui_open")
 	_anim_geraet_auf()
 
 
@@ -325,15 +363,45 @@ func oeffne_app(app_id: String) -> void:
 
 
 ## Zurück-Geste: aus der App aufs Grid, vom Grid aus schließt das Handy.
+## P52 R2: die Sound-Grammatik wohnt HIER (ui_back) bzw. in schliesse()
+## (ui_close) — ESC, HomeBalken, Wisch und Scrim-Tap klingen so identisch.
 func zurueck() -> void:
 	if aktive_app.is_empty():
 		schliesse()
 		return
+	AudioDirector.try_play(self, "ui_back")
 	zeige_grid()
 
 
+## Telefon schließen — P52 R2 mit Ausfahr-Animation: das Gerät sinkt von
+## seiner AKTUELLEN Position (nach einem Runterwisch also mit Restschwung)
+## weiter ab und blendet aus, der Scrim dimmt weg; `geschlossen` feuert am
+## Animations-Ende. RM/kein Baum: sofort. Der FadeBlocker schluckt Taps im
+## Ausblend-Fenster (Muster PanelSheet), Doppel-Aufrufe sind geschützt.
 func schliesse() -> void:
-	geschlossen.emit()
+	if _schliesst:
+		return
+	_schliesst = true
+	AudioDirector.try_play(self, "ui_close")
+	_kill_folge_tween()
+	if _auf_tween != null and _auf_tween.is_valid():
+		_auf_tween.kill()
+	if not is_inside_tree() or UiMotion.reduced(self):
+		geschlossen.emit()
+		return
+	var blocker := Control.new()
+	blocker.name = "FadeBlocker"
+	blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(blocker)
+	var f: float = _m.get("f", 1.0)
+	var tween := create_tween().set_parallel()
+	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	var dauer: float = AcTokens.DUR_SHEET / 2.0
+	tween.tween_property(_geraet, "position:y", _geraet.position.y + SCHLIESS_SLIDE * f, dauer)
+	tween.tween_property(_geraet, "modulate:a", 0.0, dauer)
+	tween.tween_property(_scrim, "modulate:a", 0.0, dauer)
+	tween.chain().tween_callback(func() -> void: geschlossen.emit())
 
 
 ## Fotomodus starten: Handy zu, Sucher über die laufende Szene.
@@ -347,13 +415,13 @@ func starte_fotomodus() -> FotoModus:
 
 
 func _baue_scrim() -> void:
-	var scrim := ColorRect.new()
-	scrim.name = "Scrim"
-	scrim.color = AcTokens.VEIL_DEEP
-	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	scrim.mouse_filter = Control.MOUSE_FILTER_STOP
-	scrim.gui_input.connect(_on_scrim_input)
-	add_child(scrim)
+	_scrim = ColorRect.new()
+	_scrim.name = "Scrim"
+	_scrim.color = AcTokens.VEIL_DEEP
+	_scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_scrim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_scrim.gui_input.connect(_on_scrim_input)
+	add_child(_scrim)
 
 
 func _baue_geraet() -> void:
@@ -389,6 +457,12 @@ func _baue_geraet() -> void:
 ## Metriken einsammeln und aufs Gerät anwenden (Größe + Schriften).
 func _wende_metrik_an() -> void:
 	_m = ScreenShell.metrics(get_viewport())
+	# P52 R2: Rotation/Resize mitten in Zug oder Snap-back — Folge-Zustand
+	# löschen, das PRESET_CENTER darunter setzt die Ruhelage ohnehin frisch.
+	_kill_folge_tween()
+	_folge_offset = 0.0
+	if _scrim != null:
+		_scrim.modulate.a = 1.0
 	_geraet.custom_minimum_size = PhoneShell.geraet_groesse(_m)
 	_geraet.set_anchors_preset(Control.PRESET_CENTER)
 	var f: float = _m["f"]
@@ -429,10 +503,10 @@ func _anim_geraet_auf() -> void:
 	_geraet.pivot_offset = PhoneShell.geraet_groesse(_m) / 2.0
 	_geraet.scale = Vector2.ONE * 0.9
 	_geraet.modulate.a = 0.0
-	var tween := _geraet.create_tween().set_parallel()
-	tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(_geraet, "scale", Vector2.ONE, AcTokens.DUR_SHEET)
-	tween.tween_property(_geraet, "modulate:a", 1.0, AcTokens.DUR_SHEET / 2.0).set_trans(
+	_auf_tween = _geraet.create_tween().set_parallel()
+	_auf_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_auf_tween.tween_property(_geraet, "scale", Vector2.ONE, AcTokens.DUR_SHEET)
+	_auf_tween.tween_property(_geraet, "modulate:a", 1.0, AcTokens.DUR_SHEET / 2.0).set_trans(
 		Tween.TRANS_LINEAR
 	)
 
@@ -514,12 +588,9 @@ func _baue_home_balken() -> Control:
 	btn.focus_mode = Control.FOCUS_NONE
 	# FB3-Altbefund (40,2 pt): der Balken hebt sich auf den Touch-Floor.
 	ScreenShell.touch_target(btn, _m)
-	# W16 F12: der meistgenutzte Knopf der Shell — Zurück klingt als ui_back.
-	btn.pressed.connect(
-		func() -> void:
-			AudioDirector.try_play(btn, "ui_back")
-			zurueck()
-	)
+	# W16 F12 → P52 R2: der Klang wohnt jetzt IN zurueck()/schliesse()
+	# (ui_back bzw. ui_close) — der Balken verdrahtet nur noch die Aktion.
+	btn.pressed.connect(zurueck)
 	_home = btn
 	return btn
 
@@ -638,48 +709,84 @@ func _on_pal_freund(freund: Dictionary) -> void:
 	ScreenShell.scale_fonts(_geraet, _m.get("f", 1.0))
 
 
+## Scrim-Tap schließt das Telefon — Maus UND Touch (P53-Backdrop-Befund:
+## auf Geräten ohne Maus-Emulation kam sonst kein MouseButton-Event an;
+## kommen BEIDE Events an, schützt der _schliesst-Guard vor Doppelung).
 func _on_scrim_input(event: InputEvent) -> void:
+	var tipp := false
 	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		tipp = true
+	elif event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed:
+		tipp = true
+	if tipp:
 		schliesse()
 
 
 ## Zurück-Gesten (G7/P52): Wisch nach UNTEN = zurück (vom Grid: schließen),
 ## Wisch VON LINKS nach rechts IN einer App = zurück aufs Grid (wie am
-## echten Telefon). Maus-Drags zählen auch; Schwellwerte skalieren ×f —
-## 90 Design-px wären auf dem iPhone sonst ein ~28-pt-Mini-Wisch (G1 §3).
+## echten Telefon). Schwellwerte skalieren ×f — 90 Design-px wären auf dem
+## iPhone sonst ein ~28-pt-Mini-Wisch (G1 §3).
+##
+## P52 R2: NUR Touch-Events (Maus kommt über die projektweite
+## emulate_touch_from_mouse-Emulation an) — der alte Doppel-Pfad
+## MouseMotion+ScreenDrag verbuchte jeden Wisch ZWEIMAL und halbierte
+## damit real die Schwelle. Entschieden wird beim LOSLASSEN (Weg oder
+## Flick), bis dahin folgt das Gerät dem Finger (_folge_mit).
 func _on_geraet_input(event: InputEvent) -> void:
 	if event is InputEventScreenDrag:
 		var drag: InputEventScreenDrag = event
-		_geste_schritt(drag.position, drag.relative)
+		_geste_schritt(drag.position, drag.relative, drag.velocity.y)
 		return
-	if event is InputEventMouseMotion:
-		var maus: InputEventMouseMotion = event
-		if maus.button_mask & MOUSE_BUTTON_MASK_LEFT:
-			_geste_schritt(maus.position, maus.relative)
+	if event is InputEventScreenTouch:
+		if (event as InputEventScreenTouch).pressed:
+			# Sicherheitsnetz: hängt noch eine Alt-Geste (verlorenes
+			# Release), beginnt der neue Finger sauber bei null.
+			if _geste_aktiv:
+				_geste_reset()
+				_snap_zurueck()
 		else:
-			_geste_reset()
-		return
-	_geste_reset()
+			_geste_ende()
 
 
 ## Einen Wisch-Schritt verbuchen: beim ERSTEN Schritt entscheidet die
-## Startposition, ob es ein Links-Rand-Wisch ist; danach zählen die Wege.
-func _geste_schritt(pos: Vector2, rel: Vector2) -> void:
+## Startposition, ob es ein Links-Rand-Wisch ist; danach zählen die Wege
+## und das Gerät zieht mit dem Abwärts-Anteil mit (Scrim hellt auf).
+func _geste_schritt(pos: Vector2, rel: Vector2, tempo_y: float) -> void:
+	if _schliesst:
+		return
 	if not _geste_aktiv:
 		_geste_aktiv = true
 		_geste_von_links = (pos.x - rel.x) <= geste_rand()
 		_geste_x = 0.0
 		_geste_y = 0.0
+		_folge_start()
 	_geste_x += rel.x
 	_geste_y += rel.y
-	var von_links_zurueck := (
-		_geste_von_links and not aktive_app.is_empty() and _geste_x > geste_schwelle()
-	)
-	if von_links_zurueck or _geste_y > geste_schwelle():
-		_geste_reset()
-		# Gesten-Zurück klingt wie der HomeBalken (W16-Grammatik: ui_back).
-		AudioDirector.try_play(self, "ui_back")
+	_geste_tempo_y = tempo_y
+	_folge_mit(maxf(_geste_y, 0.0))
+
+
+## Loslassen: über der Weg- ODER Flick-Schwelle löst die Geste aus (Grid:
+## schließen — die Ausfahr-Animation übernimmt den Restschwung; App:
+## federnd zurückschnappen + aufs Grid), darunter schnappt das Gerät nur
+## zurück. Haptik-Tipp NUR bei Erfolg (Muster PanelSheet._zug_ende).
+func _geste_ende() -> void:
+	if not _geste_aktiv:
+		return
+	var f: float = _m.get("f", 1.0)
+	var von_links := _geste_von_links and not aktive_app.is_empty() and _geste_x > geste_schwelle()
+	var flick := _geste_y > 0.0 and _geste_tempo_y >= GESTE_FLICK_PXPS * f
+	var runter := _geste_y > geste_schwelle() or flick
+	_geste_reset()
+	if von_links or runter:
+		Haptics.tap(self)
+		if runter and aktive_app.is_empty():
+			schliesse()
+			return
+		_snap_zurueck()
 		zurueck()
+		return
+	_snap_zurueck()
 
 
 func _geste_reset() -> void:
@@ -687,6 +794,48 @@ func _geste_reset() -> void:
 	_geste_von_links = false
 	_geste_x = 0.0
 	_geste_y = 0.0
+	_geste_tempo_y = 0.0
+
+
+## ------------------------------------------- Finger-Folgen (P52 Runde 2)
+
+
+## Gestenstart: laufenden Snap-Tween kappen (der Finger übernimmt); die
+## Ruhelage wird NUR bei entspanntem Gerät frisch vermessen — mitten im
+## Snap-back ist position.y keine Ruhelage, der gemerkte Wert bleibt.
+func _folge_start() -> void:
+	_kill_folge_tween()
+	if _folge_offset <= 0.0:
+		_folge_rest_y = _geraet.position.y
+
+
+## Gerät auf Zug-Offset stellen (≥ 0, unter die Ruhelage) und den Scrim
+## proportional aufhellen — bewusst OHNE Reduced-Motion-Gate: direkte
+## Manipulation ist keine Animation (P53-Regel), RM greift beim Loslassen.
+func _folge_mit(offset: float) -> void:
+	_folge_offset = maxf(offset, 0.0)
+	_geraet.position.y = _folge_rest_y + _folge_offset
+	var anteil := clampf(_folge_offset / maxf(geste_schwelle(), 1.0), 0.0, 1.0)
+	_scrim.modulate.a = 1.0 - ZUG_DIM_ANTEIL * anteil
+
+
+## Federnd in die Ruhelage zurück (RM/Mini-Zug: sofort). tween_method hält
+## _folge_offset synchron — ein Gestenstart mitten im Snap rechnet dadurch
+## immer von der ECHTEN Momentanposition weiter.
+func _snap_zurueck() -> void:
+	if _folge_offset <= 0.5 or UiMotion.reduced(self):
+		_folge_mit(0.0)
+		return
+	_kill_folge_tween()
+	_folge_tween = create_tween()
+	_folge_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_folge_tween.tween_method(_folge_mit, _folge_offset, 0.0, AcTokens.DUR_POP)
+
+
+func _kill_folge_tween() -> void:
+	if _folge_tween != null and _folge_tween.is_valid():
+		_folge_tween.kill()
+	_folge_tween = null
 
 
 func _aktualisiere_status() -> void:

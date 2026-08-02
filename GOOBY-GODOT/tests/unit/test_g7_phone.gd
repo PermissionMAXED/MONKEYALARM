@@ -123,16 +123,27 @@ func _kachel_label(kachel: VBoxContainer) -> Label:
 
 
 ## Drag-Folge auf dem Gerät synthetisieren (InputEventScreenDrag): `start`
-## ist die lokale Startposition, `schritt` der Weg PRO Ereignis.
-func _wische(shell: PhoneShell, start: Vector2, schritt: Vector2, schritte: int) -> void:
+## ist die lokale Startposition, `schritt` der Weg PRO Ereignis. P52 R2:
+## optional mit Flick-Tempo (velocity.y) und OHNE Loslassen (Folge-Tests).
+func _wische(
+	shell: PhoneShell,
+	start: Vector2,
+	schritt: Vector2,
+	schritte: int,
+	tempo_y := 0.0,
+	loslassen := true
+) -> void:
 	var pos := start
 	for _i in schritte:
 		pos += schritt
 		var drag := InputEventScreenDrag.new()
 		drag.position = pos
 		drag.relative = schritt
+		drag.velocity = Vector2(0.0, tempo_y)
 		shell._on_geraet_input(drag)
-	# Loslassen: Touch-Ende setzt den Gesten-Speicher zurück.
+	if not loslassen:
+		return
+	# Loslassen: die Loslass-Entscheidung (Weg/Flick/Snap-back) läuft.
 	var ende := InputEventScreenTouch.new()
 	ende.pressed = false
 	ende.position = pos
@@ -368,6 +379,55 @@ func test_wisch_gesten_schliessen_und_navigieren() -> void:
 	_restore_reduced_motion(rm)
 
 
+# ------------------------------------- P52 R2: Finger-Folgen + Loslassen
+
+
+## Runterwisch UNTER der Schwelle: das Gerät zieht mit dem Finger mit und
+## der Scrim hellt auf; Loslassen schnappt zurück (RM: sofort) und das
+## Telefon bleibt OFFEN — kein Mid-Drag-Trigger mehr (P53-Grammatik).
+func test_runterwisch_folgt_dem_finger_und_schnappt_zurueck() -> void:
+	var rm: Variant = _set_reduced_motion(true)
+	await _pin(Vector2i(1280, 720))
+	var gs := FakeGameState.new()
+	var shell := await _oeffne_shell(gs)
+	var zustand := {"zu": false}
+	shell.geschlossen.connect(func() -> void: zustand["zu"] = true)
+	var geraet: PanelContainer = shell.find_child("Geraet", true, false)
+	var rest_y := geraet.position.y
+	# 2×30 px = 60 px < Schwelle 90 px — Finger bleibt liegen.
+	_wische(shell, Vector2(300.0, 100.0), Vector2(0.0, 30.0), 2, 0.0, false)
+	assert_almost(geraet.position.y, rest_y + 60.0, 1.0, "Gerät folgt dem Finger (+60 px)")
+	assert_true(shell._scrim.modulate.a < 1.0, "Scrim hellt beim Zug auf")
+	assert_false(zustand["zu"], "unter der Schwelle: noch offen")
+	# Loslassen: RM = sofortiger Snap in die Ruhelage, Telefon bleibt auf.
+	var ende := InputEventScreenTouch.new()
+	ende.pressed = false
+	shell._on_geraet_input(ende)
+	await wait_frames(2)
+	assert_almost(geraet.position.y, rest_y, 1.0, "Loslassen: zurück in die Ruhelage")
+	assert_almost(shell._scrim.modulate.a, 1.0, 0.01, "Scrim wieder voll da")
+	assert_false(zustand["zu"], "Kurz-Wisch schließt NICHT")
+	await _schliesse_shell(shell)
+	await _unpin()
+	_restore_reduced_motion(rm)
+
+
+## Flick: ein kurzer, schneller Abwärts-Wisch (Weg < Schwelle, Tempo über
+## GESTE_FLICK_PXPS) schließt das Telefon beim Loslassen trotzdem.
+func test_flick_schliesst_auch_unter_der_wegschwelle() -> void:
+	var rm: Variant = _set_reduced_motion(true)
+	await _pin(Vector2i(1280, 720))
+	var gs := FakeGameState.new()
+	var shell := await _oeffne_shell(gs)
+	var zustand := {"zu": false}
+	shell.geschlossen.connect(func() -> void: zustand["zu"] = true)
+	_wische(shell, Vector2(300.0, 100.0), Vector2(0.0, 20.0), 3, 2400.0)
+	await wait_frames(2)
+	assert_true(zustand["zu"], "Flick (60 px, 2400 px/s) schließt das Telefon")
+	await _unpin()
+	_restore_reduced_motion(rm)
+
+
 # ------------------------------------------------------- Öffnen-Animation
 
 
@@ -392,6 +452,73 @@ func test_oeffnen_animation_poppt_und_respektiert_rm() -> void:
 	assert_true(geraet.scale.is_equal_approx(Vector2.ONE), "RM: keine Pop-Bewegung")
 	assert_almost(geraet.modulate.a, 1.0, 0.001, "RM: sofort sichtbar")
 	await _schliesse_shell(shell)
+	await _unpin()
+	_restore_reduced_motion(rm)
+
+
+# ------------------------------------------------- Schließ-Animation (R2)
+
+
+## Schließen fährt animiert aus: `geschlossen` feuert erst NACH dem Fade
+## (Gerät sinkt + blendet aus, FadeBlocker schluckt Rest-Taps); Reduced
+## Motion springt sofort. Doppel-schliesse() feuert genau EINMAL.
+func test_schliess_animation_faehrt_aus_und_rm_springt() -> void:
+	await _pin(Vector2i(1280, 720))
+	var gs := FakeGameState.new()
+	# RM AUS: Emit kommt verzögert, das Gerät sinkt und blendet aus.
+	var rm: Variant = _set_reduced_motion(false)
+	var shell := await _oeffne_shell(gs)
+	var geraet: PanelContainer = shell.find_child("Geraet", true, false)
+	var rest_y := geraet.position.y
+	# Messwerte IM Signal-Handler einfangen — nach dem Emit räumt der
+	# IGohbieLayer per queue_free auf, danach wäre `geraet` freigegeben.
+	var zustand := {"anzahl": 0, "y": 0.0, "alpha": 1.0}
+	shell.geschlossen.connect(
+		func() -> void:
+			zustand["anzahl"] += 1
+			zustand["y"] = geraet.position.y
+			zustand["alpha"] = geraet.modulate.a
+	)
+	shell.schliesse()
+	shell.schliesse()
+	assert_eq(zustand["anzahl"], 0, "geschlossen feuert nicht sofort (Animation läuft)")
+	assert_true(shell.find_child("FadeBlocker", true, false) != null, "FadeBlocker schützt")
+	var fertig := await wait_until(func() -> bool: return int(zustand["anzahl"]) > 0)
+	assert_true(fertig, "geschlossen feuert am Animations-Ende")
+	assert_eq(zustand["anzahl"], 1, "Doppel-schliesse() feuert genau EINMAL")
+	assert_true(float(zustand["y"]) > rest_y + 1.0, "Gerät ist nach unten ausgefahren")
+	assert_true(float(zustand["alpha"]) < 0.1, "Gerät ist ausgeblendet")
+	await wait_frames(2)
+	# RM AN: sofortiges Emit im selben Aufruf.
+	_set_reduced_motion(true)
+	shell = await _oeffne_shell(gs)
+	var zustand2 := {"anzahl": 0}
+	shell.geschlossen.connect(func() -> void: zustand2["anzahl"] += 1)
+	shell.schliesse()
+	assert_eq(zustand2["anzahl"], 1, "RM: geschlossen feuert sofort")
+	await _unpin()
+	_restore_reduced_motion(rm)
+
+
+## Scrim-Tap schließt auch per TOUCH (P53-Backdrop-Befund: auf Geräten
+## ohne Maus-Emulation kam kein MouseButton-Event an) — und der
+## _schliesst-Guard schluckt das doppelt emulierte Maus-Event.
+func test_scrim_schliesst_per_touch_und_maus_ohne_doppelung() -> void:
+	var rm: Variant = _set_reduced_motion(true)
+	await _pin(Vector2i(1280, 720))
+	var gs := FakeGameState.new()
+	var shell := await _oeffne_shell(gs)
+	var zustand := {"anzahl": 0}
+	shell.geschlossen.connect(func() -> void: zustand["anzahl"] += 1)
+	var touch := InputEventScreenTouch.new()
+	touch.pressed = true
+	shell._on_scrim_input(touch)
+	var maus := InputEventMouseButton.new()
+	maus.pressed = true
+	maus.button_index = MOUSE_BUTTON_LEFT
+	shell._on_scrim_input(maus)
+	await wait_frames(2)
+	assert_eq(zustand["anzahl"], 1, "Touch schließt, das Maus-Duplikat wird geschluckt")
 	await _unpin()
 	_restore_reduced_motion(rm)
 
