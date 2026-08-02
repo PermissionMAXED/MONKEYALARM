@@ -17,7 +17,9 @@ extends Control
 ## API (FROZEN für W14-Screen-Agents):
 ##   AcBubble.show_bubble(layer, text, opts) -> AcBubble
 ##   opts: "speaker_3d": Node3D, "dauer_s": float (3.5), "tail": bool,
-##         "stil": "gooby" | "system" | "witz"
+##         "stil": "gooby" | "system" | "witz",
+##         "duck": bool (true) — false für AMBIENT-Geplauder (OrtLeben-
+##         Besucher), das die Musik NICHT ducken soll (AUDIO-GRAMMATIK)
 ##   bubble.ersetze_text(text) -> bool   (lebende Blase wiederverwenden —
 ##   Dauersprecher wie RoomBase.say stauen so keine Nodes auf)
 ##
@@ -54,6 +56,8 @@ static var warteschlange := Warteschlange.new()
 var stil := STIL_GOOBY
 var dauer_s := DAUER_DEFAULT_S
 var tail_an := true
+## false = Ambient-Geplauder (Laden-Besucher): duckt die Musik NICHT.
+var duck_an := true
 var speaker_3d: Node3D = null
 ## Tests: false setzen und `advance_time(delta)` von Hand füttern
 ## (AGENTS.md-Regel „Zeit injizieren“ — kein OS-Takt im Testpfad).
@@ -70,6 +74,9 @@ var _wartet := false
 var _versteckt_sich := false
 var _pop_fertig := false
 var _pop_tween: Tween
+## Dialog-Ducking (AUDIO-GRAMMATIK): der Director, bei dem DIESE Blase
+## angemeldet ist — duck_end() geht auf GENAU diese Instanz (balanciert).
+var _duck_ref: AudioDirector
 
 
 ## PURE Queue-Logik (headless testbar, tests/unit/test_w14_uikern.gd):
@@ -118,6 +125,7 @@ static func show_bubble(layer: Node, text: String, opts: Dictionary = {}) -> AcB
 	bubble.stil = str(opts.get("stil", STIL_GOOBY))
 	bubble.dauer_s = maxf(0.1, float(opts.get("dauer_s", DAUER_DEFAULT_S)))
 	bubble.tail_an = bool(opts.get("tail", true))
+	bubble.duck_an = bool(opts.get("duck", true))
 	var speaker: Variant = opts.get("speaker_3d")
 	if speaker is Node3D:
 		bubble.speaker_3d = speaker
@@ -147,6 +155,7 @@ func _exit_tree() -> void:
 	# abmelden ist idempotent — doppeltes Austragen fördert nie zu viel).
 	if _kapsel != null:
 		UiAnchors.release(UiAnchors.ZONE_BOTTOM, _kapsel)
+	_duck_freigeben()
 	_nachruecker_starten()
 
 
@@ -285,6 +294,7 @@ func _starten() -> void:
 		return
 	_wartet = false
 	visible = true
+	_duck_anmelden()
 	UiAnchors.reserve(UiAnchors.ZONE_BOTTOM, _kapsel)
 	_typewriter.start(_voller_text, _sofort_modus())
 	_zeige_zeichen()
@@ -305,6 +315,7 @@ func _ausblenden() -> void:
 	if _versteckt_sich:
 		return
 	_versteckt_sich = true
+	_duck_freigeben()
 	UiAnchors.release(UiAnchors.ZONE_BOTTOM, _kapsel)
 	# Nachrücker SOFORT starten (nicht erst nach dem Shrink-Tween) — die
 	# Queue hängt damit nie an Tween-Echtzeit (Tests injizieren Zeit).
@@ -328,6 +339,24 @@ func _nachruecker_starten() -> void:
 	var naechster: Variant = warteschlange.abmelden(self)
 	if naechster is AcBubble and is_instance_valid(naechster):
 		(naechster as AcBubble)._starten()
+
+
+## AUDIO-GRAMMATIK „Dialog-Ducking“: solange die Blase SPRICHT (gooby/
+## witz — System-Hinweise und Ambient-Geplauder mit duck:false ducken
+## nicht), treten Musik und Ambience-Loops einen Schritt zurück.
+## Ref-gezählt im AudioDirector — mehrere Blasen ducken genau EINMAL.
+func _duck_anmelden() -> void:
+	if stil == STIL_SYSTEM or not duck_an or _duck_ref != null:
+		return
+	_duck_ref = AudioDirector.try_duck_begin(self)
+
+
+func _duck_freigeben() -> void:
+	if _duck_ref == null:
+		return
+	if is_instance_valid(_duck_ref):
+		_duck_ref.duck_end()
+	_duck_ref = null
 
 
 func _pop_in() -> void:

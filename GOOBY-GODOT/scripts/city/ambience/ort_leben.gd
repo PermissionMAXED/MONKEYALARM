@@ -53,6 +53,10 @@ const GLOCKE_ID := "gvz_wave"
 const GLOCKE_PITCH := 1.35
 ## Leises Marktgemurmel (Bestands-Loop aus der Ranch-Familie, −10 dB).
 const GEMURMEL_ID := "ranch_menge_gemurmel"
+## Ambience-Polish: das Gemurmel skaliert mit der ECHTEN Besucherschar —
+## ein halb leerer Laden (Reduced Motion halbiert) murmelt hörbar leiser.
+const GEMURMEL_LEER_DB := -6.0
+const GEMURMEL_JE_BESUCHER_DB := 1.5
 ## Hut-Palette (AC-Pastell, bewusst ≠ Fellfarben).
 const HUT_FARBEN: Array[String] = ["#E8524A", "#4E79D6", "#3E8E5A", "#F2A03D"]
 ## Seitlicher Zufalls-Versatz je Wegpunkt (m) — Besucher stapeln sich nie.
@@ -98,7 +102,7 @@ func _ready() -> void:
 	if bool(konfig.get("tuer_glocke", false)) and not stumm:
 		AudioDirector.try_play(self, GLOCKE_ID, GLOCKE_PITCH)
 	if bool(konfig.get("gemurmel", false)) and not stumm:
-		AudioDirector.try_start_loop(self, GEMURMEL_ID)
+		AudioDirector.try_start_loop(self, GEMURMEL_ID, gemurmel_offset_db(_besucher.size()))
 		_gemurmel_an = true
 	_update_besucher()
 	set_process(not _besucher.is_empty())
@@ -247,6 +251,13 @@ static func _zustand_still(pos: Vector3) -> Dictionary:
 	return {
 		"pos": pos, "heading": 0.0, "steht": true, "pause_frac": 0.0, "punkt_index": 0, "runde": 0
 	}
+
+
+## Gemurmel-Feinpegel (ZUSÄTZLICH zum SfxMap-Trim) nach Besucherzahl:
+## leer −6 dB, ab 4 Besuchern der volle Bestands-Pegel (PURE, testbar).
+static func gemurmel_offset_db(besucher: int) -> float:
+	var offset := GEMURMEL_LEER_DB + GEMURMEL_JE_BESUCHER_DB * float(maxi(besucher, 0))
+	return clampf(offset, GEMURMEL_LEER_DB, 0.0)
 
 
 ## Nächste Spruch-Zeile einer Domain (Rotation, Muster UrlaubsSprueche).
@@ -402,8 +413,12 @@ func _update_sprueche(delta: float) -> void:
 		var text := naechster_spruch(domain)
 		if text.is_empty():
 			return
+		# Ambient-Geplauder ist Teil der Laden-ATMO und duckt die Musik
+		# NICHT (duck:false) — das bleibt dem echten Dialog vorbehalten.
 		AcBubble.show_bubble(
-			ui_layer, text, {"speaker_3d": eintrag["node"], "dauer_s": SPRUCH_DAUER_S}
+			ui_layer,
+			text,
+			{"speaker_3d": eintrag["node"], "dauer_s": SPRUCH_DAUER_S, "duck": false}
 		)
 		return
 

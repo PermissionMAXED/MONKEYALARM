@@ -30,6 +30,9 @@ var _hud_ref: Control
 var _typewriter := DialogTypewriter.new()
 ## Szenen-Oberkante der Kapsel (tscn) — Basis für den Höhen-Pass pro Zeile.
 var _szenen_offset_top := 0.0
+## Dialog-Ducking (AUDIO-GRAMMATIK): der Director, bei dem DIESE Sequenz
+## angemeldet ist — duck_end() geht auf GENAU diese Instanz (balanciert).
+var _duck_ref: AudioDirector
 
 @onready var _bubble: PanelContainer = %Bubble
 @onready var _text: Label = %BubbleText
@@ -55,6 +58,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if _bubble != null:
 		UiAnchors.release(UiAnchors.ZONE_BOTTOM, _bubble)
+	_duck_freigeben()
 
 
 ## Sequenz anzeigen (ersetzt eine laufende Sequenz).
@@ -64,9 +68,27 @@ func show_lines(lines: Array[String]) -> void:
 	_lines = lines.duplicate()
 	_index = -1
 	visible = true
+	_duck_anmelden()
 	UiAnchors.reserve(UiAnchors.ZONE_BOTTOM, _bubble)
 	_relayout()
 	_advance()
+
+
+## AUDIO-GRAMMATIK „Dialog-Ducking“: solange die Zeilen-Sequenz sichtbar
+## ist, treten Musik und Ambience-Loops einen Schritt zurück (ref-gezählt
+## im AudioDirector — parallele Blasen ducken zusammen genau EINMAL).
+func _duck_anmelden() -> void:
+	if _duck_ref != null:
+		return
+	_duck_ref = AudioDirector.try_duck_begin(self)
+
+
+func _duck_freigeben() -> void:
+	if _duck_ref == null:
+		return
+	if is_instance_valid(_duck_ref):
+		_duck_ref.duck_end()
+	_duck_ref = null
 
 
 ## UIFINAL: Im Home-HUD-Kontext lag die Blase HINTER der Boden-Zeile (Auge/
@@ -190,6 +212,7 @@ func _advance() -> void:
 	if _index >= _lines.size():
 		visible = false
 		UiAnchors.release(UiAnchors.ZONE_BOTTOM, _bubble)
+		_duck_freigeben()
 		finished.emit()
 		return
 	_text.text = _lines[_index]

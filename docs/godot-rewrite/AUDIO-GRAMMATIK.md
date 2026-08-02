@@ -42,6 +42,22 @@ wellenweise mit und scannt reparierte Builder/Screens.
   Loops/Ambience −6…−12), danach `python3 tools/audio/ef2_manifest.py`
   (sonst reißt `test_ef2_audio_levels.gd`). Musik bleibt −13 dB unter dem
   Sfx-Bus (Test erzwingt 6–10 dB Abstand).
+- **Dialog-Ducking:** Solange eine SPRECHENDE Blase offen ist (AcBubble in
+  den Stilen `gooby`/`witz`, DialogBubble-Zeilen), weichen Musik (−6 dB auf
+  dem Music-Bus) und AudioDirector-Ambience-Loops (−5 dB) zurück — weiche
+  Flanken 0,25 s rein / 0,6 s raus, ref-gezählt (mehrere Blasen ducken
+  genau EINMAL, die letzte gibt frei). Verdrahtung NUR über das Paar
+  `AudioDirector.try_duck_begin(self)` (Rückgabe-Instanz MERKEN) →
+  `duck_end()` auf genau dieser Instanz. System-Blasen (`system`-Stil),
+  Toasts und AMBIENT-Geplauder ducken NICHT — Laden-Besucher-Sprüche sind
+  Teil der Atmo und laufen über `AcBubble`-opts `"duck": false`
+  (OrtLeben macht das vor). Keine eigene Bus-Fummelei in Screens; Wache:
+  `tests/unit/test_audio_ducking.gd`.
+- **Ambience-Loops** laufen über `AudioDirector.try_start_loop/try_stop_loop`
+  (keine eigenen AudioStreamPlayer): sie blenden 0,9 s weich ein, Betten
+  (> 2 s) starten an zufälliger Loop-Stelle (klingt nie zweimal identisch),
+  und der optionale `offset_db`-Feinpegel sitzt ZUSÄTZLICH zum SfxMap-Trim
+  (z. B. Laden-Gemurmel nach Besucherzahl via `OrtLeben.gemurmel_offset_db`).
 - Der 45-ms-Debounce des AudioDirector schluckt Doppel-Trigger derselben Id —
   trotzdem Doppel-Verdrahtung vermeiden. Erfolgs-Toasts bleiben stumm
   (`ui_toast` nur deklarativ in Cutscenes/FeelEmotions — nicht „aufräumen“).
