@@ -13,12 +13,19 @@ extends RefCounted
 ##   v, gekauft (bool), gekauftAm (ms), angebotGesehen, angebotVerschoben,
 ##   erstbesuchGesehen (Story-Beat §1.3 einmalig),
 ##   lager {wareId: menge}  (ohne Verfall, §4.3),
+##   preise {gruppeId: faktor}  (Preis-Schieber je Warengruppe, §4.4 — der
+##     Richtwert 1.0 wird NICHT gespeichert, „empfohlen“ ist der Grundzustand),
 ##   umsatz {tage, gestern, gesamt}  (Kassensturz-Zettel, §2.3)
 
 const SaveSchema := preload("res://scripts/state/save_schema.gd")
 
 const SLICE_ID := "dlc"
 const KEY := "goobye"
+
+## Harte Heil-Klemme der gespeicherten Schieber-Faktoren (die LIVE-Spanne
+## kommt beim Lesen aus dem Balance-Pack; normalize bleibt Registry-frei).
+const FAKTOR_HEIL_MIN := 0.1
+const FAKTOR_HEIL_MAX := 1.9
 
 static var _registered := false
 
@@ -45,6 +52,7 @@ static func default_goobye() -> Dictionary:
 		"angebotVerschoben": false,
 		"erstbesuchGesehen": false,
 		"lager": {},
+		"preise": {},
 		"umsatz": {"tage": 0, "gestern": 0, "gesamt": 0},
 	}
 
@@ -72,6 +80,13 @@ static func normalize_goobye(raw: Variant) -> Dictionary:
 		if menge > 0:
 			heil_lager[str(ware_id)] = menge
 	goobye["lager"] = heil_lager
+	var preise: Dictionary = goobye.get("preise") if goobye.get("preise") is Dictionary else {}
+	var heil_preise: Dictionary = {}
+	for gruppe_id: Variant in preise:
+		var faktor := clampf(float(preise[gruppe_id]), FAKTOR_HEIL_MIN, FAKTOR_HEIL_MAX)
+		if not is_equal_approx(faktor, 1.0):
+			heil_preise[str(gruppe_id)] = faktor
+	goobye["preise"] = heil_preise
 	var umsatz: Dictionary = goobye.get("umsatz") if goobye.get("umsatz") is Dictionary else {}
 	for feld: String in ["tage", "gestern", "gesamt"]:
 		umsatz[feld] = maxi(0, int(umsatz.get(feld, 0)))
@@ -156,6 +171,50 @@ static func lager_setzen(gs: Object, lager: Dictionary) -> void:
 		func(state: Dictionary) -> void:
 			var goobye := ensure_goobye(state)
 			goobye["lager"] = heil
+	)
+	gs.notify_slice_changed(SLICE_ID)
+
+
+## Preis-Schieber-Stellungen je Warengruppe (§4.4): gruppeId → Faktor, beim
+## Lesen auf die LIVE-Spanne geklemmt (das Balance-Pack kann sie ändern).
+static func preise_von(gs: Object) -> Dictionary:
+	if gs == null:
+		return {}
+	var raw: Variant = gs.get_value("dlc.goobye.preise", {})
+	var out: Dictionary = {}
+	if raw is Dictionary:
+		for gruppe_id: Variant in raw:
+			out[str(gruppe_id)] = GoobyePreis.faktor_begrenzen(float(raw[gruppe_id]))
+	return out
+
+
+## Preis-Schieber setzen (§4.4): der Faktor wird auf die Spanne geklemmt,
+## der Richtwert (≈1.0) räumt den Eintrag — „empfohlener Preis“ ist der
+## saubere Grundzustand, kein gespeicherter Sonderfall.
+static func preis_setzen(gs: Object, gruppe_id: String, faktor: float) -> void:
+	if gs == null or gruppe_id.is_empty():
+		return
+	var geklemmt := GoobyePreis.faktor_begrenzen(faktor)
+	gs.update(
+		func(state: Dictionary) -> void:
+			var goobye := ensure_goobye(state)
+			var preise: Dictionary = goobye["preise"]
+			if is_equal_approx(geklemmt, 1.0):
+				preise.erase(gruppe_id)
+			else:
+				preise[gruppe_id] = geklemmt
+	)
+	gs.notify_slice_changed(SLICE_ID)
+
+
+## „Empfohlener Preis“-Knopf (§2.5): alle Gruppen zurück auf den Richtwert.
+static func preise_zuruecksetzen(gs: Object) -> void:
+	if gs == null:
+		return
+	gs.update(
+		func(state: Dictionary) -> void:
+			var goobye := ensure_goobye(state)
+			goobye["preise"] = {}
 	)
 	gs.notify_slice_changed(SLICE_ID)
 

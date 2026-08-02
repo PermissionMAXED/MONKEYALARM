@@ -75,6 +75,7 @@ var umsatz_heute := 0
 var _gs: Object = null
 var _regal: Dictionary = {}
 var _lager: Dictionary = {}
+var _faktoren: Dictionary = {}
 var _tagesplan: Dictionary = {}
 var _bon_idx := 0
 var _kunde: GoobyRig = null
@@ -96,7 +97,8 @@ var _lager_label: Label
 var _slot_knoepfe: Array[Button] = []
 var _leiste: HFlowContainer
 var _oeffnen_knopf: Button
-var _nachschub_knopf: Button
+var _grossmarkt_knopf: Button
+var _preise_knopf: Button
 var _intro_overlay: Control
 var _intro_knopf: Button
 var _abschluss_overlay: Control
@@ -108,6 +110,7 @@ func _ready() -> void:
 	GoobyeState.register_slice()
 	_gs = game_state()
 	_lager = GoobyeState.lager_von(_gs)
+	_faktoren = GoobyeState.preise_von(_gs)
 	_regal = GoobyeRegal.neues_regal()
 	_baue_raum()
 	_baue_requisiten()
@@ -177,9 +180,11 @@ func laden_oeffnen() -> void:
 	phase = PHASE_OFFEN
 	umsatz_heute = 0
 	_bon_idx = 0
+	# Preis-Schieber (§4.4): die Gruppen-Faktoren wandern als Waren-Faktoren
+	# in den deterministischen Tagesplan — die Kasse piept dann echte Preise.
 	_tagesplan = GoobyeMarkttag.tag_planen(
 		_seed(),
-		GoobyeRegal.sortiment_von(_regal),
+		GoobyeRegal.sortiment_von(_regal, GoobyePreis.waren_faktoren(_faktoren)),
 		{"kunden_min": KUNDEN_MIN, "kunden_max": KUNDEN_MAX}
 	)
 	AudioDirector.try_play(self, "ui_confirm")
@@ -313,74 +318,51 @@ func _bestand_sichern() -> void:
 	GoobyeState.lager_setzen(_gs, _lager)
 
 
-## ------------------------------------------------------------ Nachschub
+## ------------------------------------------------------ Großmarkt & Preise
 
 
-## Nachschub-Sheet (§2.2 Großmarkt light): 1 Stück je Tap zum
-## Einkaufspreis (GoobyePreis) — Welle B fährt dafür wirklich mit dem Auto.
-func _zeige_nachschub() -> void:
+## Großmarkt-Bestell-Sheet (§4.1): ±-Stepper je Ware, Staffelpreis, Buchung
+## atomar — Anzeige und Rechnen wohnen in GoobyeBestellSheet/GoobyeGrossmarkt.
+func _zeige_grossmarkt() -> void:
 	if _sheet == null:
 		return
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 8)
-	var hinweis := Label.new()
-	hinweis.theme_type_variation = &"CaptionLabel"
-	hinweis.text = I18nService.t("dlc_goobye.nachschub.hinweis")
-	hinweis.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(hinweis)
-	for ware: Dictionary in GoobyeKatalog.waren():
-		var knopf := SquishButton.new()
-		knopf.name = "Nachschub_" + str(ware["id"])
-		knopf.theme_type_variation = &"BtnGhost"
-		knopf.text = (
-			I18nService
-			. t(
-				"dlc_goobye.nachschub.zeile",
-				{
-					"name": I18nService.t(str(ware.get("name_key", ""))),
-					"preis": GoobyePreis.einkaufspreis(ware),
-				}
-			)
-		)
-		knopf.focus_mode = Control.FOCUS_NONE
-		knopf.custom_minimum_size = Vector2(0.0, AcTokens.TOUCH_FLOOR)
-		knopf.pressed.connect(_nachschub_kaufen.bind(str(ware["id"])))
-		box.add_child(knopf)
-	_sheet.set_title(I18nService.t("dlc_goobye.nachschub.titel"))
-	_sheet.add_content(box)
+	var inhalt := GoobyeBestellSheet.new()
+	inhalt.gs = _gs
+	inhalt.bestellt.connect(_on_bestellt)
+	_sheet.set_title(I18nService.t("dlc_goobye.grossmarkt.titel"))
+	_sheet.add_content(inhalt)
 	_sheet.open()
 
 
-## Einkauf ATOMAR in EINEM update-Block: Münzen runter UND Lager rauf.
-func _nachschub_kaufen(ware_id: String) -> void:
-	var ware := GoobyeKatalog.ware(ware_id)
-	if ware.is_empty() or _gs == null:
-		return
-	var preis := GoobyePreis.einkaufspreis(ware)
-	# Einelementiges Array als Rückkanal (Lambda fängt per Wert).
-	var bezahlt := [false]
-	_gs.update(
-		func(state: Dictionary) -> void:
-			if not Economy.spend(state["economy"], preis, "gooundbye_einkauf"):
-				return
-			bezahlt[0] = true
-			var goobye := GoobyeState.ensure_goobye(state)
-			var lager: Dictionary = goobye["lager"]
-			lager[ware_id] = int(lager.get(ware_id, 0)) + 1
-	)
-	if not bool(bezahlt[0]):
-		AudioDirector.try_play(self, "ui_error")
-		_zeige_toast(I18nService.t("dlc_goobye.nachschub.zu_teuer"))
-		return
-	_gs.notify_slice_changed(GoobyeState.SLICE_ID)
-	_lager[ware_id] = int(_lager.get(ware_id, 0)) + 1
-	AudioDirector.try_play(self, "ui_buy")
+## Bestellung eingelagert: der Save ist schon gebucht (atomar), hier zieht
+## nur die lokale Lager-Kopie nach + Toast mit dem Lieferumfang.
+func _on_bestellt(zettel: Dictionary) -> void:
+	for position: Dictionary in zettel.get("positionen", []):
+		var id := str(position["id"])
+		_lager[id] = int(_lager.get(id, 0)) + int(position["menge"])
 	_lager_label_aktualisieren()
 	_zeige_toast(
 		I18nService.t(
-			"dlc_goobye.nachschub.gekauft", {"name": I18nService.t(str(ware.get("name_key", "")))}
+			"dlc_goobye.grossmarkt.bestellt",
+			{"stueck": int(zettel.get("stueck", 0)), "summe": int(zettel.get("summe", 0))}
 		)
 	)
+
+
+## Preis-Schieber-Sheet (§4.4): pro Warengruppe ±Spanne, sofort gespeichert.
+func _zeige_preise() -> void:
+	if _sheet == null:
+		return
+	var inhalt := GoobyePreisSheet.new()
+	inhalt.gs = _gs
+	inhalt.geaendert.connect(_on_preise_geaendert)
+	_sheet.set_title(I18nService.t("dlc_goobye.preise.titel"))
+	_sheet.add_content(inhalt)
+	_sheet.open()
+
+
+func _on_preise_geaendert() -> void:
+	_faktoren = GoobyeState.preise_von(_gs)
 
 
 ## ---------------------------------------------------------------- 3D-Aufbau
@@ -611,18 +593,25 @@ func _baue_ui() -> void:
 	_oeffnen_knopf.text = I18nService.t("dlc_goobye.laden.oeffnen")
 	_oeffnen_knopf.focus_mode = Control.FOCUS_NONE
 	_oeffnen_knopf.pressed.connect(laden_oeffnen)
-	_nachschub_knopf = SquishButton.new()
-	_nachschub_knopf.name = "Nachschub"
-	_nachschub_knopf.theme_type_variation = &"BtnTeal"
-	_nachschub_knopf.text = I18nService.t("dlc_goobye.laden.nachschub")
-	_nachschub_knopf.focus_mode = Control.FOCUS_NONE
-	_nachschub_knopf.pressed.connect(_zeige_nachschub)
+	_grossmarkt_knopf = SquishButton.new()
+	_grossmarkt_knopf.name = "Grossmarkt"
+	_grossmarkt_knopf.theme_type_variation = &"BtnTeal"
+	_grossmarkt_knopf.text = I18nService.t("dlc_goobye.laden.grossmarkt")
+	_grossmarkt_knopf.focus_mode = Control.FOCUS_NONE
+	_grossmarkt_knopf.pressed.connect(_zeige_grossmarkt)
+	_preise_knopf = SquishButton.new()
+	_preise_knopf.name = "Preise"
+	_preise_knopf.theme_type_variation = &"BtnGhost"
+	_preise_knopf.text = I18nService.t("dlc_goobye.laden.preise")
+	_preise_knopf.focus_mode = Control.FOCUS_NONE
+	_preise_knopf.pressed.connect(_zeige_preise)
 	_leiste = HFlowContainer.new()
 	_leiste.name = "LadenKnoepfe"
 	_leiste.alignment = FlowContainer.ALIGNMENT_CENTER
 	_leiste.add_theme_constant_override("h_separation", 10)
 	_leiste.add_theme_constant_override("v_separation", 8)
-	_leiste.add_child(_nachschub_knopf)
+	_leiste.add_child(_grossmarkt_knopf)
+	_leiste.add_child(_preise_knopf)
 	_leiste.add_child(_oeffnen_knopf)
 	_ui.add_child(_leiste)
 	_sheet = PanelSheetScene.instantiate()
@@ -873,8 +862,12 @@ func _knoepfe_aktualisieren() -> void:
 	var einraeumen := phase == PHASE_EINRAEUMEN
 	if _oeffnen_knopf != null:
 		_oeffnen_knopf.disabled = not einraeumen
-	if _nachschub_knopf != null:
-		_nachschub_knopf.disabled = not einraeumen
+	if _grossmarkt_knopf != null:
+		_grossmarkt_knopf.disabled = not einraeumen
+	# Der Tagesplan ist beim Öffnen fertig gerechnet — Schieber wirken erst
+	# morgen, deshalb ruhen sie während des Kundenstroms (keine Verwirrung).
+	if _preise_knopf != null:
+		_preise_knopf.disabled = not einraeumen
 	for knopf in _slot_knoepfe:
 		knopf.disabled = not einraeumen
 

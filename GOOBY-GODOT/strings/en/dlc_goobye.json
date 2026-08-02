@@ -40,10 +40,11 @@
 			"umsatz": "Till: {betrag}",
 			"lager": "Storage: {stueck} items",
 			"oeffnen": "Open the store!",
-			"nachschub": "Restock",
+			"grossmarkt": "Wholesale",
+			"preise": "Prices",
 			"erst_einraeumen": "Stock a shelf first — customers need something to grab!",
 			"regal_voll": "That slot is already full to the top.",
-			"lager_leer": "The storage is empty — get restock!",
+			"lager_leer": "The storage is empty — order from the wholesale market!",
 			"offen_toast": "The door says “Goo!” — customers incoming!",
 			"kunde_hinweis": "{name} is browsing…",
 			"kunde_alwin": "Uncle Alwin",
@@ -51,12 +52,24 @@
 			"kunde_familie": "The Hoppel family",
 			"kunde_hamster_gooby": "Hamster Gooby"
 		},
-		"nachschub": {
-			"titel": "Order restock",
-			"hinweis": "The wholesale market delivers to the store door — you pay wholesale, you sell at the suggested price.",
-			"zeile": "{name} · {preis}",
-			"gekauft": "Put 1× {name} into storage.",
+		"grossmarkt": {
+			"titel": "Wholesale order",
+			"hinweis": "Behind REHWEI the trade ramp opens for shopkeepers — the wholesale Gooby whispers: “Strictly between us merchants.” Delivered right to the store door.",
+			"staffel": "From {ab} of one item: −{rabatt} % bulk price on the line.",
+			"zeile": "{name} · cost {preis}",
+			"summe": "Order slip: {stueck} items · {summe} coins",
+			"bestellen": "Order!",
+			"bestellt": "Stocked: {stueck} items for {summe} coins.",
+			"leer": "The order slip is still empty — tap + first.",
 			"zu_teuer": "Not quite enough coins for that."
+		},
+		"preise": {
+			"titel": "Set prices",
+			"hinweis": "One slider per product group, ±{spanne} % around the guide price: pricier earns more per item, cheaper fills bigger baskets.",
+			"empfohlen": "All to recommended price",
+			"richtwert": "{name} · guide price",
+			"prozent": "{name} · {wert} %",
+			"beispiel": "{name}: {preis} instead of {richtwert}"
 		},
 		"abschluss": {
 			"titel": "Till count!",

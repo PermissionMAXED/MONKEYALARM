@@ -40,10 +40,11 @@
 			"umsatz": "Kasse: {betrag}",
 			"lager": "Lager: {stueck} Stück",
 			"oeffnen": "Laden öffnen!",
-			"nachschub": "Nachschub",
+			"grossmarkt": "Großmarkt",
+			"preise": "Preise",
 			"erst_einraeumen": "Erst ein Regal einräumen — die Kundschaft braucht etwas zum Zugreifen!",
 			"regal_voll": "Der Slot ist schon voll bis oben.",
-			"lager_leer": "Das Lager ist leer — hol Nachschub!",
+			"lager_leer": "Das Lager ist leer — bestell beim Großmarkt!",
 			"offen_toast": "Die Tür sagt „Goo!“ — Kundschaft kommt!",
 			"kunde_hinweis": "{name} stöbert…",
 			"kunde_alwin": "Onkel Alwin",
@@ -51,12 +52,24 @@
 			"kunde_familie": "Familie Hoppel",
 			"kunde_hamster_gooby": "Hamster-Gooby"
 		},
-		"nachschub": {
-			"titel": "Nachschub bestellen",
-			"hinweis": "Der Großmarkt liefert bis zur Ladentür — Einkaufspreis, verkauft wird zum Richtwert.",
-			"zeile": "{name} · {preis}",
-			"gekauft": "1× {name} ins Lager gelegt.",
+		"grossmarkt": {
+			"titel": "Großmarkt-Bestellung",
+			"hinweis": "Hinter REHWEI öffnet die Rampe für Händler — der Großmarkt-Gooby flüstert: „Das bleibt unter uns Händlern.“ Geliefert wird bis zur Ladentür.",
+			"staffel": "Ab {ab} Stück einer Ware: −{rabatt} % Staffelpreis auf die Position.",
+			"zeile": "{name} · EK {preis}",
+			"summe": "Bestellzettel: {stueck} Stück · {summe} Münzen",
+			"bestellen": "Bestellen!",
+			"bestellt": "Eingelagert: {stueck} Stück für {summe} Münzen.",
+			"leer": "Der Bestellzettel ist noch leer — erst mit + etwas draufsetzen.",
 			"zu_teuer": "Dafür reichen die Münzen gerade nicht."
+		},
+		"preise": {
+			"titel": "Preise machen",
+			"hinweis": "Ein Schieber pro Warengruppe, ±{spanne} % um den Richtwert: teurer bringt mehr pro Stück, billiger füllt die Körbe.",
+			"empfohlen": "Alle auf empfohlenen Preis",
+			"richtwert": "{name} · Richtwert",
+			"prozent": "{name} · {wert} %",
+			"beispiel": "{name}: {preis} statt {richtwert}"
 		},
 		"abschluss": {
 			"titel": "Kassensturz!",

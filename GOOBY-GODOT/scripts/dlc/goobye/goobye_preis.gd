@@ -63,3 +63,17 @@ static func griff_chance(faktor := 1.0) -> float:
 static func spontan_bonus(faktor := 1.0) -> float:
 	var f := faktor_begrenzen(faktor)
 	return clampf((1.0 - f) * SPONTAN_STEIGUNG, 0.0, SPONTAN_MAX)
+
+
+## Gruppen-Schieber → Waren-Faktoren (§4.4: der Schieber steht PRO
+## Warengruppe): jede Katalog-Ware erbt den geklemmten Faktor ihrer Gruppe
+## ({} = alles Richtwert). Passt direkt in GoobyeRegal.sortiment_von.
+static func waren_faktoren(gruppen_faktoren: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if gruppen_faktoren.is_empty():
+		return out
+	for ware: Dictionary in GoobyeKatalog.waren():
+		var gruppe_id := str(ware.get("gruppe", ""))
+		if gruppen_faktoren.has(gruppe_id):
+			out[str(ware["id"])] = faktor_begrenzen(float(gruppen_faktoren[gruppe_id]))
+	return out

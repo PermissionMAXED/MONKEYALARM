@@ -1,10 +1,13 @@
 extends TestCase
-## G5/P24 DLC-GOOBYE-A — Integration des „Goo und Bye“: Hub-Status nach dem
+## G5/P24 DLC-GOOBYE-A/B — Integration des „Goo und Bye“: Hub-Status nach dem
 ## Ranch-Muster (installiert/verfügbar/gesperrt), Kauf-Gate GoobyeKauf
 ## (atomar, Startlager aus dem Pack), Save-Slice dlc.goobye.* (GoobyeState),
 ## Angebots-Sheet (GoobyeOffer), Routen-Anmeldung, DE↔EN-String-Parität und
 ## die Laden-Szene: mountet headless, Story-Beat beim Erstbetreten, Regal-Tap,
 ## kompletter Markttag bis zur Kassensturz-Karte, Geometrie-Grundcheck.
+## Welle B (Großmarkt/Preise): atomare Bestell-Buchung, Bestell-Sheet mit
+## ±-Steppern, Preis-Schieber-Sheet (sofort gespeichert, „empfohlen“-Reset)
+## und der Beweis, dass der Schieber-Faktor WIRKLICH an der Kasse piept.
 
 const GameStateScript := preload("res://scripts/state/game_state.gd")
 const SaveSchema := preload("res://scripts/state/save_schema.gd")
@@ -189,6 +192,145 @@ func test_state_erstbesuch_umsatz_und_fremde_unterschluessel() -> void:
 	_teardown_gs(gs)
 
 
+## ------------------------------------------------------ Großmarkt & Preise
+
+
+func test_grossmarkt_bestellen_atomar() -> void:
+	GoobyeKatalog.reset_cache()
+	# Zettel: 10 Äpfel (Staffel, 38) + 2 Möhren (6) = 44 Münzen.
+	var korb := {"apple": 10, "carrot": 2}
+	var gs := _fresh_gs(12, 43)
+	assert_eq(GoobyeGrossmarkt.bestellen(gs, {}), GoobyeGrossmarkt.RESULT_LEER, "leerer Zettel")
+	assert_eq(GoobyeGrossmarkt.bestellen(gs, korb), GoobyeGrossmarkt.RESULT_BROKE, "1 zu wenig")
+	assert_eq(gs.get_value("economy.coins"), 43, "Pleite-Fall bucht NICHTS ab")
+	assert_eq(gs.get_value("dlc.goobye.lager"), {}, "…und lagert NICHTS ein (atomar)")
+	gs.set_value("economy.coins", 44)
+	assert_eq(GoobyeGrossmarkt.bestellen(gs, korb), GoobyeGrossmarkt.RESULT_OK)
+	assert_eq(gs.get_value("economy.coins"), 0, "exakt die Zettel-Summe abgebucht")
+	assert_eq(gs.get_value("dlc.goobye.lager"), {"apple": 10, "carrot": 2}, "alles im Lager")
+	gs.set_value("economy.coins", 6)
+	assert_eq(GoobyeGrossmarkt.bestellen(gs, {"carrot": 2}), GoobyeGrossmarkt.RESULT_OK)
+	assert_eq(gs.get_value("dlc.goobye.lager"), {"apple": 10, "carrot": 4}, "stapelt obendrauf")
+	_teardown_gs(gs)
+
+
+func test_state_preise_setzen_und_lesen() -> void:
+	GoobyeKatalog.reset_cache()
+	var gs := _fresh_gs(12, 0)
+	# Klemme auf die Spanne, Richtwert räumt den Eintrag.
+	GoobyeState.preis_setzen(gs, "gemuese", 0.42)
+	assert_eq(gs.get_value("dlc.goobye.preise"), {"gemuese": 0.7}, "auf −30 % geklemmt")
+	GoobyeState.preis_setzen(gs, "gemuese", 1.0)
+	assert_eq(gs.get_value("dlc.goobye.preise"), {}, "Richtwert wird nicht gespeichert")
+	GoobyeState.preis_setzen(gs, "obst", 1.3)
+	GoobyeState.preis_setzen(gs, "suesses", 0.9)
+	assert_eq(GoobyeState.preise_von(gs), {"obst": 1.3, "suesses": 0.9}, "Lese-Kopie komplett")
+	GoobyeState.preise_zuruecksetzen(gs)
+	assert_eq(GoobyeState.preise_von(gs), {}, "„empfohlen“ räumt alle Schieber")
+	_teardown_gs(gs)
+
+
+func test_bestell_sheet_stepper_und_kauf() -> void:
+	GoobyeKatalog.reset_cache()
+	var gs := _fresh_gs(12, 100)
+	var sheet := GoobyeBestellSheet.new()
+	sheet.gs = gs
+	var zettel_signal := [{}]
+	sheet.bestellt.connect(func(zettel: Dictionary) -> void: zettel_signal[0] = zettel)
+	tree.root.add_child(sheet)
+	await wait_frames(2)
+	# ±-Stepper: 3× plus, 1× minus → 2 Möhren auf dem Zettel (EK 3 → 6).
+	var plus: Button = sheet.find_child("Plus_carrot", true, false)
+	var minus: Button = sheet.find_child("Minus_carrot", true, false)
+	for _i in 3:
+		plus.pressed.emit()
+	minus.pressed.emit()
+	await wait_frames(1)
+	var menge: Label = sheet.find_child("Menge_carrot", true, false)
+	assert_eq(menge.text, "2", "Mengen-Anzeige folgt den Steppern")
+	var summe: Label = sheet.find_child("BestellSumme", true, false)
+	assert_eq(
+		summe.text,
+		I18nService.t("dlc_goobye.grossmarkt.summe", {"stueck": 2, "summe": 6}),
+		"Summen-Zeile lebt mit"
+	)
+	# Bestellen bucht atomar, leert den Zettel und feuert das Signal.
+	var bestellen: Button = sheet.find_child("Bestellen", true, false)
+	bestellen.pressed.emit()
+	await wait_frames(1)
+	assert_eq(gs.get_value("economy.coins"), 94, "Zettel-Summe abgebucht")
+	assert_eq(gs.get_value("dlc.goobye.lager"), {"carrot": 2}, "Lieferung im Lager")
+	assert_eq(int(zettel_signal[0].get("stueck", 0)), 2, "Signal trägt den Zettel")
+	assert_eq(menge.text, "0", "Zettel nach der Bestellung leer")
+	# Pleite-Fall: Hinweis-Zeile statt Buchung, Zettel bleibt stehen.
+	gs.set_value("economy.coins", 1)
+	plus.pressed.emit()
+	bestellen.pressed.emit()
+	await wait_frames(1)
+	var hinweis: Label = sheet.find_child("BestellHinweis", true, false)
+	assert_true(hinweis.visible, "Zu-teuer-Hinweis sichtbar")
+	assert_eq(hinweis.text, I18nService.t("dlc_goobye.grossmarkt.zu_teuer"))
+	assert_eq(gs.get_value("economy.coins"), 1, "nichts abgebucht")
+	assert_eq(menge.text, "1", "Zettel bleibt zum Nachbessern stehen")
+	sheet.queue_free()
+	await wait_frames(1)
+	_teardown_gs(gs)
+
+
+func test_preis_sheet_schieber_und_empfohlen() -> void:
+	GoobyeKatalog.reset_cache()
+	var gs := _fresh_gs(12, 0)
+	GoobyeState.preis_setzen(gs, "obst", 1.2)
+	var sheet := GoobyePreisSheet.new()
+	sheet.gs = gs
+	var geaendert := [0]
+	sheet.geaendert.connect(func() -> void: geaendert[0] += 1)
+	tree.root.add_child(sheet)
+	await wait_frames(2)
+	var obst: HSlider = sheet.find_child("PreisSlider_obst", true, false)
+	assert_almost(obst.value, 1.2, 1e-6, "gespeicherter Faktor steht am Schieber")
+	# Schieber bewegen speichert SOFORT und schreibt die Zeile um.
+	var gemuese: HSlider = sheet.find_child("PreisSlider_gemuese", true, false)
+	gemuese.value = 0.7
+	await wait_frames(1)
+	assert_eq(GoobyeState.preise_von(gs), {"obst": 1.2, "gemuese": 0.7}, "sofort im Save")
+	var wert: Label = sheet.find_child("PreisWert_gemuese", true, false)
+	assert_eq(
+		wert.text,
+		I18nService.t(
+			"dlc_goobye.preise.prozent",
+			{"name": I18nService.t("dlc_goobye.gruppe.gemuese"), "wert": "−30"}
+		),
+		"Wert-Zeile zeigt −30 %"
+	)
+	var beispiel: Label = sheet.find_child("PreisBeispiel_gemuese", true, false)
+	assert_eq(
+		beispiel.text,
+		I18nService.t(
+			"dlc_goobye.preise.beispiel",
+			{"name": I18nService.t("rewards.food.carrot"), "preis": 4, "richtwert": 5}
+		),
+		"Beispiel rechnet die Möhre vor (5 → 4)"
+	)
+	# „Empfohlener Preis“ setzt ALLE Schieber und den Save zurück.
+	var empfohlen: Button = sheet.find_child("PreisEmpfohlen", true, false)
+	empfohlen.pressed.emit()
+	await wait_frames(1)
+	assert_eq(GoobyeState.preise_von(gs), {}, "alle Gruppen zurück auf Richtwert")
+	assert_almost(obst.value, 1.0, 1e-6, "Schieber springen mit")
+	assert_eq(
+		wert.text,
+		I18nService.t(
+			"dlc_goobye.preise.richtwert", {"name": I18nService.t("dlc_goobye.gruppe.gemuese")}
+		),
+		"Wert-Zeile zeigt wieder Richtwert"
+	)
+	assert_true(geaendert[0] >= 2, "Szene wird über Änderungen informiert")
+	sheet.queue_free()
+	await wait_frames(1)
+	_teardown_gs(gs)
+
+
 ## ------------------------------------------------------------ Angebot & Routen
 
 
@@ -355,6 +497,49 @@ func test_laden_szene_kompletter_markttag() -> void:
 	for anzahl: Variant in (plan["verkauft"] as Dictionary).values():
 		verkauft += int(anzahl)
 	assert_eq(lager_danach, lager_start - verkauft, "kein Stück geht verloren")
+	_teardown_gs(gs)
+
+
+## Welle B (§4.4): der gespeicherte Gruppen-Schieber muss WIRKLICH an der
+## Kasse piepen — gleicher Seed, Referenzrechnung mit Waren-Faktor 0.7.
+func test_laden_szene_preisfaktor_wirkt() -> void:
+	GoobyeKatalog.reset_cache()
+	var gs := _fresh_gs(12, GoobyeKatalog.preis() + 50)
+	assert_eq(GoobyeKauf.kaufe(gs), GoobyeKauf.RESULT_OK, "Vorbereitung: Laden gekauft")
+	gs.set_value("dlc.goobye.erstbesuchGesehen", true)
+	GoobyeState.preis_setzen(gs, "obst", 0.7)
+	var szene: GoobyeLadenScene = LadenSzene.instantiate()
+	szene.game_state_override = gs
+	szene.seed_override = 4242
+	szene.tempo = 0.05
+	szene.auto_navigate = false
+	tree.root.add_child(szene)
+	await wait_frames(3)
+	# Slot 0 zieht die erste Lager-Ware in Katalog-Reihenfolge: 6 Äpfel.
+	szene.slot_tippen(0)
+	szene.laden_oeffnen()
+	var fertig := await wait_until(
+		func() -> bool: return szene.phase == GoobyeLadenScene.PHASE_ABSCHLUSS, 20000
+	)
+	assert_true(fertig, "Markttag läuft durch")
+	var plan := (
+		GoobyeMarkttag
+		. tag_planen(
+			4242,
+			[{"id": "apple", "bestand": 6, "faktor": 0.7}],
+			{
+				"kunden_min": GoobyeLadenScene.KUNDEN_MIN,
+				"kunden_max": GoobyeLadenScene.KUNDEN_MAX,
+			}
+		)
+	)
+	assert_true(int(plan["umsatz"]) > 0, "Referenz-Tag verkauft etwas")
+	assert_eq(szene.umsatz_heute, int(plan["umsatz"]), "Schieber-Preis piept an der Kasse")
+	for bon: Dictionary in plan["bons"]:
+		for position: Dictionary in bon["positionen"]:
+			assert_eq(int(position["preis"]), 4, "Apfel kostet 4 statt 6 (−30 %)")
+	szene.queue_free()
+	await wait_frames(2)
 	_teardown_gs(gs)
 
 

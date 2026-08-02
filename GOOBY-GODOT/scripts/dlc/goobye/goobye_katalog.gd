@@ -20,6 +20,8 @@ const DEFAULT_EK_FAKTOR := 0.6
 const DEFAULT_PREIS_SPANNE := 0.3
 const DEFAULT_EIGENMARKE_RABATT := 0.2
 const DEFAULT_BIO_AUFSCHLAG := 0.1
+const DEFAULT_STAFFEL_AB := 10
+const DEFAULT_STAFFEL_RABATT := 0.05
 
 ## Tests injizieren hier eine Registry-Attrappe (null = Autoload benutzen).
 static var registry_override: Object = null
@@ -58,6 +60,17 @@ static func eigenmarke_rabatt() -> float:
 ## Bio-Aufschlag fürs Gooby-Beet-Regal (§2.2, Default +10 % — Welle B nutzt ihn).
 static func bio_aufschlag() -> float:
 	return clampf(float(_balance("gooundbye.bio_aufschlag", DEFAULT_BIO_AUFSCHLAG)), 0.0, 0.9)
+
+
+## Staffelpreis-Schwelle des Großmarkts (§4.1): ab so vielen Stück EINER
+## Ware bekommt die Bestell-Position den Rabatt (Default ab 10 Stück).
+static func staffel_ab() -> int:
+	return maxi(2, int(_balance("gooundbye.staffel_ab", DEFAULT_STAFFEL_AB)))
+
+
+## Staffel-Rabatt auf die Positions-Summe ab der Schwelle (§4.1, Default −5 %).
+static func staffel_rabatt() -> float:
+	return clampf(float(_balance("gooundbye.staffel_rabatt", DEFAULT_STAFFEL_RABATT)), 0.0, 0.5)
 
 
 ## Alle Warengruppen (typ "gruppe") in Pack-Reihenfolge (tiefe Kopien).

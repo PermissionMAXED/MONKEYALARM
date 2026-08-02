@@ -1,10 +1,13 @@
 extends TestCase
-## G5/P24 DLC-GOOBYE-A — die PUREN Logik-Module des „Goo und Bye“:
+## G5/P24 DLC-GOOBYE-A/B — die PUREN Logik-Module des „Goo und Bye“:
 ## Sortiment-Pack-Schema (Form+Farbe-Kodierung §2.5), GoobyeKatalog-Sichten,
 ## Preis-/Margen-Rechnung (GoobyePreis, §2.2/§4.4), deterministischer
 ## Markttag als GOLDEN-Test (fester Seed → exakte Bon-Liste, §6.1/§10.4)
 ## inkl. Alwin-Gag-Vertrag (§6.3) und Monotonie (billiger ⇒ nie weniger
-## Absatz) sowie Regal-Bestand/Nachfüllen (GoobyeRegal, §4.3).
+## Absatz) sowie Regal-Bestand/Nachfüllen (GoobyeRegal, §4.3). Welle B:
+## Großmarkt-Bestellzettel mit Staffelpreis (GoobyeGrossmarkt, §4.1) und
+## Gruppen-Preis-Schieber → Waren-Faktoren (GoobyePreis.waren_faktoren +
+## GoobyeState-Heilung, §4.4).
 
 const PACK_DATEI := "res://content/dlc/data/goobye_sortiment.json"
 const GOLDEN_SEED := 20260801
@@ -125,6 +128,64 @@ func test_griff_kurve_monoton() -> void:
 	assert_almost(GoobyePreis.spontan_bonus(1.0), 0.0, 1e-6)
 	assert_almost(GoobyePreis.spontan_bonus(1.3), 0.0, 1e-6)
 	assert_almost(GoobyePreis.spontan_bonus(0.7), 0.24, 1e-6, "Deckel 0.24")
+
+
+## ------------------------------------------------------------ Großmarkt
+
+
+func test_grossmarkt_korb_und_staffel() -> void:
+	GoobyeKatalog.reset_cache()
+	# Balance-Defaults ohne Registry (§4.1): ab 10 Stück −5 %.
+	assert_eq(GoobyeKatalog.staffel_ab(), 10, "Staffel-Schwelle Default 10")
+	assert_almost(GoobyeKatalog.staffel_rabatt(), 0.05, 1e-6, "Staffel-Rabatt Default 5 %")
+	# ±-Stepper: Klemme 0..MAX, 0 räumt den Eintrag, Unbekanntes prallt ab.
+	var korb: Dictionary = {}
+	assert_eq(GoobyeGrossmarkt.menge_aendern(korb, "carrot", 3), 3)
+	assert_eq(GoobyeGrossmarkt.menge_aendern(korb, "carrot", -1), 2)
+	assert_eq(GoobyeGrossmarkt.menge_aendern(korb, "carrot", 99), GoobyeGrossmarkt.MAX_JE_WARE)
+	assert_eq(GoobyeGrossmarkt.menge_aendern(korb, "carrot", -99), 0)
+	assert_false(korb.has("carrot"), "0 Stück verschwinden vom Zettel")
+	assert_eq(GoobyeGrossmarkt.menge_aendern(korb, "gibtsnicht", 5), 0, "unbekannte Ware blockt")
+	assert_true(korb.is_empty())
+	# Positions-Preis: Apfel-EK 4 — unter der Schwelle linear, ab 10 −5 %.
+	var apple := GoobyeKatalog.ware("apple")
+	assert_eq(GoobyeGrossmarkt.positions_preis(apple, 0), 0)
+	assert_eq(GoobyeGrossmarkt.positions_preis(apple, 9), 36, "9 × 4 ohne Staffel")
+	assert_eq(GoobyeGrossmarkt.positions_preis(apple, 10), 38, "10 × 4 × 0.95 → 38")
+	# Bestellzettel: Katalog-Reihenfolge, Staffel-Flag, Summen.
+	var zettel := GoobyeGrossmarkt.bestellung({"carrot": 2, "apple": 10})
+	var positionen: Array = zettel["positionen"]
+	assert_eq(positionen.size(), 2)
+	assert_eq(
+		positionen[0],
+		{"id": "apple", "menge": 10, "preis": 38, "staffel": true},
+		"Apfel zuerst (Katalog-Reihenfolge) + Staffel getroffen"
+	)
+	assert_eq(positionen[1], {"id": "carrot", "menge": 2, "preis": 6, "staffel": false})
+	assert_eq(int(zettel["stueck"]), 12)
+	assert_eq(int(zettel["summe"]), 44)
+	assert_eq(GoobyeGrossmarkt.bestellung({})["positionen"], [], "leerer Zettel bleibt leer")
+
+
+func test_waren_faktoren_und_preise_heilung() -> void:
+	GoobyeKatalog.reset_cache()
+	# Gruppen-Schieber → Waren-Faktoren (§4.4): jede Ware erbt ihre Gruppe,
+	# Ausreißer werden auf die Spanne geklemmt, Rest bleibt Richtwert.
+	assert_eq(GoobyePreis.waren_faktoren({}), {}, "ohne Schieber keine Einträge")
+	var faktoren := GoobyePreis.waren_faktoren({"gemuese": 0.7, "obst": 2.0})
+	assert_almost(float(faktoren["carrot"]), 0.7, 1e-6, "Möhre erbt den Gemüse-Schieber")
+	assert_almost(float(faktoren["tomato"]), 0.7, 1e-6, "Tomate auch")
+	assert_almost(float(faktoren["apple"]), 1.3, 1e-6, "Ausreißer auf +30 % geklemmt")
+	assert_false(faktoren.has("cookie"), "Gruppen ohne Schieber fehlen (= Richtwert)")
+	# Save-Heilung (GoobyeState): harte Klemme, Richtwert-Einträge fliegen.
+	var geheilt: Dictionary = (
+		GoobyeState
+		. normalize_goobye({"preise": {"gemuese": 0.85, "obst": 99.0, "suesses": 1.0}})["preise"]
+	)
+	assert_almost(float(geheilt["gemuese"]), 0.85, 1e-6, "gültiger Faktor bleibt")
+	assert_almost(float(geheilt["obst"]), GoobyeState.FAKTOR_HEIL_MAX, 1e-6, "Unfug hart geklemmt")
+	assert_false(geheilt.has("suesses"), "Richtwert 1.0 wird nicht gespeichert")
+	assert_eq(GoobyeState.normalize_goobye({"preise": "unfug"})["preise"], {}, "kaputt → leer")
 
 
 ## ------------------------------------------------------------ Markttag
