@@ -1,7 +1,9 @@
 package com.bubbleshield;
 
 import com.bubbleshield.advancements.ModCriteria;
+import com.bubbleshield.command.BubbleShieldCommand;
 import com.bubbleshield.effect.EffectRegistry;
+import com.bubbleshield.loot.CoreLootInjector;
 import com.bubbleshield.effect.InsideEffectBehavior;
 import com.bubbleshield.effect.behaviors.EffectBehaviors;
 import com.bubbleshield.net.ServerNet;
@@ -62,7 +64,11 @@ public final class BubbleShield {
 		modEventBus.addListener(ShieldPayloads::registerHandlers);
 		ServerNet.register();
 
-		// TODO(W5+): BubbleShieldCommand.register() + CoreLootInjector.
+		// W10: the /bubbleshield command (RegisterCommandsEvent) and the structure
+		// chest loot injection (LootTableLoadEvent), both on the game bus.
+		BubbleShieldCommand.register();
+		CoreLootInjector.register();
+
 		LOGGER.info("Bubble Shield W1-W3: {} effects / {} behaviors, registries + block/menu + networking (NeoForge 1.21.1).",
 				EffectRegistry.COUNT, InsideEffectBehavior.REGISTRY.size());
 	}
