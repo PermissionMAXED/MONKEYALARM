@@ -452,12 +452,9 @@ func _draw() -> void:
 
 
 ## Milchglas hinter Tore-/Wind-Zeile und dem Hinweis (M6/M7): die Labels
-## standen vorher nackt auf Himmel und Hecke.
+## standen vorher nackt auf Himmel und Hecke. Tinte aus dem P56-Rahmen (F4).
 static func _make_hud_plate() -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color(1.0, 0.99, 0.94, 0.72)
-	box.set_corner_radius_all(16)
-	return box
+	return MinigameHudTypo.plate()
 
 
 func _draw_hud_backing() -> void:

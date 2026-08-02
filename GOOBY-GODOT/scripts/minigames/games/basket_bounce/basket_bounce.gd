@@ -74,6 +74,11 @@ var _flash_text := ""
 var _time_label: Label
 var _streak_label: Label
 var _hint_label: Label
+## P56-Rahmen (F4 PT-MG-A): ui-Faktor + Milchglas hinter Zeit/Serie/Hinweis —
+## der Timer stand vorher blass auf dem Himmel, der Hinweis klein davor.
+var _ui := 1.0
+var _hud_plate := MinigameHudTypo.plate()
+var _hint_plate := MinigameHudTypo.plate()
 
 var _stage: Stage3D
 var _gooby: GoobyActor
@@ -112,6 +117,7 @@ func apply_view(size: Vector2) -> void:
 	if size.x > 1.0 and size.y > 1.0:
 		view_size = size
 	landscape = view_size.x > view_size.y
+	_ui = MinigameHudTypo.ui_factor(view_size)
 	position = Vector2.ZERO
 	if _stage != null:
 		_stage.apply_size(view_size)
@@ -119,10 +125,11 @@ func apply_view(size: Vector2) -> void:
 		_framed_dist = -1.0
 		_frame_court()
 	if _time_label != null:
-		_time_label.position = Vector2(16.0, 10.0)
-		_streak_label.position = Vector2(16.0, 48.0)
-		_hint_label.position = Vector2(view_size.x * 0.5 - 150.0, view_size.y - 56.0)
-		_hint_label.size = Vector2(300.0, 40.0)
+		MinigameHudTypo.style_timer(_time_label, _ui)
+		MinigameHudTypo.style_subline(_streak_label, _ui)
+		MinigameHudTypo.style_hint(_hint_label, _ui)
+		MinigameHudTypo.layout_corner(_time_label, _streak_label, _ui)
+		MinigameHudTypo.layout_hint_bottom(_hint_label, view_size, _ui)
 	queue_redraw()
 
 
@@ -457,26 +464,15 @@ func _build_net(rim_y: float) -> void:
 	_net.add_child(Props3D.swarm_mesh(mesh, poses, 4.0))
 
 
+## F4 (PT-MG-A): Typografie kommt komplett aus dem P56-Rahmen (MinigameHudTypo
+## in apply_view) — die hellen Saum-Overrides der plattenlosen Ära sind raus.
 func _build_hud() -> void:
 	_time_label = Label.new()
-	_time_label.theme_type_variation = &"HeadlineLabel"
-	_time_label.add_theme_color_override("font_color", Color(1.0, 0.99, 0.95))
-	_time_label.add_theme_color_override("font_outline_color", Color(0.24, 0.18, 0.12, 0.8))
-	_time_label.add_theme_constant_override("outline_size", 6)
 	add_child(_time_label)
 	_streak_label = Label.new()
-	_streak_label.theme_type_variation = &"CaptionLabel"
-	_streak_label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.5))
-	_streak_label.add_theme_color_override("font_outline_color", Color(0.24, 0.18, 0.12, 0.8))
-	_streak_label.add_theme_constant_override("outline_size", 5)
 	add_child(_streak_label)
 	_hint_label = Label.new()
-	_hint_label.theme_type_variation = &"SoftLabel"
 	_hint_label.text = I18nService.t("mg.basketBounce.hint")
-	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hint_label.add_theme_color_override("font_color", Color(1.0, 0.99, 0.95, 0.95))
-	_hint_label.add_theme_color_override("font_outline_color", Color(0.24, 0.18, 0.12, 0.7))
-	_hint_label.add_theme_constant_override("outline_size", 5)
 	add_child(_hint_label)
 	_update_labels()
 
@@ -755,12 +751,21 @@ func _update_labels() -> void:
 # ------------------------------------------------------------- Zielhilfe 2D
 
 
-## Nur Flugspur, Zielhilfe und Trefferbanner werden gezeichnet — die Halle
-## selbst ist 3D und liegt dahinter.
+## Nur HUD-Rahmen, Flugspur, Zielhilfe und Trefferbanner werden gezeichnet —
+## die Halle selbst ist 3D und liegt dahinter.
 func _draw() -> void:
+	_draw_hud_frame()
 	_draw_trail()
 	_draw_aim()
 	_draw_flash()
+
+
+## P56-Rahmen (F4): Milchglas hinter Zeit/Serie und Hinweis (tea_party-Look).
+func _draw_hud_frame() -> void:
+	if _time_label == null:
+		return
+	MinigameHudTypo.draw_hud_plate(self, _hud_plate, [_time_label, _streak_label], _ui)
+	MinigameHudTypo.draw_hint_plate(self, _hint_plate, _hint_label, _ui)
 
 
 func _draw_trail() -> void:

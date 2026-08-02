@@ -69,6 +69,11 @@ var _hint_label: Label
 var _galopp_btn: Button
 var _sprung_btn: Button
 var _ende_timer := 0.0
+## P56-Rahmen (F4 PT-MG-B): ui-Faktor + Milchglas hinter Zeit/„Punkte ·
+## Serie" und Hinweis — die Punkte-Zeile war Winzschrift direkt unterm Timer.
+var _ui := 1.0
+var _hud_plate := MinigameHudTypo.plate()
+var _hint_plate := MinigameHudTypo.plate()
 
 
 func setup(context: MinigameCtx) -> void:
@@ -90,10 +95,12 @@ func end() -> void:
 func apply_view(size: Vector2) -> void:
 	if size.x > 1.0 and size.y > 1.0:
 		view_size = size
+	_ui = MinigameHudTypo.ui_factor(view_size)
 	if _stage != null:
 		_stage.call("apply_size", view_size)
 	if _hud != null:
 		_layout_hud()
+	queue_redraw()
 
 
 func _fit_viewport() -> void:
@@ -193,6 +200,8 @@ func _teardown_lauf() -> void:
 	_hud = null
 	_welt = null
 	_stage = null
+	# P56-Rahmen: Plates sofort mitwegräumen (Select-Screen ohne HUD).
+	queue_redraw()
 	_pferd = null
 	_reiter = null
 	_gooby = null
@@ -711,16 +720,14 @@ func _build_hud() -> void:
 	_hud.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_hud)
+	# F4 (PT-MG-B): Zeit/Punkte/Hinweis-Typografie kommt aus dem P56-Rahmen
+	# (_layout_hud) — Labels hier nur anlegen und einhängen.
 	_zeit_label = Label.new()
-	_zeit_label.theme_type_variation = &"HeadlineLabel"
 	_hud.add_child(_zeit_label)
 	_punkte_label = Label.new()
-	_punkte_label.theme_type_variation = &"CaptionLabel"
 	_hud.add_child(_punkte_label)
 	_hint_label = Label.new()
-	_hint_label.theme_type_variation = &"SoftLabel"
 	_hint_label.text = I18nService.t("mg.ranchParcours.hint")
-	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hud.add_child(_hint_label)
 	# Audio-Grammatik: SquishButton — Fahr-Foley gehört dem Spiel, der Druck
 	# bleibt stumm (Haptik + Squish zentral).
@@ -744,10 +751,14 @@ func _build_hud() -> void:
 func _layout_hud() -> void:
 	if _zeit_label == null:
 		return
-	_zeit_label.position = Vector2(16.0, 10.0)
-	_punkte_label.position = Vector2(16.0, 48.0)
-	_hint_label.position = Vector2(view_size.x * 0.5 - 170.0, 12.0)
-	_hint_label.size = Vector2(340.0, 34.0)
+	MinigameHudTypo.style_timer(_zeit_label, _ui)
+	MinigameHudTypo.style_subline(_punkte_label, _ui)
+	MinigameHudTypo.style_hint(_hint_label, _ui)
+	MinigameHudTypo.layout_corner(_zeit_label, _punkte_label, _ui)
+	# Der Hinweis bleibt OBEN mittig — unten reiten die Galopp-/Sprung-Knöpfe.
+	var box := MinigameHudTypo.hint_box(_hint_label, view_size, _ui)
+	_hint_label.position = Vector2((view_size.x - box.x) * 0.5, 12.0 * _ui)
+	MinigameHudTypo.set_hint_size(_hint_label, box)
 	_galopp_btn.position = Vector2(18.0, view_size.y - 82.0)
 	_sprung_btn.position = Vector2(view_size.x - 168.0, view_size.y - 82.0)
 
@@ -757,6 +768,17 @@ func _update_labels() -> void:
 		return
 	_zeit_label.text = I18nService.t("mg.ranchParcours.zeit", {"s": "%.1f" % (elapsed + strafzeit)})
 	_punkte_label.text = I18nService.t("mg.ranchParcours.punkte", {"n": punkte, "kombo": kombo})
+	# P56-Rahmen: die Milchglas-Plates (_draw) folgen den Label-Größen.
+	queue_redraw()
+
+
+## P56-Rahmen (F4): Milchglas hinter Zeit/Punkte und Hinweis — als Wurzel-
+## _draw liegt es HINTER den _hud-Kindern; ohne Lauf-HUD wird nichts gemalt.
+func _draw() -> void:
+	if _hud == null or _zeit_label == null:
+		return
+	MinigameHudTypo.draw_hud_plate(self, _hud_plate, [_zeit_label, _punkte_label], _ui)
+	MinigameHudTypo.draw_hint_plate(self, _hint_plate, _hint_label, _ui)
 
 
 func _unhandled_input(event: InputEvent) -> void:

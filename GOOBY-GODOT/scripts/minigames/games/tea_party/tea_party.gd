@@ -63,8 +63,8 @@ var _banner := ""
 var _banner_t := 0.0
 var _banner_gold := false
 var _banner_plate := StyleBoxFlat.new()
-var _hud_plate := StyleBoxFlat.new()
-var _hint_plate := StyleBoxFlat.new()
+var _hud_plate := MinigameHudTypo.plate()
+var _hint_plate := MinigameHudTypo.plate()
 var _meter_plate := StyleBoxFlat.new()
 var _pour: AudioStreamPlayer
 
@@ -117,9 +117,8 @@ func _build_labels() -> void:
 	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_hint_label)
-	# Milchglas-Plates (M6) — die Stube zog sonst direkt durch die Ziffern.
-	_hud_plate.bg_color = Color(1.0, 0.99, 0.94, 0.72)
-	_hud_plate.set_corner_radius_all(16)
+	# Milchglas-Plates (M6) — die Stube zog sonst direkt durch die Ziffern;
+	# die Milchglas-Tinte kommt aus dem P56-Rahmen (MinigameHudTypo, F4).
 	_hint_plate.set_corner_radius_all(12)
 	_meter_plate.bg_color = Color(0.32, 0.24, 0.2, 0.35)
 	_meter_plate.set_corner_radius_all(8)
@@ -371,7 +370,7 @@ func _draw() -> void:
 	_draw_hud_plate()
 	var hint_a := _hint_alpha()
 	if hint_a > 0.0:
-		_hint_plate.bg_color = Color(1.0, 0.99, 0.94, 0.72 * hint_a)
+		_hint_plate.bg_color = MinigameHudTypo.plate_tint(hint_a)
 		draw_style_box(
 			_hint_plate, Rect2(_hint_label.position - Vector2(0.0, 2.0), _hint_label.size)
 		)

@@ -74,6 +74,10 @@ var _intro_left := 0.0
 var _banner_text := ""
 var _banner_t := 0.0
 var _banner_plate := StyleBoxFlat.new()
+## P56-Rahmen (F4 PT-MG-B): Milchglas hinter Zeit/„Rätsel · Drehungen" und
+## Hinweis — die Unterzeile war Winzschrift direkt unterm großen Timer.
+var _hud_plate := MinigameHudTypo.plate()
+var _hint_plate := MinigameHudTypo.plate()
 
 
 func setup(context: MinigameCtx) -> void:
@@ -142,50 +146,29 @@ func _layout_stage() -> void:
 
 ## HUD IMMER aus dem Viewport-Rect stellen: unter canvas_items-Stretch sind
 ## Canvas-Einheiten ≠ Fensterpixel, apply_view-Größen können abweichen.
-## W17 M9: alle Pixelmaße skalieren mit _ui; die Hinweis-Breite hängt an
-## vp.x statt an fixen 360 px (Tablet-Krümelschrift des Audits).
+## F4 (PT-MG-B): Typo + Anker kommen aus dem P56-Rahmen (MinigameHudTypo) —
+## die Rätsel-Unterzeile trägt jetzt die lesbare Rahmen-Unterzeile.
 func _layout_hud() -> void:
 	if _time_label == null:
 		return
 	var vp := get_viewport_rect().size
-	_time_label.position = Vector2(16.0, 10.0) * _ui
-	_time_label.add_theme_font_size_override("font_size", int(34.0 * _ui))
-	_puzzle_label.position = Vector2(16.0, 48.0) * _ui
-	_puzzle_label.add_theme_font_size_override("font_size", int(15.0 * _ui))
-	var hint_w := minf(vp.x - 32.0 * _ui, 360.0 * _ui)
-	var font_size := int(20.0 * _ui)
-	_hint_label.add_theme_font_size_override("font_size", font_size)
-	var font := _hint_label.get_theme_font("font")
-	var text_size := font.get_multiline_string_size(
-		_hint_label.text, HORIZONTAL_ALIGNMENT_CENTER, hint_w, font_size
-	)
-	var box := Vector2(hint_w, text_size.y + 6.0 * _ui)
-	_hint_label.position = Vector2((vp.x - box.x) * 0.5, vp.y - box.y - 8.0 * _ui)
-	_hint_label.size = box
-	for label: Label in [_time_label, _puzzle_label, _hint_label]:
-		label.add_theme_constant_override("outline_size", int(6.0 * _ui))
+	MinigameHudTypo.style_timer(_time_label, _ui)
+	MinigameHudTypo.style_subline(_puzzle_label, _ui)
+	MinigameHudTypo.style_hint(_hint_label, _ui)
+	MinigameHudTypo.layout_corner(_time_label, _puzzle_label, _ui)
+	MinigameHudTypo.layout_hint_bottom(_hint_label, vp, _ui)
 
 
+## F4 (PT-MG-B): Typografie komplett aus dem P56-Rahmen (_layout_hud) — der
+## Hell-mit-Kontur-Override (M7-Zwischenstand) weicht der Milchglas-Plate.
 func _build_hud() -> void:
 	_time_label = Label.new()
-	_time_label.theme_type_variation = &"HeadlineLabel"
 	add_child(_time_label)
 	_puzzle_label = Label.new()
-	_puzzle_label.theme_type_variation = &"CaptionLabel"
 	add_child(_puzzle_label)
 	_hint_label = Label.new()
-	_hint_label.theme_type_variation = &"SoftLabel"
 	_hint_label.text = I18nService.t("mg.pipeFlow.hint")
-	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_hint_label)
-	# Vor Himmel UND Wiese lesbar: heller Text mit dunkler Kontur — jetzt
-	# auf ALLEN drei Labels (Zeit/Rätsel hatten vorher keine Overrides und
-	# soffen als Theme-Standard vor dem hellen Himmel ab, M7).
-	for label: Label in [_time_label, _puzzle_label, _hint_label]:
-		label.add_theme_color_override("font_color", Color(1.0, 1.0, 0.97))
-		label.add_theme_color_override("font_outline_color", Color(0.16, 0.3, 0.24, 0.85))
-		label.add_theme_constant_override("outline_size", 6)
 	_update_labels()
 
 
@@ -427,11 +410,22 @@ func _tile_watered(index: int) -> bool:
 
 
 # Kein 2D-Brett mehr: Panel, Rohre, Hahn, Sprenger, Beet und Gooby rendert
-# die 3D-Bühne (PipeFlowStage3D); 2D bleiben Leck-Countdown-Ring + Banner.
+# die 3D-Bühne (PipeFlowStage3D); 2D bleiben HUD-Rahmen, Leck-Countdown-Ring
+# + Banner.
 func _draw() -> void:
+	_draw_hud_frame()
 	if leak_index >= 0 and not leak_applied and not filling:
 		_draw_leak()
 	_draw_banner()
+
+
+## P56-Rahmen (F4): Milchglas hinter Zeit/Rätsel-Zeile und Hinweis; die
+## Hint-Plate folgt dem bestehenden Hint-Fade (_hint_alpha).
+func _draw_hud_frame() -> void:
+	if _time_label == null:
+		return
+	MinigameHudTypo.draw_hud_plate(self, _hud_plate, [_time_label, _puzzle_label], _ui)
+	MinigameHudTypo.draw_hint_plate(self, _hint_plate, _hint_label, _ui, _hint_alpha())
 
 
 ## Banner mittig mit Milchglas-Plate und Kontur (M7, bubble_pop-Muster);

@@ -197,12 +197,10 @@ static func tick_pulses(pulses: Array, delta: float) -> void:
 	pulses.assign(kept)
 
 
-## Milchglas-Platte hinter HUD-Labels (Lesbarkeit auf Wiese/Wasser/Himmel).
+## Milchglas-Platte hinter HUD-Labels — DIE Tinte lebt jetzt im P56-Rahmen
+## (MinigameHudTypo, PT-MG-A/B F4); hier bleibt nur der Kurzname der Bühnen.
 static func hud_plate() -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color(1.0, 0.99, 0.94, 0.72)
-	box.set_corner_radius_all(16)
-	return box
+	return MinigameHudTypo.plate()
 
 
 ## Requisiten-Knoten aus dem MP-B-Ordner (Kurzform für die Bühnen).

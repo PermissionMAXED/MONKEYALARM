@@ -84,12 +84,10 @@ static func build_terrain(stage: Node3D) -> MeshInstance3D:
 	return surface
 
 
-## Milchglas-Platte hinter HUD-Labels/Bannern (M6 — Muster mpb_garden_kit).
+## Milchglas-Platte hinter HUD-Labels/Bannern — DIE Tinte lebt jetzt im
+## P56-Rahmen (MinigameHudTypo, PT-MG-A/B F4); hier bleibt nur der Kurzname.
 static func hud_plate() -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color(1.0, 0.99, 0.94, 0.72)
-	box.set_corner_radius_all(16)
-	return box
+	return MinigameHudTypo.plate()
 
 
 ## W17/G4 M3: Ring-Pool für Wasserkreise an der Einstichstelle der Schnur.

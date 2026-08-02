@@ -65,6 +65,10 @@ var _ui := 1.0
 var _time_label: Label
 var _order_label: Label
 var _hint_label: Label
+## P56-Rahmen (F4 PT-MG-A): Milchglas hinter Zeit/Bestellung und Hinweis —
+## beide standen vorher „nackt" auf Diner-Boden und Theke.
+var _hud_plate := MinigameHudTypo.plate()
+var _hint_plate := MinigameHudTypo.plate()
 var _intro_left := 0.0
 var _flash_plate := StyleBoxFlat.new()
 var _last_tick_sec := -1
@@ -117,19 +121,15 @@ func apply_view(size: Vector2) -> void:
 	queue_redraw()
 
 
-## Bedienleiste in Entwurfspixeln, mit _ui skaliert (sonst Krümelschrift).
+## Bedienleiste im P56-Rahmen (F4): Typo + Anker kommen aus MinigameHudTypo.
 func _layout_hud() -> void:
 	if _time_label == null:
 		return
-	var pad := 14.0 * _ui
-	_time_label.position = Vector2(pad, 8.0 * _ui)
-	_time_label.add_theme_font_size_override("font_size", int(26.0 * _ui))
-	_order_label.position = Vector2(pad, 44.0 * _ui)
-	_order_label.add_theme_font_size_override("font_size", int(17.0 * _ui))
-	var hint_w := minf(view_size.x - pad * 2.0, 420.0 * _ui)
-	_hint_label.add_theme_font_size_override("font_size", int(15.0 * _ui))
-	_hint_label.position = Vector2((view_size.x - hint_w) * 0.5, view_size.y - 46.0 * _ui)
-	_hint_label.size = Vector2(hint_w, 40.0 * _ui)
+	MinigameHudTypo.style_timer(_time_label, _ui)
+	MinigameHudTypo.style_subline(_order_label, _ui)
+	MinigameHudTypo.style_hint(_hint_label, _ui)
+	MinigameHudTypo.layout_corner(_time_label, _order_label, _ui)
+	MinigameHudTypo.layout_hint_bottom(_hint_label, view_size, _ui)
 
 
 func _process(delta: float) -> void:
@@ -235,22 +235,15 @@ func _to_world_x(px: float) -> float:
 	return clampf((px - view_size.x * 0.5) / scale, -HALF_W + 0.4, HALF_W - 0.4)
 
 
+## F4 (PT-MG-A): Typografie komplett aus dem P56-Rahmen (_layout_hud) — der
+## helle Saum-Override der plattenlosen Ära („klein/blau" im Playtest) ist raus.
 func _build_hud() -> void:
 	_time_label = Label.new()
-	_time_label.theme_type_variation = &"HeadlineLabel"
 	add_child(_time_label)
 	_order_label = Label.new()
-	_order_label.theme_type_variation = &"CaptionLabel"
 	add_child(_order_label)
 	_hint_label = Label.new()
-	_hint_label.theme_type_variation = &"SoftLabel"
 	_hint_label.text = I18nService.t("mg.burgerBuild.hint")
-	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# Der Hinweis liegt auf dem roten Schachbrettboden — heller Text mit Rand.
-	_hint_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.95))
-	_hint_label.add_theme_color_override("font_outline_color", Color(0.32, 0.14, 0.12, 0.5))
-	_hint_label.add_theme_constant_override("outline_size", 7)
 	add_child(_hint_label)
 	_update_labels()
 
@@ -423,11 +416,21 @@ func _reduced_motion() -> bool:
 	return false
 
 
-## Die WELT lebt in der 3D-Bühne — 2D bleibt nur der Bestellzettel (UI) und
-## die Meldung.
+## Die WELT lebt in der 3D-Bühne — 2D bleiben HUD-Rahmen, Bestellzettel (UI)
+## und die Meldung.
 func _draw() -> void:
+	_draw_hud_frame()
 	_draw_ticket()
 	_draw_flash()
+
+
+## P56-Rahmen (F4): Milchglas hinter Zeit/Bestellung und Hinweis; die
+## Hint-Plate blendet mit dem bestehenden modulate-Fade des Hinweises aus.
+func _draw_hud_frame() -> void:
+	if _time_label == null:
+		return
+	MinigameHudTypo.draw_hud_plate(self, _hud_plate, [_time_label, _order_label], _ui)
+	MinigameHudTypo.draw_hint_plate(self, _hint_plate, _hint_label, _ui, _hint_label.modulate.a)
 
 
 ## Bestellzettel an der Wand: Klemme oben, Lagen von OBEN nach UNTEN, der

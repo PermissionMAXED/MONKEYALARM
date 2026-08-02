@@ -13,7 +13,6 @@ extends MinigameBase
 ## Halten bleibt als 2D-Overlay (Eingabe-Feedback).
 
 const Stage := preload("res://scripts/minigames/games/garden_rush/garden_rush_stage3d.gd")
-const Kit := preload("res://scripts/minigames/games/carrot_catch/mpb_garden_kit.gd")
 
 ## Verhältnis Topfbreite zu Zellenbreite.
 const POT_FILL := 0.74
@@ -44,9 +43,12 @@ var _active_pots := 0
 var _stage: Node3D
 var _bob := 0.0
 var _splash := 0.0
-var _hud_plate := Kit.hud_plate()
-var _banner_plate := Kit.hud_plate()
-var _hint_plate := Kit.hud_plate()
+var _hud_plate := MinigameHudTypo.plate()
+var _banner_plate := MinigameHudTypo.plate()
+var _hint_plate := MinigameHudTypo.plate()
+## P56-Rahmen (F4 PT-MG-A): ui-Faktor der HUD-Typografie — die „Mini-Kapseln
+## mit sehr kleiner Schrift" des Playtests waren fix-px-Labels ohne Skala.
+var _ui := 1.0
 ## Reine Anzeige-Serie (Perfekt-Güsse in Folge) — KEINE Punktelogik.
 var _perfect_streak := 0
 
@@ -81,6 +83,7 @@ func apply_view(size: Vector2) -> void:
 	if size.x > 1.0 and size.y > 1.0:
 		view_size = size
 	landscape = view_size.x > view_size.y
+	_ui = MinigameHudTypo.ui_factor(view_size)
 	position = Vector2.ZERO
 	if _stage != null:
 		# Erst die Kamera stellen, dann die Töpfe unter die Rechtecke raycasten.
@@ -99,21 +102,23 @@ func _layout_hud() -> void:
 	if _time_label == null:
 		return
 	var vp := get_viewport_rect().size
-	_time_label.position = Vector2(16.0, 10.0)
-	_withered_label.position = Vector2(16.0, 48.0)
+	# F4: Typo + Ecken-/Hinweis-Anker aus dem P56-Rahmen (MinigameHudTypo).
+	MinigameHudTypo.style_timer(_time_label, _ui)
+	MinigameHudTypo.style_subline(_withered_label, _ui)
+	MinigameHudTypo.style_hint(_hint_label, _ui)
+	MinigameHudTypo.layout_corner(_time_label, _withered_label, _ui)
+	MinigameHudTypo.layout_hint_bottom(_hint_label, vp, _ui)
 	var banner_w := minf(vp.x - 32.0, 420.0)
 	_banner_label.position = Vector2((vp.x - banner_w) * 0.5, 84.0 if not landscape else 8.0)
 	_banner_label.size = Vector2(banner_w, 44.0)
-	_hint_label.position = Vector2(vp.x * 0.5 - 190.0, vp.y - 38.0)
-	_hint_label.size = Vector2(380.0, 34.0)
 
 
+## F4: Zeit/Welk-Zähler/Hinweis-Typografie kommt aus dem P56-Rahmen
+## (_layout_hud); nur das Banner behält seinen TitleLabel-Sonderweg.
 func _build_hud() -> void:
 	_time_label = Label.new()
-	_time_label.theme_type_variation = &"HeadlineLabel"
 	add_child(_time_label)
 	_withered_label = Label.new()
-	_withered_label.theme_type_variation = &"CaptionLabel"
 	add_child(_withered_label)
 	_banner_label = Label.new()
 	_banner_label.theme_type_variation = &"TitleLabel"
@@ -450,21 +455,10 @@ func _sprinkler_rect() -> Rect2:
 ## Dazu Milchglas hinter Zeit/Welk-Zähler, Banner und Hinweis (Lesbarkeit).
 func _draw() -> void:
 	if _time_label != null:
-		var top_left := _time_label.position - Vector2(12.0, 6.0)
-		var bottom_right := (
-			_withered_label.position
-			+ Vector2(maxf(_time_label.size.x, _withered_label.size.x), _withered_label.size.y)
-			+ Vector2(12.0, 6.0)
-		)
-		draw_style_box(_hud_plate, Rect2(top_left, bottom_right - top_left))
+		MinigameHudTypo.draw_hud_plate(self, _hud_plate, [_time_label, _withered_label], _ui)
 		if not _banner_label.text.is_empty():
 			draw_style_box(_banner_plate, Rect2(_banner_label.position, _banner_label.size))
-		var hint_a := _hint_alpha()
-		if hint_a > 0.0:
-			_hint_plate.bg_color = Color(1.0, 0.99, 0.94, 0.72 * hint_a)
-			draw_style_box(
-				_hint_plate, Rect2(_hint_label.position - Vector2(0.0, 2.0), _hint_label.size)
-			)
+		MinigameHudTypo.draw_hint_plate(self, _hint_plate, _hint_label, _ui, _hint_alpha())
 	if hold_index >= 0:
 		_draw_fill_ring()
 

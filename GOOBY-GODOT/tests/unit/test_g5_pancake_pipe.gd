@@ -103,19 +103,27 @@ func test_pancake_intro_kamera_pfannen_totale() -> void:
 	game.free()
 
 
+## P56 F4 (PT-MG-B): Lagen/Breite/Hinweis tragen die RAHMEN-Typografie
+## (MinigameHudTypo) — Milchglas-Plate statt des alten Hell-mit-Kontur-Saums.
 func test_pancake_ui_faktor_und_hint_breite() -> void:
 	var game := _mount(PANCAKE_SCENE, "pancakeTower")
 	game.call("apply_view", Vector2(390.0, 844.0))
 	assert_almost(float(game.get("_ui")), 1.0, 1e-6, "Phone-Kurzkante = Faktor 1")
 	var label: Label = game.get("_layers_label")
-	assert_eq(label.get_theme_font_size("font_size"), 34, "Phone: Headline wie Theme")
+	assert_eq(label.get_theme_font_size("font_size"), int(MinigameHudTypo.TIMER_PX), "Rahmen-Timer")
 	assert_eq(label.position, Vector2(16.0, 10.0), "Phone: Entwurfsposition")
-	assert_true(label.get_theme_constant("outline_size") >= 7, "Kontur auf den Lagen (M7)")
+	assert_false(label.has_theme_constant_override("outline_size"), "kein Saum — Plate trägt (F4)")
 	var width: Label = game.get("_width_label")
-	assert_true(width.get_theme_constant("outline_size") >= 7, "Kontur auf der Breite (M7)")
+	assert_eq(width.get_theme_font_size("font_size"), int(MinigameHudTypo.SUB_PX), "Unterzeile 17")
+	assert_eq(width.get_theme_color("font_color"), AcTokens.INK_SOFT, "Unterzeile INK_SOFT (F4)")
+	assert_true(game.get("_hud_plate") is StyleBoxFlat, "Milchglas-Plate existiert (F4)")
 	game.call("apply_view", Vector2(834.0, 1194.0))
 	assert_almost(float(game.get("_ui")), 834.0 / 390.0, 1e-4, "iPad: Kurzkante/390")
-	assert_eq(label.get_theme_font_size("font_size"), int(34.0 * 834.0 / 390.0), "HUD wächst")
+	assert_eq(
+		label.get_theme_font_size("font_size"),
+		int(MinigameHudTypo.TIMER_PX * 834.0 / 390.0),
+		"HUD wächst"
+	)
 	game.call("apply_view", Vector2(9999.0, 9999.0))
 	assert_almost(float(game.get("_ui")), 3.0, 1e-6, "Deckel bei 3,0")
 	game.call("apply_view", Vector2(200.0, 400.0))
@@ -240,22 +248,31 @@ func test_pipe_intro_kamera_puzzle_totale() -> void:
 	game.free()
 
 
+## P56 F4 (PT-MG-B): Zeit/Rätsel-Zeile/Hinweis tragen die RAHMEN-Typografie
+## (MinigameHudTypo) — Milchglas-Plate statt „heller Text vorm Himmel".
 func test_pipe_ui_faktor_und_konturen() -> void:
 	var game := _mount(PIPE_SCENE, "pipeFlow")
 	game.call("apply_view", Vector2(390.0, 844.0))
 	assert_almost(float(game.get("_ui")), 1.0, 1e-6, "Phone-Kurzkante = Faktor 1")
 	var time_label: Label = game.get("_time_label")
-	assert_eq(time_label.get_theme_font_size("font_size"), 34, "Phone: Headline wie Theme")
+	assert_eq(
+		time_label.get_theme_font_size("font_size"), int(MinigameHudTypo.TIMER_PX), "Rahmen-Timer"
+	)
 	assert_eq(time_label.position, Vector2(16.0, 10.0), "Phone: Entwurfsposition")
-	# Audit §10: Zeit-/Rätsel-Label hatten KEINE Kontur — jetzt wie der Hint.
 	var puzzle: Label = game.get("_puzzle_label")
-	for label: Label in [time_label, puzzle]:
-		assert_true(label.get_theme_constant("outline_size") >= 6, "Kontur (M7)")
-		assert_eq(
-			label.get_theme_color("font_color"), Color(1.0, 1.0, 0.97), "heller Text vorm Himmel"
-		)
+	assert_eq(puzzle.get_theme_font_size("font_size"), int(MinigameHudTypo.SUB_PX), "Unterzeile 17")
+	assert_eq(puzzle.get_theme_color("font_color"), AcTokens.INK_SOFT, "Unterzeile INK_SOFT (F4)")
+	assert_false(
+		time_label.has_theme_color_override("font_color"),
+		"kein Hell-Override mehr — die Plate trägt (F4)"
+	)
+	assert_true(game.get("_hud_plate") is StyleBoxFlat, "Milchglas-Plate existiert (F4)")
 	game.call("apply_view", Vector2(834.0, 1194.0))
-	assert_eq(time_label.get_theme_font_size("font_size"), int(34.0 * 834.0 / 390.0), "wächst")
+	assert_eq(
+		time_label.get_theme_font_size("font_size"),
+		int(MinigameHudTypo.TIMER_PX * 834.0 / 390.0),
+		"wächst"
+	)
 	game.call("apply_view", Vector2(200.0, 400.0))
 	assert_almost(float(game.get("_ui")), 0.75, 1e-6, "Boden bei 0,75")
 	var hint: Label = game.get("_hint_label")

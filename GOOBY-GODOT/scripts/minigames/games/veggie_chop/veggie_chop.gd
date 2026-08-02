@@ -48,6 +48,11 @@ var _miss_label: Label
 var _hint_label: Label
 var _banner_label: Label
 var _banner_until := -1.0
+## P56-Rahmen (F4 PT-MG-B): ui-Faktor + Milchglas hinter Zeit/„Verpasst"-
+## Zeile und Hinweis — die Unterzeile war Winzschrift direkt unterm Timer.
+var _ui := 1.0
+var _hud_plate := MinigameHudTypo.plate()
+var _hint_plate := MinigameHudTypo.plate()
 var _trail: Array[Dictionary] = []
 var _stage: Node3D
 var _swiping := false
@@ -86,6 +91,7 @@ func apply_view(size: Vector2) -> void:
 	if size.x > 1.0 and size.y > 1.0:
 		view_size = size
 	landscape = view_size.x > view_size.y
+	_ui = MinigameHudTypo.ui_factor(view_size)
 	position = Vector2.ZERO
 	if _stage != null:
 		var half_h := view_size.y * 0.5 / _ppu()
@@ -93,22 +99,24 @@ func apply_view(size: Vector2) -> void:
 		_stage.frame(half_h, GROUND_Y + half_h)
 	if _time_label == null:
 		return
-	_time_label.position = Vector2(16.0, 10.0)
-	_miss_label.position = Vector2(16.0, 48.0)
+	# F4: Typo + Ecken-/Hinweis-Anker aus dem P56-Rahmen (MinigameHudTypo).
+	MinigameHudTypo.style_timer(_time_label, _ui)
+	MinigameHudTypo.style_subline(_miss_label, _ui)
+	MinigameHudTypo.style_hint(_hint_label, _ui)
+	MinigameHudTypo.layout_corner(_time_label, _miss_label, _ui)
+	MinigameHudTypo.layout_hint_bottom(_hint_label, view_size, _ui)
 	var banner_w := minf(view_size.x - 32.0, 420.0)
 	_banner_label.position = Vector2((view_size.x - banner_w) * 0.5, 84.0 if not landscape else 8.0)
 	_banner_label.size = Vector2(banner_w, 44.0)
-	_hint_label.position = Vector2(view_size.x * 0.5 - 180.0, view_size.y - 40.0)
-	_hint_label.size = Vector2(360.0, 34.0)
 	queue_redraw()
 
 
+## F4: Zeit/Verpasst/Hinweis-Typografie kommt aus dem P56-Rahmen
+## (apply_view); nur das Banner behält seinen TitleLabel-Sonderweg.
 func _build_hud() -> void:
 	_time_label = Label.new()
-	_time_label.theme_type_variation = &"HeadlineLabel"
 	add_child(_time_label)
 	_miss_label = Label.new()
-	_miss_label.theme_type_variation = &"CaptionLabel"
 	add_child(_miss_label)
 	_banner_label = Label.new()
 	_banner_label.theme_type_variation = &"TitleLabel"
@@ -384,12 +392,21 @@ func _to_world(screen: Vector2) -> Vector2:
 	return Vector2((screen.x - view_size.x * 0.5) / ppu, GROUND_Y + (view_size.y - screen.y) / ppu)
 
 
-## Die WELT lebt in der 3D-Küche — 2D bleibt nur die Wischspur (sie gehört auf
-## die Fingerspitze, nicht in die Szene) und der Stun-Schleier.
+## Die WELT lebt in der 3D-Küche — 2D bleiben HUD-Rahmen, Wischspur (sie
+## gehört auf die Fingerspitze, nicht in die Szene) und der Stun-Schleier.
 func _draw() -> void:
+	_draw_hud_frame()
 	_draw_trail()
 	if elapsed < stun_until:
 		draw_rect(Rect2(Vector2.ZERO, view_size), Color(0.9, 0.4, 0.4, 0.16))
+
+
+## P56-Rahmen (F4): Milchglas hinter Zeit/Verpasst und Hinweis.
+func _draw_hud_frame() -> void:
+	if _time_label == null:
+		return
+	MinigameHudTypo.draw_hud_plate(self, _hud_plate, [_time_label, _miss_label], _ui)
+	MinigameHudTypo.draw_hint_plate(self, _hint_plate, _hint_label, _ui)
 
 
 func _draw_trail() -> void:

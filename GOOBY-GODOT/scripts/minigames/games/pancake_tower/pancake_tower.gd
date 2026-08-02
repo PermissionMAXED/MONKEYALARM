@@ -74,6 +74,10 @@ var _intro_left := 0.0
 var _banner_text := ""
 var _banner_t := 0.0
 var _banner_plate := StyleBoxFlat.new()
+## P56-Rahmen (F4 PT-MG-B): Milchglas hinter Lagen/„Breite"-Zeile und Hinweis
+## — die Breiten-Unterzeile war Winzschrift direkt unterm großen Zähler.
+var _hud_plate := MinigameHudTypo.plate()
+var _hint_plate := MinigameHudTypo.plate()
 ## Q3: gesehene Spielzeit des Hinweises (tickt erst nach dem Intro).
 var _hint_seen := 0.0
 ## Wackel-Warnung: 0..1-Pegel + Sperrzeit für den Warn-Wusch.
@@ -127,28 +131,17 @@ func apply_view(size: Vector2) -> void:
 
 ## HUD IMMER aus dem Viewport-Rect stellen: unter canvas_items-Stretch sind
 ## Canvas-Einheiten ≠ Fensterpixel, apply_view-Größen können abweichen.
-## W17 M9: alle Pixelmaße skalieren mit _ui; die Hinweis-Breite hängt an
-## vp.x statt an fixen 300 px (Tablet-Krümelschrift des Audits).
+## F4 (PT-MG-B): Typo + Anker kommen aus dem P56-Rahmen (MinigameHudTypo) —
+## die Breiten-Unterzeile trägt jetzt die lesbare Rahmen-Unterzeile.
 func _layout_hud() -> void:
 	if _layers_label == null:
 		return
 	var vp := get_viewport_rect().size
-	_layers_label.position = Vector2(16.0, 10.0) * _ui
-	_layers_label.add_theme_font_size_override("font_size", int(34.0 * _ui))
-	_width_label.position = Vector2(16.0, 48.0) * _ui
-	_width_label.add_theme_font_size_override("font_size", int(15.0 * _ui))
-	var hint_w := minf(vp.x - 32.0 * _ui, 360.0 * _ui)
-	var font_size := int(20.0 * _ui)
-	_hint_label.add_theme_font_size_override("font_size", font_size)
-	var font := _hint_label.get_theme_font("font")
-	var text_size := font.get_multiline_string_size(
-		_hint_label.text, HORIZONTAL_ALIGNMENT_CENTER, hint_w, font_size
-	)
-	var box := Vector2(hint_w, text_size.y + 6.0 * _ui)
-	_hint_label.position = Vector2((vp.x - box.x) * 0.5, vp.y - box.y - 10.0 * _ui)
-	_hint_label.size = box
-	for label: Label in [_layers_label, _width_label, _hint_label]:
-		label.add_theme_constant_override("outline_size", int(7.0 * _ui))
+	MinigameHudTypo.style_timer(_layers_label, _ui)
+	MinigameHudTypo.style_subline(_width_label, _ui)
+	MinigameHudTypo.style_hint(_hint_label, _ui)
+	MinigameHudTypo.layout_corner(_layers_label, _width_label, _ui)
+	MinigameHudTypo.layout_hint_bottom(_hint_label, vp, _ui)
 
 
 func _process(delta: float) -> void:
@@ -235,24 +228,16 @@ func _current_index() -> int:
 	return layers.size() + 1
 
 
+## F4 (PT-MG-B): Typografie komplett aus dem P56-Rahmen (_layout_hud) — der
+## helle Saum-Override der plattenlosen Ära ist raus, Milchglas übernimmt.
 func _build_hud() -> void:
 	_layers_label = Label.new()
-	_layers_label.theme_type_variation = &"HeadlineLabel"
 	add_child(_layers_label)
 	_width_label = Label.new()
-	_width_label.theme_type_variation = &"CaptionLabel"
 	add_child(_width_label)
 	_hint_label = Label.new()
-	_hint_label.theme_type_variation = &"SoftLabel"
 	_hint_label.text = I18nService.t("mg.pancakeTower.hint")
-	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_hint_label)
-	# Heller Text + dunkler Saum: lesbar auf Tapete UND Arbeitsplatte.
-	for label: Label in [_layers_label, _width_label, _hint_label]:
-		label.add_theme_color_override("font_color", Color(1.0, 0.97, 0.92))
-		label.add_theme_color_override("font_outline_color", Color(0.34, 0.2, 0.12, 0.9))
-		label.add_theme_constant_override("outline_size", 7)
 	_update_labels()
 
 
@@ -434,11 +419,22 @@ func _tower_point(local_center: float, height: float) -> Vector2:
 
 
 # Kein 2D-Turm mehr: Küche, Teller, Lagen, Pendel und Gooby rendert die
-# 3D-Bühne (PancakeTowerStage3D); 2D bleiben Banner, Warnsaum + Breitenbalken.
+# 3D-Bühne (PancakeTowerStage3D); 2D bleiben HUD-Rahmen, Banner, Warnsaum
+# + Breitenbalken.
 func _draw() -> void:
+	_draw_hud_frame()
 	_draw_width_bar()
 	_draw_warn()
 	_draw_banner()
+
+
+## P56-Rahmen (F4): Milchglas hinter Lagen/Breite und Hinweis; die Hint-Plate
+## folgt dem bestehenden Hint-Fade (_hint_alpha).
+func _draw_hud_frame() -> void:
+	if _layers_label == null:
+		return
+	MinigameHudTypo.draw_hud_plate(self, _hud_plate, [_layers_label, _width_label], _ui)
+	MinigameHudTypo.draw_hint_plate(self, _hint_plate, _hint_label, _ui, _hint_alpha())
 
 
 ## Breitenbalken unter dem HUD: färbt sich von Grün nach Rot, je näher der

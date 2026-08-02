@@ -487,12 +487,9 @@ func _reduced_motion() -> bool:
 
 ## Milchglas hinter Zeit und Serie. Die Labels sind Kinder und landen dadurch
 ## obenauf; im Querformat reicht das Wasser bis an die Oberkante und aufsteigende
-## Blasen zogen sonst direkt durch die Ziffern.
+## Blasen zogen sonst direkt durch die Ziffern. Tinte aus dem P56-Rahmen (F4).
 static func _make_hud_plate() -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color(1.0, 0.99, 0.94, 0.72)
-	box.set_corner_radius_all(16)
-	return box
+	return MinigameHudTypo.plate()
 
 
 func _draw_hud_backing() -> void:
