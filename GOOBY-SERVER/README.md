@@ -3,8 +3,9 @@
 Privater Multiplayer-/Meta-Server für **GOOBY 5.0** (Godot-Client, siehe
 [`GOOBY-GODOT/README.md`](../GOOBY-GODOT/README.md)): Freunde + Presence,
 GoobyPal-Münztransfers, Online-Codes, Admin-Events, Spielzeit-Analytics, Haus-Besuche,
-Schiffe versenken — plus Admin-**Webpanel**. Für einen Freundeskreis gebaut, nicht fürs
-offene Internet.
+Post/Fotos + InstantGooby-Feed, Brettspiele (Schiffe versenken, Schach), Ranch-,
+GOB-NOM- und GvZ-Multiplayer, Bans + Account-Umzugs-Codes — plus Admin-**Webpanel**.
+Für einen Freundeskreis gebaut, nicht fürs offene Internet.
 
 **Ein Prozess, ein Port:** `node server.js` startet express (REST + Panel) und `ws`
 (WebSocket-Protokoll unter `/ws`) auf demselben HTTP-Listener.
@@ -98,7 +99,7 @@ atomar via tmp→rename geschrieben):
 - `data/*.json` — Spieler, Freunde, Codes, Events, Häuser, Analytics-Aggregate
 - `data/sessions/*.jsonl` — Spielzeit-Rohdaten (monatlich rotiert)
 - `data/ledger/*.jsonl` — GoobyPal-Transfer-Ledger (append-only, Audit)
-- `data/blobs/`, `data/mail/` — Haus-Snapshots, später Fotos
+- `data/blobs/`, `data/mail/`, `data/instant/` — Haus-Snapshots, Post-Fotos, InstantGooby-Feed-Fotos
 
 Restore = Ordner zurückkopieren, Server neu starten. Zum Aufräumen alter Logs einfach
 alte `sessions-YYYY-MM.jsonl` archivieren/löschen — der Server hält sie nicht offen.
@@ -129,6 +130,8 @@ soll: hinter einen TLS-Reverse-Proxy (Caddy/nginx/Traefik) legen → Clients ver
   (im Repo-Workflow unter `/tmp/gooby-godot/handoffs/`; Godot-Client W2d konsumiert sie).
 - Module: `src/config.js` (ENV), `src/storage.js` (atomare JSON-Files), `src/protocol.js`
   (Envelope), `src/ratelimit.js` (Buckets), `src/auth.js` (TOFU/FriendCode),
-  `src/ws.js` (Hub: HELLO/WELCOME/PING), `src/rooms.js` (visit:/board:/drive:/mg:-Relay),
-  Features: `friends/presence/goobypal/analytics/codes/events/visits/boardgames.js`,
+  `src/ws.js` (Hub: HELLO/WELCOME/PING),
+  `src/rooms.js` (visit:/board:/drive:/mg:/gobnom:/gvz:-Relay),
+  Features: `friends/presence/goobypal/analytics/codes/events/visits/boardgames/`
+  `ranchmp/gobnommp/gvzmp/mail/move/bans.js`,
   Panel: `webpanel/`. Neue Module werden in `src/modules.js` mit EINER Zeile registriert.

@@ -3,7 +3,7 @@
 //   komplette In-Memory-Objekte, Write-behind-Snapshot (dirty + Intervall) — atomar via
 //   write tmp → rename. Passt locker in RAM (Freundeskreis-Skala).
 // - Append-Logs (sessions/*.jsonl, ledger/*.jsonl): eine Zeile pro Event, monatlich rotiert.
-// - Blobs (Haus-Snapshots, später Fotos): einzelne Dateien unter data/blobs bzw. data/mail,
+// - Blobs (Haus-Snapshots, Post-/Feed-Fotos): einzelne Dateien unter data/blobs bzw. data/mail,
 //   NUR server-generierte IDs (kein Pfad-Traversal), Größenlimit erzwungen.
 // Interface klein halten, damit ein späterer node:sqlite-Swap eine 1-Datei-Änderung bleibt.
 
