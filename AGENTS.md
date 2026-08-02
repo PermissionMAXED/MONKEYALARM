@@ -20,9 +20,48 @@ Arbeitsregeln für Agents in diesem Repo (GOOBY Godot-Rewrite).
   `GOOBY-GODOT/export_presets.cfg` ab — Preset-Änderungen brauchen KEINE
   Workflow-Anpassung mehr. Sie druckt am Ende
   „.ipa gebaut: X MB, Y Dateien im PCK" als Erfolgs-Beleg.
+  Größenwacht (CI-36): die fertige .ipa wird zusätzlich gegen
+  `tools/ci/ipa_baseline.json` verglichen — Wachstum ab +10 % WARNUNG,
+  ab +50 % ROT. Gewolltes Wachstum: `size_bytes` in der Baseline auf den
+  im Log gedruckten Byte-Wert setzen.
+- MP-Smoke des Multiplayer-Servers: `bash tools/ci/mp_smoke.sh` startet den
+  ECHTEN GOOBY-SERVER als eigenen Prozess (node server.js, freier Port,
+  Temp-DATA_DIR) und belegt /health, den 2-Client-HELLO→WELCOME-Handshake,
+  PING/PONG, Freundschafts-Handshake + Presence-Push und den sauberen
+  SIGTERM-Shutdown. CI: nur als manueller workflow_dispatch-Job „mp-smoke"
+  in `gooby-server.yml` — der Push-Pfad bleibt unverändert. Der große
+  Feature-Smoke bleibt `GOOBY-SERVER/tools/smoke-rmp.mjs`.
 - Zeitabhängige Logik/Tests: Zeit und Zufall IMMER injizieren
   (`Clock`-Muster von `game_state.gd`, RNG als Parameter) — keine
   OS-Uhr/`randomize()` in testbarer Kernlogik.
+
+## Geteilte Module — wiederverwenden statt neu erfinden
+
+- Minigame-HUD-Typografie: `MinigameHudTypo`
+  (`GOOBY-GODOT/scripts/minigames/ui/hud_typo.gd`, reine static-Fabrik) ist
+  DIE Quelle für Timer-/Unterzeilen-/Hinweis-Styles und Milchglas-Plates des
+  P56-Rahmens — KEINE lokalen Plate-Fabriken oder Inline-Styleboxen mehr
+  anlegen (Wache: `tests/unit/test_g7_rahmen_typo.gd`).
+- Verfolgerkamera-Kollision der Fahrspiele:
+  `GOOBY-GODOT/scripts/minigames/games/_3db_stage/chase_cam.gd` (`clip_xz`,
+  PURE Statik, headless testbar) kürzt den Kamera-Boom vor der ersten Wand
+  — von deliveryRush/cityDrive genutzt (Wache
+  `tests/unit/test_3db_chase_cam.gd`); NICHT verwechseln mit der älteren
+  Stadt-Kamera `scripts/city/chase_cam.gd` (`ChaseCam`, W3a, gedämpftes
+  Follow ohne Wand-Clip).
+- Orte-/Laden-Ambience: `OrtLeben`
+  (`GOOBY-GODOT/scripts/city/ambience/ort_leben.gd`) ist DAS
+  wiederverwendbare Besucher-System der Stadt-Orte
+  (Tages-Seed-deterministisch, Wegpunkt-Schlendern, `kasse_punkt`-Käufer
+  mit `kunde_kauft`-Signal, Sprüche aus `city_leben.sprueche.<domain>`);
+  neue Orte docken über ~15 Zeilen `OrtScene._leben_konfig()` an (Muster
+  REHWEI/Baumarkt/Flughafen, Wache `tests/unit/test_g7_ort_leben.gd`) —
+  keine eigenen Ambient-Systeme bauen.
+- DLC Welle B: McGooby (Kauf-Gate + Belegstation + Bühne) und Goo-und-Bye
+  (Großmarkt + Preise + Onkel Alwin) leben unter
+  `GOOBY-GODOT/scripts/dlc/<dlc>/`; Verträge/Details in
+  `docs/godot-rewrite/DLC-MCGOOBY.md` + `DLC-GOO-UND-BYE.md`, Balance live
+  über `content/dlc/data/balance.json`.
 
 ## Cursor Cloud specific instructions
 
