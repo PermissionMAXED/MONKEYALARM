@@ -9,9 +9,11 @@
 		"qualitaet": "Quality",
 		"qualitaet_hilfe": "Auto detects your device and picks a fitting profile.",
 		"qualitaet_auto": "Auto",
+		"qualitaet_auto_live": "Auto ({stufe})",
 		"qualitaet_niedrig": "Low",
 		"qualitaet_mittel": "Medium",
 		"qualitaet_hoch": "High",
+		"qualitaet_hoch120": "High · 120 Hz",
 		"qualitaet_benutzerdefiniert": "Custom",
 		"geraet_info": "Detected: class {klasse}, target {fps} fps",
 		"aufloesung": "3D resolution",
@@ -105,7 +107,10 @@
 		"gruppe_info": "Info",
 		"haptik_an": "Haptics",
 		"haptik_an_hilfe": "Gently vibrates on taps, successes and warnings.",
-		"haptik_staerke": "Haptic strength"
+		"haptik_staerke": "Haptic strength",
+		"haptik_staerke_gesperrt": "Haptics are switched off under “Game” — turn them on there and the strength applies again.",
+		"spielstand_uebertragen_hilfe": "Brings your save game from the old GOOBY app onto this device — checked and backed up, nothing is overwritten without asking.",
+		"umzug_eintrag_hilfe": "Only relinks your online account (friends & co.) — your save game stays on this device."
 	},
 	"dev": {
 		"titel": "Developer menu",

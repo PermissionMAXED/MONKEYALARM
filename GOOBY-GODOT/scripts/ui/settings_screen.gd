@@ -573,8 +573,11 @@ func _build_controls_section() -> void:
 	)
 	_add_help(rows, "AssistHelp", I18nService.t("settings.lenkassistent_hilfe"))
 	# W14: umbenannt zu „Haptik-Stärke“ — der Hauptschalter „Haptik“
-	# (game.haptik) wohnt in der Spiel-Sektion.
-	_add_pick_row(
+	# (game.haptik) wohnt in der Spiel-Sektion. LOOP-SETTINGS: solange der
+	# Hauptschalter AUS ist, ist die Stufe ausgegraut MIT Wegweiser (statt
+	# still wirkungslos); beide Zeilen gleichen sich über _set_haptik ab.
+	var haptik_an := _app_on_default("game.haptik", true)
+	var staerke := _add_pick_row(
 		rows,
 		"controls_haptics",
 		I18nService.t("settings.haptik_staerke"),
@@ -585,9 +588,11 @@ func _build_controls_section() -> void:
 			["stark", I18nService.t("settings.haptik_stark")],
 		],
 		str(_app_value("controls.haptics", "normal")),
-		func(id: String) -> void: _set_app("controls.haptics", id)
+		func(id: String) -> void: _set_haptik("controls.haptics", id)
 	)
-	_add_help(rows, "HapticsHelp", I18nService.t("settings.haptik_hilfe"))
+	staerke.disabled = not haptik_an
+	var hilfe_key := "settings.haptik_hilfe" if haptik_an else "settings.haptik_staerke_gesperrt"
+	_add_help(rows, "HapticsHelp", I18nService.t(hilfe_key))
 
 
 func _build_accessibility_section() -> void:
@@ -735,7 +740,7 @@ func _build_game_section() -> void:
 		"game_haptik",
 		I18nService.t("settings.haptik_an"),
 		_app_on_default("game.haptik", true),
-		func(on: bool) -> void: _set_app("game.haptik", on)
+		func(on: bool) -> void: _set_haptik("game.haptik", on)
 	)
 	_add_help(rows, "HaptikAnHelp", I18nService.t("settings.haptik_an_hilfe"))
 	_add_help(rows, "AutosaveHelp", I18nService.t("settings.autosave_hilfe"))
@@ -765,12 +770,16 @@ func _build_transfer_section() -> void:
 	var rows := _add_section("Spielstand", "", false)
 	var btn := _section_button(rows, "TransferButton", "settings.spielstand_uebertragen")
 	btn.pressed.connect(_mit_click(_on_transfer_pressed, btn))
+	# LOOP-SETTINGS: zwei ähnlich klingende Wege — je eine Kurzerklärung,
+	# damit niemand den Account-Umzug mit dem Alt-Save-Import verwechselt.
+	_add_help(rows, "TransferHelp", I18nService.t("settings.spielstand_uebertragen_hilfe"))
 	# W13-C (Doc C §7): Server-Identitäts-Umzug per Panel-Code — der lokale
 	# Spielstand bleibt auf dem Gerät, nur das Online-Konto zieht um.
 	# BEWUSST ohne Press-Sound: der Knopf öffnet ein Overlay — Öffnen klingt
 	# laut Grammatik nur über das Panel selbst (UmzugSheet; s. P21-Bericht).
 	var umzug_btn := _section_button(rows, "UmzugButton", "umzug.settings_eintrag")
 	umzug_btn.pressed.connect(_on_umzug_pressed)
+	_add_help(rows, "UmzugHelp", I18nService.t("settings.umzug_eintrag_hilfe"))
 
 
 func _on_umzug_pressed() -> void:
@@ -897,6 +906,25 @@ func _on_preset_selected(id: String) -> void:
 	_rebuild()
 
 
+## LOOP-SETTINGS: EIN Schreiber für beide Haptik-Zeilen — schreibt den
+## geänderten Pfad, zieht die Folge-Schreibungen nach (haptik_folgen, damit
+## Hauptschalter und Stärke nie widersprechen) und baut bei Zustandswechsel
+## die Rows neu (die Stärke sperrt/entsperrt live; deferred wie beim
+## Slider-Release — nie mitten in der eigenen Signal-Emission).
+func _set_haptik(key: String, wert: Variant) -> void:
+	var andere: Variant = (
+		_app_value("controls.haptics", "normal")
+		if key == "game.haptik"
+		else _app_on_default("game.haptik", true)
+	)
+	var folgen := SettingsLogik.haptik_folgen(key, wert, andere)
+	_set_app(key, wert)
+	for pfad: String in folgen:
+		_set_app(pfad, folgen[pfad])
+	if key == "game.haptik" or not folgen.is_empty():
+		call_deferred("_rebuild")
+
+
 func _on_tutorial_reset() -> void:
 	var gs := get_node_or_null("/root/GameState")
 	if gs != null and gs.has_method("update"):
@@ -917,8 +945,10 @@ func _reapply_orientation() -> void:
 
 
 func _preset_options() -> Array:
+	# LOOP-SETTINGS: „Auto“ zeigt die aufgelöste Stufe („Auto (Hoch)“) —
+	# Auflösung/Label-Logik wohnt pur in SettingsLogik.
 	return [
-		["auto", I18nService.t("settings.qualitaet_auto")],
+		["auto", SettingsLogik.auto_label(self, str(_app_value("graphics.preset", "auto")))],
 		["niedrig", I18nService.t("settings.qualitaet_niedrig")],
 		["mittel", I18nService.t("settings.qualitaet_mittel")],
 		["hoch", I18nService.t("settings.qualitaet_hoch")],

@@ -209,3 +209,121 @@ func test_sprachwechsel_ueber_segmente() -> void:
 	_unmount(screen)
 	I18nService.set_locale("de")
 	app.set_setting("language", prev_lang)
+
+
+## LOOP-SETTINGS: der "Auto"-Eintrag des Qualitaets-Pickers traegt die
+## aufgeloeste Stufe ("Auto (Hoch)") statt den Spieler raten zu lassen.
+func test_qualitaet_auto_zeigt_aufgeloeste_stufe() -> void:
+	# Pure Abbildung Stufe -> Anzeige-Key (inkl. ProMotion-Kopplung):
+	assert_eq(SettingsLogik.stufe_label_key("hoch"), "settings.qualitaet_hoch")
+	assert_eq(
+		SettingsLogik.stufe_label_key(QualityProfiles.STUFE_HOCH_120),
+		"settings.qualitaet_hoch120",
+		"hoch120-Key bleibt an QualityProfiles.STUFE_HOCH_120 gekoppelt"
+	)
+	assert_eq(SettingsLogik.stufe_label_key("kaputt"), "", "unbekannt = leer (Picker zeigt Auto)")
+	# Pure Aufloesung: laufendes Auto nimmt das LIVE-Buendel, sonst Geraete-Fakten.
+	var niedrig := QualityProfiles.bundle("niedrig")
+	assert_eq(SettingsLogik.auto_stufe("auto", niedrig, {}), "niedrig", "applied zaehlt bei auto")
+	assert_eq(
+		SettingsLogik.auto_stufe(
+			"hoch", niedrig, {"memory_mb": 6000.0, "screen_px": Vector2(2556, 1179)}
+		),
+		"hoch",
+		"ohne laufendes Auto zaehlt die Geraete-Klassifikation"
+	)
+	# Und im UI: Eintrag 0 des Pickers ist nie mehr das nackte "Auto".
+	var app := _app()
+	if app == null:
+		fail_test("AppSettings-Autoload fehlt")
+		return
+	var prev_graphics: Dictionary = (app.get_setting("graphics") as Dictionary).duplicate(true)
+	app.set_setting("graphics.preset", "auto")
+	var screen := _mount_screen()
+	var picker := (
+		screen.find_child("RowGraphicsPreset", true, false).get_node("Value") as OptionButton
+	)
+	var auto_text := picker.get_item_text(0)
+	assert_true(auto_text.begins_with(I18nService.t("settings.qualitaet_auto")), "beginnt mit Auto")
+	assert_true(auto_text.contains("("), "traegt die aufgeloeste Stufe in Klammern: " + auto_text)
+	_unmount(screen)
+	app.set_setting("graphics", prev_graphics)
+	app.set_setting("graphics.preset", str(prev_graphics.get("preset", "auto")))
+
+
+## LOOP-SETTINGS: purer Haptik-Abgleich — Hauptschalter (game.haptik) und
+## Stufe (controls.haptics) duerfen einander nie widersprechen.
+func test_haptik_folgen_pur() -> void:
+	assert_eq(
+		SettingsLogik.haptik_folgen("game.haptik", true, "aus"),
+		{"controls.haptics": "normal"},
+		"Schalter AN bei Stufe aus -> Stufe zurueck auf normal (AN wirkt)"
+	)
+	assert_eq(SettingsLogik.haptik_folgen("game.haptik", true, "stark"), {}, "AN + stark = nichts")
+	assert_eq(SettingsLogik.haptik_folgen("game.haptik", false, "aus"), {}, "AUS zieht nichts nach")
+	assert_eq(
+		SettingsLogik.haptik_folgen("controls.haptics", "aus", true),
+		{"game.haptik": false},
+		"Stufe aus bei Schalter an -> Schalter aus (ehrliche Anzeige)"
+	)
+	assert_eq(SettingsLogik.haptik_folgen("controls.haptics", "aus", false), {}, "schon aus")
+	assert_eq(SettingsLogik.haptik_folgen("controls.haptics", "dezent", true), {}, "Stufe normal")
+
+
+## LOOP-SETTINGS: Stufe ausgegraut + Wegweiser bei Hauptschalter AUS; beide
+## Richtungen des Abgleichs laufen ueber die echten Rows.
+func test_haptik_staerke_gesperrt_und_abgleich() -> void:
+	var app := _app()
+	if app == null:
+		fail_test("AppSettings-Autoload fehlt")
+		return
+	var prev_master: Variant = app.get_setting("game.haptik", true)
+	var prev_stufe := str(app.value_of("controls.haptics"))
+	app.set_setting("game.haptik", false)
+	app.set_setting("controls.haptics", "aus")
+	var screen := _mount_screen()
+	var picker := (
+		screen.find_child("RowControlsHaptics", true, false).get_node("Value") as OptionButton
+	)
+	assert_true(picker.disabled, "Stufe ausgegraut, solange der Hauptschalter aus ist")
+	var hilfe := screen.find_child("HapticsHelp", true, false) as Label
+	assert_eq(
+		hilfe.text,
+		I18nService.t("settings.haptik_staerke_gesperrt"),
+		"Wegweiser zum Hauptschalter statt iPhone-Hinweis"
+	)
+	# Hauptschalter AN: die Alt-Stufe "aus" springt auf "normal" (AN wirkt).
+	var toggle := screen.find_child("RowGameHaptik", true, false).get_node("Value") as CheckButton
+	toggle.button_pressed = true
+	assert_true(bool(app.get_setting("game.haptik", false)), "Schalter persistiert AN")
+	assert_eq(str(app.value_of("controls.haptics")), "normal", "Stufe aus -> normal")
+	await wait_frames(2)
+	picker = (
+		screen.find_child("RowControlsHaptics", true, false).get_node("Value") as OptionButton
+	)
+	assert_false(picker.disabled, "nach dem Einschalten wieder bedienbar")
+	hilfe = screen.find_child("HapticsHelp", true, false) as Label
+	assert_eq(hilfe.text, I18nService.t("settings.haptik_hilfe"), "iPhone-Hinweis ist zurueck")
+	# Stufe "aus" waehlen spiegelt den Hauptschalter (nie AN ohne Vibration).
+	picker.select(0)
+	picker.item_selected.emit(0)
+	assert_false(bool(app.get_setting("game.haptik", true)), "Stufe aus schaltet den Schalter aus")
+	await wait_frames(2)
+	_unmount(screen)
+	app.set_setting("game.haptik", prev_master if prev_master != null else true)
+	app.set_setting("controls.haptics", prev_stufe)
+
+
+## LOOP-SETTINGS: die zwei aehnlich klingenden Spielstand-Wege (Alt-Save-
+## Import vs. Account-Umzug) tragen je eine erklaerende Hilfezeile.
+func test_spielstand_wege_erklaert() -> void:
+	var screen := _mount_screen()
+	var transfer_hilfe := screen.find_child("TransferHelp", true, false) as Label
+	var umzug_hilfe := screen.find_child("UmzugHelp", true, false) as Label
+	assert_true(transfer_hilfe != null, "Erklaerung unter dem Transfer-Knopf")
+	assert_true(umzug_hilfe != null, "Erklaerung unter dem Umzug-Knopf")
+	if transfer_hilfe != null and umzug_hilfe != null:
+		assert_eq(transfer_hilfe.text, I18nService.t("settings.spielstand_uebertragen_hilfe"))
+		assert_eq(umzug_hilfe.text, I18nService.t("settings.umzug_eintrag_hilfe"))
+		assert_ne(transfer_hilfe.text, umzug_hilfe.text, "zwei WIRKLICH verschiedene Texte")
+	_unmount(screen)

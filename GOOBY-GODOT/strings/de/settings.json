@@ -9,9 +9,11 @@
 		"qualitaet": "Qualität",
 		"qualitaet_hilfe": "Auto erkennt dein Gerät und wählt das passende Profil.",
 		"qualitaet_auto": "Auto",
+		"qualitaet_auto_live": "Auto ({stufe})",
 		"qualitaet_niedrig": "Niedrig",
 		"qualitaet_mittel": "Mittel",
 		"qualitaet_hoch": "Hoch",
+		"qualitaet_hoch120": "Hoch · 120 Hz",
 		"qualitaet_benutzerdefiniert": "Eigene",
 		"geraet_info": "Erkannt: Klasse {klasse}, Ziel {fps} Bilder/s",
 		"aufloesung": "3D-Auflösung",
@@ -105,7 +107,10 @@
 		"gruppe_info": "Info",
 		"haptik_an": "Haptik",
 		"haptik_an_hilfe": "Vibriert sanft bei Tipps, Erfolgen und Warnungen.",
-		"haptik_staerke": "Haptik-Stärke"
+		"haptik_staerke": "Haptik-Stärke",
+		"haptik_staerke_gesperrt": "Haptik ist unter „Spiel“ ausgeschaltet — schalte sie dort an, dann wirkt die Stärke wieder.",
+		"spielstand_uebertragen_hilfe": "Holt deinen Spielstand aus der alten GOOBY-App auf dieses Gerät — geprüft und mit Sicherung, nichts wird ungefragt überschrieben.",
+		"umzug_eintrag_hilfe": "Verknüpft nur dein Online-Konto (Freunde & Co.) neu — dein Spielstand bleibt auf diesem Gerät."
 	},
 	"dev": {
 		"titel": "Entwicklermenü",
