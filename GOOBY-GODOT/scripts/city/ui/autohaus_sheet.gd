@@ -75,7 +75,8 @@ func _baue_farbreihe(karte: Control, eintrag: Dictionary, besitzt: bool) -> void
 
 
 func _baue_besitz_knopf(karte: Control, id: String, aktiv_id: String) -> void:
-	var btn := Button.new()
+	# Audio-Grammatik: SquishButton + ui_chip (Auswahl des aktiven Autos).
+	var btn := SquishButton.new()
 	btn.theme_type_variation = "PrimaryButton" if id != aktiv_id else "GhostButton"
 	btn.disabled = id == aktiv_id
 	btn.text = I18nService.t(
@@ -83,6 +84,7 @@ func _baue_besitz_knopf(karte: Control, id: String, aktiv_id: String) -> void:
 	)
 	btn.pressed.connect(
 		func() -> void:
+			AudioDirector.try_play(btn, "ui_chip")
 			AutoKatalog.waehle(gs, id)
 			aktualisiere()
 	)

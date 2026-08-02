@@ -73,12 +73,14 @@ static func _inhalt(sheet: PanelSheet, gs: Object) -> Control:
 	knoepfe.add_theme_constant_override("separation", 12)
 	knoepfe.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(knoepfe)
-	var jetzt := Button.new()
+	# Audio-Grammatik: SquishButton; Reise klingt über den LoadingVeil,
+	# das Sheet-Schließen über PanelSheet (ui_close) — Druck bleibt stumm.
+	var jetzt := SquishButton.new()
 	jetzt.theme_type_variation = "PrimaryButton"
 	jetzt.text = I18nService.t("ranch.angebot.jetzt")
 	jetzt.pressed.connect(func() -> void: _jetzt_losfahren(sheet, gs))
 	knoepfe.add_child(jetzt)
-	var spaeter := Button.new()
+	var spaeter := SquishButton.new()
 	spaeter.theme_type_variation = "GhostButton"
 	spaeter.text = I18nService.t("ranch.angebot.spaeter")
 	spaeter.pressed.connect(func() -> void: _spaeter_kaufen(sheet, gs))

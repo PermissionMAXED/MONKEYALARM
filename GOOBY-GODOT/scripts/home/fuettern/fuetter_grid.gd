@@ -73,7 +73,9 @@ func _baue_inhalt() -> void:
 	else:
 		_baue_chips(box)
 		_baue_regal(box)
-	var schliessen := Button.new()
+	# Audio-Grammatik: SquishButton (Squish + Haptik zentral); Klänge kommen
+	# aus den Kühlschrank-Handlern (ui_close/ui_click — Outcome schlägt Press).
+	var schliessen := SquishButton.new()
 	schliessen.name = "SchliessenKnopf"
 	schliessen.theme_type_variation = "GhostButton"
 	schliessen.text = I18nService.t("rewards.kuehlschrank.schliessen")
@@ -99,7 +101,7 @@ func _baue_leerzustand(box: VBoxContainer) -> void:
 	tipp.custom_minimum_size = Vector2(300, 0)
 	tipp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(tipp)
-	var rehwei := Button.new()
+	var rehwei := SquishButton.new()
 	rehwei.name = "RehweiKnopf"
 	rehwei.theme_type_variation = "PrimaryButton"
 	rehwei.text = I18nService.t("fuettern.leer_rehwei")
@@ -125,7 +127,7 @@ func _baue_chips(box: VBoxContainer) -> void:
 	_chips_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(_chips_box)
 	for kategorie: String in chips:
-		var chip := Button.new()
+		var chip := SquishButton.new()
 		chip.name = "Chip_" + kategorie
 		chip.text = I18nService.t("fuettern.chip." + kategorie)
 		chip.focus_mode = Control.FOCUS_NONE
@@ -197,7 +199,7 @@ func _fuelle_regal() -> void:
 
 
 func _baue_karte(food_id: String, anzahl: int) -> Control:
-	var karte := Button.new()
+	var karte := SquishButton.new()
 	karte.name = "Karte_" + food_id
 	karte.theme_type_variation = "AcCardButton"
 	karte.custom_minimum_size = KARTE_MIN

@@ -154,7 +154,8 @@ func _show_badge() -> void:
 	_badge_layer = CanvasLayer.new()
 	_badge_layer.name = "DevBadge"
 	_badge_layer.layer = BADGE_LAYER
-	_badge = Button.new()
+	# Audio-Grammatik: SquishButton — auch der Dev-Badge squisht/haptikt.
+	_badge = SquishButton.new()
 	_badge.name = "DevBadgeButton"
 	_badge.text = "DEV"
 	_badge.focus_mode = Control.FOCUS_NONE

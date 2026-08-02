@@ -114,11 +114,15 @@ func zeige_eintraege(entries: Array, me: String) -> void:
 		label.text = text
 		zeile.add_child(label)
 		if bool(e.get("hatGhost", false)):
-			var geist_btn := Button.new()
+			var geist_btn := SquishButton.new()
 			geist_btn.theme_type_variation = &"GhostButton"
 			geist_btn.text = I18nService.t("ranch_mp.besten.geist_laden")
 			geist_btn.tooltip_text = I18nService.t("ranch_mp.besten.ghost")
-			geist_btn.pressed.connect(func() -> void: ghost_requested.emit(kurs_id, code))
+			geist_btn.pressed.connect(
+				func() -> void:
+					AudioDirector.try_play(geist_btn, "ui_confirm")
+					ghost_requested.emit(kurs_id, code)
+			)
 			# P57: Touch-Floor auch für dynamische Zeilen-Knöpfe.
 			ScreenShell.touch_target(geist_btn, m)
 			zeile.add_child(geist_btn)

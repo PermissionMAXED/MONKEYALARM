@@ -222,6 +222,9 @@ func _on_sternenfoto() -> void:
 	if gs == null:
 		return
 	if not FotoModus.ist_frei(gs):
+		# Gesperrt klingt („Nö“-Grammatik): ui_error + warn-Haptik.
+		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		zeige_toast(I18nService.t("raumstation.foto.keine_kamera"))
 		return
 	AudioDirector.try_play(self, "ui_click")
@@ -246,6 +249,7 @@ func _on_foto_zu() -> void:
 ## Verlassen = Shuttle zurück zum Flughafen (die Station liegt nicht an
 ## einer Straße — der Stadt-Spawn der Basis-Klasse griffe ins Leere).
 func _on_verlassen() -> void:
+	AudioDirector.try_play(self, "ui_back")
 	verlassen_angefordert.emit()
 	var router := _router()
 	if router != null and router.has_method("goto"):
@@ -303,7 +307,7 @@ func _reduced_motion() -> bool:
 
 
 func _knopf(name_id: String, text: String, variation: String) -> Button:
-	var btn := Button.new()
+	var btn := SquishButton.new()
 	btn.name = name_id
 	btn.text = text
 	btn.theme_type_variation = variation

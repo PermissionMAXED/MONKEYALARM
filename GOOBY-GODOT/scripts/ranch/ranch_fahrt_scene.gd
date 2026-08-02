@@ -271,12 +271,14 @@ func _zeige_tor_sheet(gs: Object) -> void:
 	knoepfe.add_theme_constant_override("separation", 12)
 	knoepfe.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(knoepfe)
-	var kaufen := Button.new()
+	# Audio-Grammatik: SquishButton; der AUSGANG klingt in _on_kaufen
+	# (ui_buy bzw. „Nö“) — Outcome schlägt Press.
+	var kaufen := SquishButton.new()
 	kaufen.theme_type_variation = "PrimaryButton"
 	kaufen.text = I18nService.t("ranch.tor.kaufen", {"preis": RanchKatalog.preis()})
 	kaufen.pressed.connect(func() -> void: _on_kaufen(gs))
 	knoepfe.add_child(kaufen)
-	var spaeter := Button.new()
+	var spaeter := SquishButton.new()
 	spaeter.theme_type_variation = "GhostButton"
 	spaeter.text = I18nService.t("ranch.tor.spaeter")
 	spaeter.pressed.connect(_on_spaeter)
@@ -296,10 +298,14 @@ func _zeige_tor_sheet(gs: Object) -> void:
 func _on_kaufen(gs: Object) -> void:
 	var ergebnis := RanchKauf.kaufe(gs)
 	if ergebnis == RanchKauf.RESULT_OK:
+		AudioDirector.try_play(self, "ui_buy")
 		_schliesse_tor_sheet()
 		_zeige_toast(I18nService.t("ranch.tor.gekauft"))
 		_betrete_hof()
 	elif ergebnis == RanchKauf.RESULT_BROKE:
+		# „Nö“-Grammatik: zu teuer klingt (ui_error + warn-Haptik).
+		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		var fehlt := RanchKatalog.preis() - int(gs.get_value("economy.coins", 0))
 		_zeige_toast(I18nService.t("ranch.tor.zu_teuer", {"fehlt": maxi(0, fehlt)}))
 	else:

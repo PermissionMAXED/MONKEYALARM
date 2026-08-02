@@ -61,17 +61,21 @@ func _baue_zeile(liste: Control, eintrag: Dictionary) -> void:
 			"%s · %s"
 			% [zusatz, I18nService.t("city.markt.gedrueckt").format({"voll": int(eintrag["voll"])})]
 		)
+	# Verkauf = Münz-EINNAHME: der Druck bleibt stumm (sound_id ""), der
+	# AUSGANG klingt in _verkaufe (ui_coins bzw. ui_error) — Grammatik
+	# „Outcome schlägt Press“.
 	var zeile := CitySheetBausteine.kauf_zeile(
 		liste,
 		"%s — %s" % [str(eintrag["name_de"]), CitySheetBausteine.preis_text(preis)],
 		zusatz,
 		I18nService.t("city.markt.verkauf_eins"),
 		vorrat > 0,
-		func() -> void: _verkaufe(id, 1)
+		func() -> void: _verkaufe(id, 1),
+		""
 	)
 	if vorrat <= 1:
 		return
-	var alle := Button.new()
+	var alle := SquishButton.new()
 	alle.theme_type_variation = "PrimaryButton"
 	alle.text = I18nService.t("city.markt.verkauf_alle").format({"n": vorrat})
 	alle.custom_minimum_size = Vector2(CitySheetBausteine.KNOPF_ZWEIT_BREITE, 0.0)
@@ -85,7 +89,10 @@ func _baue_zeile(liste: Control, eintrag: Dictionary) -> void:
 func _verkaufe(id: String, menge: int) -> void:
 	var res := MarktPreise.verkaufen(gs, unix_s(), id, menge)
 	if not bool(res["ok"]):
+		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		return
+	AudioDirector.try_play(self, "ui_coins")
 	verkauft.emit(id, int(res["menge"]))
 	_zeige_toast(
 		I18nService.t("city.markt.verkauft").format(

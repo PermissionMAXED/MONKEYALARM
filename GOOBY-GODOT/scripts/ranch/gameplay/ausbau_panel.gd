@@ -96,7 +96,7 @@ func _build_layout() -> void:
 	_coins_label.theme_type_variation = &"CaptionLabel"
 	_coins_label.add_theme_color_override("font_color", INK)
 	kopf.add_child(_coins_label)
-	var zurueck := Button.new()
+	var zurueck := SquishButton.new()
 	zurueck.text = I18nService.t("ranchplay.pflege.zurueck")
 	zurueck.custom_minimum_size = Vector2(110, 44)
 	zurueck.pressed.connect(
@@ -125,7 +125,9 @@ func _build_layout() -> void:
 	ausbau_grid.add_theme_constant_override("v_separation", 8)
 	panel.add_child(ausbau_grid)
 	for id: String in RanchWirtschaft.AUSBAU_IDS:
-		var btn := Button.new()
+		# Audio-Grammatik: SquishButton; der AUSGANG klingt in _buche_kauf
+		# (ui_buy bzw. „Nö“) — Outcome schlägt Press.
+		var btn := SquishButton.new()
 		btn.custom_minimum_size = Vector2(150, 56)
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.pressed.connect(_on_ausbau.bind(id))
@@ -145,7 +147,7 @@ func _build_layout() -> void:
 		zeile.add_child(slot_label)
 		for farbe: Variant in RanchWirtschaft.gear_farben(_balance):
 			var id := "%s_%s" % [slot, farbe]
-			var btn := Button.new()
+			var btn := SquishButton.new()
 			btn.custom_minimum_size = Vector2(76, 46)
 			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			btn.pressed.connect(_on_gear.bind(id))
@@ -178,7 +180,7 @@ func _ueberschrift(key: String) -> Label:
 
 
 func _aktion_button(parent: Control, handler: Callable) -> Button:
-	var btn := Button.new()
+	var btn := SquishButton.new()
 	btn.custom_minimum_size = Vector2(120, 52)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.pressed.connect(handler)
@@ -328,7 +330,9 @@ func _on_gear(id: String) -> void:
 ## Kauf ATOMAR buchen: Economy.spend + neue wirtschaft im selben update.
 func _buche_kauf(ergebnis: Dictionary, toast_key: String) -> void:
 	if not bool(ergebnis["ok"]):
+		# „Nö“-Grammatik: gescheiterter Kauf klingt UND warnt haptisch.
 		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		return
 	var gs := game_state()
 	if gs == null:
@@ -354,6 +358,7 @@ func _buche_kauf(ergebnis: Dictionary, toast_key: String) -> void:
 func _buche_gratis(ergebnis: Dictionary, sound: String) -> void:
 	if not bool(ergebnis["ok"]):
 		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		return
 	var gs := game_state()
 	if gs == null:

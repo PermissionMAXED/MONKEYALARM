@@ -9,6 +9,13 @@ extends Button
 ##
 ## Haptik läuft ZENTRAL hier: jeder Knopfdruck feuert Haptics.tap() —
 ## Screens verdrahten nichts selbst (Gate `game.haptik` sitzt in Haptics).
+##
+## GESPERRT klingt auch (UI-HAPTIC-Welle): ein Tap auf einen disabled-Knopf
+## verpufft nicht mehr stumm, sondern spielt zentral das „Nö“ — `ui_error` +
+## Haptics.warn (Grammatik: ungültiger Tap) + kurzes Kopfschütteln
+## (UiMotion.schuetteln, Reduced-Motion-gated). Screens verdrahten dafür
+## NICHTS selbst; wer im Outcome-Zweig bereits `ui_error` spielt, kollidiert
+## nicht (45-ms-Debounce des AudioDirector schluckt Doppel-Trigger).
 
 var _tween: Tween
 
@@ -18,6 +25,27 @@ func _ready() -> void:
 	button_up.connect(_on_up)
 	resized.connect(_center_pivot)
 	_center_pivot()
+
+
+## Disabled-Buttons bekommen gui_input weiterhin zugestellt (mouse_filter
+## bleibt STOP) — nur die BaseButton-Press-Logik ist tot. Genau da hängt
+## das zentrale „Nö“ für gesperrte Aktionen. Touch läuft über die
+## Mouse-Emulation (Projekt-Default) ebenfalls hier durch.
+func _gui_input(event: InputEvent) -> void:
+	if not disabled:
+		return
+	var mb := event as InputEventMouseButton
+	if mb != null and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+		nope()
+
+
+## Zentrales „Nö“-Feedback (Fehlerton + warn-Haptik + Kopfschütteln).
+## Auch von außen aufrufbar, wenn eine gesperrte NICHT-Knopf-Fläche
+## dasselbe Feedback braucht.
+func nope() -> void:
+	AudioDirector.try_play(self, "ui_error")
+	Haptics.warn(self)
+	UiMotion.schuetteln(self)
 
 
 func _center_pivot() -> void:

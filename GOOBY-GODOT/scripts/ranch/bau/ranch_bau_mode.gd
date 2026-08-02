@@ -365,7 +365,9 @@ func _platziere_ghost() -> void:
 		if def["kategorie"] == "anlage":
 			_ghost_weg()
 	else:
+		# „Nö“-Grammatik: gescheiterter Bau klingt UND warnt haptisch.
 		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		_zeige_feedback(I18nService.t("rbau.fehler.%s" % str(res["fehler"])))
 	_refresh_ui()
 
@@ -443,12 +445,17 @@ func _baue_ui() -> void:
 	_coins_label = Label.new()
 	_coins_label.add_theme_color_override("font_color", INK)
 	kopf_box.add_child(_coins_label)
-	_abriss_btn = Button.new()
+	# Audio-Grammatik: SquishButton + ui_toggle (Abriss-Modus umschalten).
+	_abriss_btn = SquishButton.new()
 	_abriss_btn.toggle_mode = true
 	_abriss_btn.text = I18nService.t("rbau.abriss")
-	_abriss_btn.toggled.connect(func(an: bool) -> void: _setze_abriss(an))
+	_abriss_btn.toggled.connect(
+		func(an: bool) -> void:
+			AudioDirector.try_play(_abriss_btn, "ui_toggle")
+			_setze_abriss(an)
+	)
 	kopf_box.add_child(_abriss_btn)
-	var fertig := Button.new()
+	var fertig := SquishButton.new()
 	fertig.text = I18nService.t("rbau.verlassen")
 	fertig.pressed.connect(
 		func() -> void:
@@ -468,9 +475,13 @@ func _baue_ui() -> void:
 	tabs.add_theme_constant_override("separation", 8)
 	fuss_box.add_child(tabs)
 	for kat: String in RanchBauKatalog.KATEGORIEN:
-		var tab := Button.new()
+		var tab := SquishButton.new()
 		tab.text = I18nService.t("rbau.kategorie.%s" % kat)
-		tab.pressed.connect(func() -> void: _setze_kategorie(kat))
+		tab.pressed.connect(
+			func() -> void:
+				AudioDirector.try_play(tab, "ui_chip")
+				_setze_kategorie(kat)
+		)
 		tabs.add_child(tab)
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, 92)
@@ -495,12 +506,16 @@ func _baue_ui() -> void:
 	_info_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_info_text.add_theme_color_override("font_color", INK)
 	info_box.add_child(_info_text)
-	_ausbau_btn = Button.new()
+	_ausbau_btn = SquishButton.new()
 	_ausbau_btn.pressed.connect(_on_ausbauen)
 	info_box.add_child(_ausbau_btn)
-	var zu := Button.new()
+	var zu := SquishButton.new()
 	zu.text = I18nService.t("rbau.verlassen")
-	zu.pressed.connect(func() -> void: _auswahl_weg())
+	zu.pressed.connect(
+		func() -> void:
+			AudioDirector.try_play(zu, "ui_close")
+			_auswahl_weg()
+	)
 	info_box.add_child(zu)
 	# Feedback-Toast.
 	_feedback = Label.new()
@@ -523,7 +538,9 @@ func _setze_kategorie(kat: String) -> void:
 		var def: Dictionary = _defs[id]
 		if bool(def.get("upgrade", false)):
 			continue
-		var knopf := Button.new()
+		# Audio-Grammatik: SquishButton — bereits gebaute Anlagen sind
+		# disabled und bekommen zentral das „Nö“; die Wahl klingt ui_chip.
+		var knopf := SquishButton.new()
 		knopf.custom_minimum_size = Vector2(150, 72)
 		var name_text: String = I18nService.t(str(def["name_key"]))
 		var lager := int(_lager_anzahl(bau, id))
@@ -542,7 +559,11 @@ func _setze_kategorie(kat: String) -> void:
 			)
 		else:
 			knopf.text = "%s\n%d G" % [name_text, int(def["kosten"])]
-		knopf.pressed.connect(func() -> void: _waehle_item(id))
+		knopf.pressed.connect(
+			func() -> void:
+				AudioDirector.try_play(knopf, "ui_chip")
+				_waehle_item(id)
+		)
 		_item_leiste.add_child(knopf)
 
 
@@ -576,7 +597,7 @@ func _refresh_zonen() -> void:
 	for zone_id: String in zonen:
 		if (bau["zonen"] as Array).has(zone_id):
 			continue
-		var knopf := Button.new()
+		var knopf := SquishButton.new()
 		knopf.text = (
 			"%s: %s"
 			% [
@@ -598,6 +619,7 @@ func _on_zone(zone_id: String) -> void:
 		_rebuild_welt()
 	else:
 		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		_zeige_feedback(I18nService.t("rbau.fehler.%s" % str(res["fehler"])))
 	_refresh_ui()
 
@@ -659,6 +681,7 @@ func _on_ausbauen() -> void:
 		_refresh_info()
 	else:
 		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		_zeige_feedback(I18nService.t("rbau.fehler.%s" % str(res["fehler"])))
 	_refresh_ui()
 

@@ -299,7 +299,9 @@ func _menu_disziplinen(spalte: VBoxContainer, comp: Dictionary) -> void:
 	var heute: Array = _plan.get("disziplinen", [])
 	var schleifen: Dictionary = comp.get("schleifen") if comp.get("schleifen") is Dictionary else {}
 	for disziplin in RanchCompKatalog.DISZIPLINEN:
-		var knopf := Button.new()
+		# Audio-Grammatik: SquishButton — GESPIELT ist disabled und bekommt
+		# das zentrale „Nö“; der Klick klingt in _zeige_einweisung.
+		var knopf := SquishButton.new()
 		knopf.custom_minimum_size = Vector2(0.0, 58.0)
 		knopf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		knopf.add_theme_font_size_override("font_size", 17)
@@ -407,7 +409,7 @@ func _zeige_einweisung(disziplin: String) -> void:
 	zeile.add_theme_constant_override("separation", 12)
 	zeile.alignment = BoxContainer.ALIGNMENT_CENTER
 	mitte.add_child(zeile)
-	var zurueck := Button.new()
+	var zurueck := SquishButton.new()
 	zurueck.text = I18nService.t("rcomp.einweisung.zurueck")
 	zurueck.custom_minimum_size = Vector2(140.0, 48.0)
 	zurueck.pressed.connect(
@@ -416,7 +418,7 @@ func _zeige_einweisung(disziplin: String) -> void:
 			_zeige_menu()
 	)
 	zeile.add_child(zurueck)
-	var los := Button.new()
+	var los := SquishButton.new()
 	los.text = I18nService.t("rcomp.einweisung.los")
 	los.custom_minimum_size = Vector2(180.0, 48.0)
 	los.pressed.connect(_starte_lauf)
@@ -430,6 +432,7 @@ func _zeige_einweisung(disziplin: String) -> void:
 func _starte_lauf() -> void:
 	if not running or finished or phase != Phase.EINWEISUNG:
 		return
+	AudioDirector.try_play(self, "ui_confirm")
 	phase = Phase.LAUF
 	_teardown_panel()
 	if _menu != null and is_instance_valid(_menu):
@@ -615,7 +618,7 @@ func _zeige_ergebnis(platz: int, bericht: Dictionary, geist_neu: bool) -> void:
 		label.add_theme_color_override("font_color", GOLD.darkened(0.25))
 		label.text = extra
 		mitte.add_child(label)
-	var weiter := Button.new()
+	var weiter := SquishButton.new()
 	weiter.text = I18nService.t("rcomp.ergebnis.weiter")
 	weiter.custom_minimum_size = Vector2(180.0, 48.0)
 	weiter.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

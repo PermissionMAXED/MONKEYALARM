@@ -406,8 +406,10 @@ func _headline(text: String) -> Label:
 
 
 func _button(text: String, on_pressed: Callable) -> Button:
-	var button := Button.new()
+	# Audio-Grammatik: SquishButton + ui_click (Editor-Werkzeugleiste).
+	var button := SquishButton.new()
 	button.text = text
+	button.pressed.connect(func() -> void: AudioDirector.try_play(button, "ui_click"))
 	button.pressed.connect(on_pressed)
 	return button
 

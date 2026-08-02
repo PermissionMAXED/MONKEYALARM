@@ -115,9 +115,14 @@ func _baue_theke() -> void:
 	_feedback.add_theme_color_override("font_color", FEHLER_ROT)
 	_feedback.modulate.a = 0.0
 	spalte.add_child(_feedback)
-	var fertig := Button.new()
+	# Audio-Grammatik: SquishButton (Squish + Haptik zentral).
+	var fertig := SquishButton.new()
 	fertig.text = I18nService.t("rdorf.fertig")
-	fertig.pressed.connect(func() -> void: geschlossen.emit())
+	fertig.pressed.connect(
+		func() -> void:
+			AudioDirector.try_play(fertig, "ui_back")
+			geschlossen.emit()
+	)
 	spalte.add_child(fertig)
 
 
@@ -351,7 +356,9 @@ func _zeile(titel: String, aktion: String, callback: Callable, tupfer := Color.T
 		status.add_theme_color_override("font_color", Color(INK, 0.55))
 		zeile.add_child(status)
 		return
-	var knopf := Button.new()
+	# Audio-Grammatik: SquishButton; der AUSGANG klingt in _melde
+	# (ui_buy bzw. „Nö“) — Outcome schlägt Press.
+	var knopf := SquishButton.new()
 	knopf.text = aktion
 	knopf.pressed.connect(callback)
 	zeile.add_child(knopf)
@@ -364,9 +371,13 @@ func _kauf_text(preis: int) -> String:
 ## Ergebnis einer Buchung melden (Fehler rot, Erfolg grün) + Liste erneuern.
 func _melde(ergebnis: Dictionary) -> void:
 	if bool(ergebnis.get("ok", false)):
+		AudioDirector.try_play(self, "ui_buy")
 		_feedback.add_theme_color_override("font_color", OK_GRUEN)
 		_feedback.text = I18nService.t("rdorf.gekauft")
 	else:
+		# „Nö“-Grammatik: gescheiterter Kauf klingt (ui_error + warn).
+		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		_feedback.add_theme_color_override("font_color", FEHLER_ROT)
 		_feedback.text = I18nService.t("rdorf.fehler.%s" % str(ergebnis.get("fehler", "unbekannt")))
 	_feedback_t = 1.6

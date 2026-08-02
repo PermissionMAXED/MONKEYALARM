@@ -236,6 +236,9 @@ func _on_foto() -> void:
 	if gs == null:
 		return
 	if not FotoModus.ist_frei(gs):
+		# „Nö“-Grammatik: gesperrte Aktion klingt (Outcome schlägt Press).
+		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		zeige_toast(I18nService.t("urlaub.toast.keine_kamera"))
 		return
 	AudioDirector.try_play(self, "ui_click")
@@ -259,6 +262,9 @@ func _on_mini() -> void:
 func _on_souvenir() -> void:
 	var res := UrlaubsAktivitaeten.souvenir_einloesen(game_state(), dest_id, _now_ms())
 	if not bool(res["ok"]):
+		# Souvenir im Cooldown = gesperrte Aktion → „Nö“-Ton statt Stille.
+		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		zeige_toast(I18nService.t("urlaub.toast.souvenir_leer"))
 		return
 	AudioDirector.try_play(self, "ui_sticker")
@@ -293,7 +299,7 @@ func _baue_tap_ebene() -> void:
 	var symbol := str(ARCHETYP_DATEN[archetyp]["spot_symbol"])
 	var positionen := _tap_positionen()
 	for i in positionen.size():
-		var knopf := Button.new()
+		var knopf := SquishButton.new()
 		knopf.name = "TapSpot%d" % i
 		knopf.text = symbol
 		knopf.theme_type_variation = "AccentButton"
@@ -947,7 +953,7 @@ func _matt(farbe: Color) -> StandardMaterial3D:
 
 
 func _knopf(name_id: String, text: String, variation: String) -> Button:
-	var btn := Button.new()
+	var btn := SquishButton.new()
 	btn.name = name_id
 	btn.text = text
 	btn.theme_type_variation = variation

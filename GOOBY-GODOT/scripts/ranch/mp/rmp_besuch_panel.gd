@@ -49,10 +49,14 @@ func _ready() -> void:
 	_baue_knopf(aktionen, "ranch_mp.besuch.herz", func() -> void: _sende_herz())
 	_baue_knopf(aktionen, "ranch_mp.besuch.streicheln", func() -> void: _sende_geste("streicheln"))
 	_baue_knopf(aktionen, "ranch_mp.besuch.fuettern", func() -> void: _sende_geste("fuettern"))
-	var ende := Button.new()
+	var ende := SquishButton.new()
 	ende.theme_type_variation = &"GhostButton"
 	ende.text = I18nService.t("ranch_mp.besuch.beenden")
-	ende.pressed.connect(func() -> void: ende_pressed.emit())
+	ende.pressed.connect(
+		func() -> void:
+			AudioDirector.try_play(ende, "ui_back")
+			ende_pressed.emit()
+	)
 	# G7/P57: physischer Touch-Floor (gleiche Befund-Klasse wie Menü/Lobby).
 	ScreenShell.touch_target(ende, m)
 	aktionen.add_child(ende)
@@ -186,9 +190,11 @@ func _name_fuer(code: String) -> String:
 
 
 func _baue_knopf(parent: Node, key: String, handler: Callable) -> void:
-	var btn := Button.new()
+	# Audio-Grammatik: SquishButton + ui_chip (Besuchs-Geste = Auswahl).
+	var btn := SquishButton.new()
 	btn.theme_type_variation = &"PrimaryButton"
 	btn.text = I18nService.t(key)
+	btn.pressed.connect(func() -> void: AudioDirector.try_play(btn, "ui_chip"))
 	btn.pressed.connect(handler)
 	# P57: Touch-Floor (Theme-Höhen sind Design-px, s. _ready).
 	ScreenShell.touch_target(btn, ScreenShell.metrics(get_viewport()))

@@ -209,7 +209,9 @@ func _build_ui() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_top_bar.add_child(spacer)
-	_pause_button = Button.new()
+	# Audio-Grammatik: SquishButton — disabled (Countdown) bekommt zentral
+	# das „Nö“; der Klick klingt in _on_pause_pressed bzw. im Pause-Modal.
+	_pause_button = SquishButton.new()
 	_pause_button.name = "PauseButton"
 	_pause_button.theme_type_variation = &"GhostButton"
 	_pause_button.text = I18nService.t("mg.host.pause")

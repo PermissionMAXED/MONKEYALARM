@@ -197,7 +197,7 @@ func _build_hud() -> void:
 	_hint_label.text = I18nService.t("mg.memoryMatch.hint")
 	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_hint_label)
-	_peek_button = Button.new()
+	_peek_button = SquishButton.new()
 	_peek_button.text = I18nService.t("mg.memoryMatch.peek_button")
 	_peek_button.visible = false
 	_peek_button.pressed.connect(_use_peek)
@@ -361,6 +361,7 @@ func _board_cleared() -> void:
 func _use_peek() -> void:
 	if not MemoryMatchLogic.can_use_peek(peek) or not is_active():
 		return
+	AudioDirector.try_play(self, "ui_confirm")
 	peek["peekUsed"] = true
 	peek_left = float(tune["PEEK_SEC"])
 	_peek_button.visible = false

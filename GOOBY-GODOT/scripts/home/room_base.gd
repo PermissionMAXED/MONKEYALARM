@@ -85,8 +85,7 @@ func _ready() -> void:
 	HausKontext.attach_to(self)
 	_build_ui()
 	_spawn_gooby()
-	# Garten 2.0 (Doc D §6): Beete/Bauten/Sammel-Spots liegen NICHT im
-	# Möbel-Grid, sondern im eigenen Garten-Grid — der Host baut sie auf.
+	# Garten 2.0 (Doc D §6): Beete/Spots leben im eigenen Garten-Grid (Host).
 	GardenHost.attach_to(self)
 	# W6/HAUS-CUSTOM: gewaehlte Tapete/Boden auf diesen Raum anwenden.
 	HouseStyle.apply_to_room(self, HouseStyleState.style(_gs))
@@ -164,8 +163,7 @@ func surface_height_at(cell: Vector2i) -> float:
 
 ## Alle Möbel-Nodes aus dem Grid neu aufbauen (nach Bau-Commits).
 func rebuild_furniture() -> void:
-	# Beim Szenen-Abbau kann ein Möbel-Node schon weg sein, während ein
-	# nachgereichtes `furniture_changed` noch hier landet — nie hart casten.
+	# Beim Szenen-Abbau kann ein Möbel-Node schon weg sein — nie hart casten.
 	for node: Variant in _furniture.values():
 		if is_instance_valid(node) and node is Node:
 			(node as Node).queue_free()
@@ -852,12 +850,12 @@ func _show_door_confirm(door: DoorTransition) -> void:
 	reihe.add_theme_constant_override("separation", 10)
 	reihe.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(reihe)
-	var ja := Button.new()
+	var ja := SquishButton.new()
 	ja.text = I18nService.t("home.tuer.confirm_ja")
 	ja.theme_type_variation = "PrimaryButton"
 	ja.pressed.connect(_on_door_confirm.bind(door, true))
 	reihe.add_child(ja)
-	var nein := Button.new()
+	var nein := SquishButton.new()
 	nein.text = I18nService.t("home.tuer.confirm_nein")
 	nein.theme_type_variation = "GhostButton"
 	nein.pressed.connect(_on_door_confirm.bind(door, false))
@@ -866,6 +864,7 @@ func _show_door_confirm(door: DoorTransition) -> void:
 
 
 func _on_door_confirm(door: DoorTransition, bestaetigt: bool) -> void:
+	AudioDirector.try_play(self, "ui_confirm" if bestaetigt else "ui_back")  # Grammatik
 	if _choice != null:
 		_choice.queue_free()
 		_choice = null
@@ -887,12 +886,12 @@ func _blocked_flow() -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
 	_choice.add_child(box)
-	var rebuild := Button.new()
+	var rebuild := SquishButton.new()
 	rebuild.text = I18nService.t("home.blocked.umbauen")
 	rebuild.theme_type_variation = "PrimaryButton"
 	rebuild.pressed.connect(_on_blocked_choice.bind(false))
 	box.add_child(rebuild)
-	var lava := Button.new()
+	var lava := SquishButton.new()
 	lava.text = I18nService.t("home.blocked.lava")
 	lava.theme_type_variation = "AccentButton"
 	lava.pressed.connect(_on_blocked_choice.bind(true))
@@ -901,6 +900,7 @@ func _blocked_flow() -> void:
 
 
 func _on_blocked_choice(lava: bool) -> void:
+	AudioDirector.try_play(self, "ui_confirm")
 	_choice.queue_free()
 	_choice = null
 	if lava:

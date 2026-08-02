@@ -154,7 +154,7 @@ func _leben_konfig() -> Dictionary:
 
 func _baue_ui() -> void:
 	super._baue_ui()
-	var programm_btn := Button.new()
+	var programm_btn := SquishButton.new()
 	programm_btn.name = "Programm"
 	programm_btn.text = I18nService.t("kino.knopf")
 	programm_btn.theme_type_variation = "PrimaryButton"
@@ -191,7 +191,7 @@ func _programm_inhalt() -> Control:
 	coins_label.theme_type_variation = "CaptionLabel"
 	coins_label.text = I18nService.t("city.laden.coins").format({"coins": coins})
 	box.add_child(coins_label)
-	var ticket := Button.new()
+	var ticket := SquishButton.new()
 	ticket.name = "TicketKnopf"
 	ticket.theme_type_variation = "AccentButton"
 	ticket.text = I18nService.t("kino.ticket").format({"preis": TICKET_PREIS})
@@ -204,6 +204,9 @@ func _programm_inhalt() -> Control:
 
 func _on_ticket() -> void:
 	if schaue_film(game_state()) != KAUF_OK:
+		# „Nö“-Grammatik: gescheiterte Zahlung klingt (ui_error + warn).
+		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		zeige_toast(I18nService.t("kino.pleite"))
 		return
 	# Outcome schlägt Press: erst die GELUNGENE Zahlung klingt (Grammatik).

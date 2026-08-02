@@ -246,7 +246,9 @@ func _baue_hud() -> void:
 	_puls.position.y -= 150.0
 	_puls.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hud.add_child(_puls)
-	_beruhigen_btn = Button.new()
+	# Audio-Grammatik: SquishButton — Zähm-Foley gehört der Szene, der
+	# Druck bleibt stumm (Haptik + Squish zentral).
+	_beruhigen_btn = SquishButton.new()
 	_beruhigen_btn.text = I18nService.t("rpferd.zaehmen.beruhigen")
 	_beruhigen_btn.custom_minimum_size = Vector2(150.0, 64.0)
 	_beruhigen_btn.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
@@ -255,7 +257,7 @@ func _baue_hud() -> void:
 	_beruhigen_btn.visible = false
 	_beruhigen_btn.pressed.connect(_beruhigen_tipp)
 	_hud.add_child(_beruhigen_btn)
-	_ducken_btn = Button.new()
+	_ducken_btn = SquishButton.new()
 	_ducken_btn.text = I18nService.t("rpferd.zaehmen.ducken")
 	_ducken_btn.toggle_mode = true
 	_ducken_btn.custom_minimum_size = Vector2(110.0, 56.0)

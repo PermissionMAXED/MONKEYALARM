@@ -412,7 +412,9 @@ func _build_header() -> Control:
 	_header_zeile = HBoxContainer.new()
 	_header_zeile.add_theme_constant_override("separation", 10)
 	kopf.add_child(_header_zeile)
-	_back_btn = Button.new()
+	# Audio-Grammatik: jeder interaktive Knopf ist ein SquishButton
+	# (Tap-Haptik + Press-Squish zentral, nie Button.new()).
+	_back_btn = SquishButton.new()
 	_back_btn.name = "BackButton"
 	_back_btn.theme_type_variation = &"GhostButton"
 	_back_btn.text = I18nService.t("shop.ikea.back")
@@ -652,7 +654,7 @@ func _build_buy_row() -> Control:
 	_price_label.theme_type_variation = &"HeadlineLabel"
 	pille.add_child(_price_label)
 	row.add_child(pille)
-	_buy_button = Button.new()
+	_buy_button = SquishButton.new()
 	_buy_button.name = "BuyButton"
 	_buy_button.theme_type_variation = &"PrimaryButton"
 	_buy_button.text = I18nService.t("shop.ikea.buy")
@@ -682,7 +684,7 @@ func _refresh_chips() -> void:
 
 
 func _make_chip(kategorie: String, text: String) -> Button:
-	var chip := Button.new()
+	var chip := SquishButton.new()
 	chip.name = "Chip_%s" % (kategorie if kategorie != "" else "alle")
 	chip.theme_type_variation = &"ChipLeaf" if kategorie == _kategorie else &"AcChip"
 	chip.text = text
@@ -737,7 +739,7 @@ func _refresh_list() -> void:
 ## MOUSE_FILTER_IGNORE, damit die ganze Karte tippbar bleibt.
 func _make_row(item: Dictionary) -> Button:
 	var id := str(item["id"])
-	var row := Button.new()
+	var row := SquishButton.new()
 	row.name = "Row_%s" % id
 	row.theme_type_variation = &"AcCardButton"
 	row.custom_minimum_size = Vector2(0, maxf(58.0 * _f, _floor))
@@ -822,7 +824,7 @@ func _refresh_swatches() -> void:
 
 
 func _make_swatch(variant_id: String) -> Button:
-	var swatch := Button.new()
+	var swatch := SquishButton.new()
 	swatch.name = "Swatch_%s" % variant_id
 	# FB3: Swatches halten den PHYSISCHEN Touch-Floor (waren 40 Design-px).
 	swatch.custom_minimum_size = Vector2.ONE * maxf(SWATCH_SIZE * _f, _floor)
@@ -875,12 +877,16 @@ func _show_result(item: Dictionary, result: String) -> void:
 			UiMotion.sparkle(_buy_button)
 			UiMotion.bounce(_coins_label)
 		ShopPurchase.RESULT_BROKE:
+			# „Nö“-Grammatik: gescheiterter Kauf klingt (ui_error + warn).
+			AudioDirector.try_play(self, "ui_error")
 			Haptics.warn(self)
 			_toasts.show_toast(I18nService.t("shop.ikea.zu_teuer"), true)
 		ShopPurchase.RESULT_FULL:
+			AudioDirector.try_play(self, "ui_error")
 			Haptics.warn(self)
 			_toasts.show_toast(I18nService.t("shop.ikea.lager_voll"), true)
 		_:
+			AudioDirector.try_play(self, "ui_error")
 			Haptics.warn(self)
 			_toasts.show_toast(I18nService.t("shop.ikea.fehler"), true)
 

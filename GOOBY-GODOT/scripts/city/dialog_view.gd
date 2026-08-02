@@ -96,7 +96,9 @@ func _on_bubble_finished() -> void:
 		return
 	var optionen := runner.optionen()
 	for i in optionen.size():
-		var btn := Button.new()
+		# Audio-Grammatik: SquishButton (Squish + Haptik zentral) + ui_chip
+		# beim Druck (Dialog-Option = Auswahl).
+		var btn := SquishButton.new()
 		btn.text = str(optionen[i]["text"])
 		btn.theme_type_variation = "AccentButton"
 		btn.pressed.connect(_on_option.bind(i))
@@ -104,6 +106,7 @@ func _on_bubble_finished() -> void:
 
 
 func _on_option(index: int) -> void:
+	AudioDirector.try_play(self, "ui_chip")
 	if runner.waehlen(index):
 		_zeige_knoten()
 

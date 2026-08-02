@@ -155,7 +155,7 @@ func _baue_ui() -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(label)
-	var los := Button.new()
+	var los := SquishButton.new()
 	los.theme_type_variation = "PrimaryButton"
 	los.text = I18nService.t("ranch.exit.losfahren")
 	los.pressed.connect(_on_losfahren)
@@ -190,10 +190,14 @@ func _pruefe_zone() -> void:
 func _on_losfahren() -> void:
 	var gs := game_state()
 	if not RanchState.ist_freigeschaltet(gs):
+		# Gesperrt klingt („Nö“-Grammatik): ui_error + warn-Haptik zum Toast.
+		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		_zeige_toast(
 			I18nService.t("ranch.exit.gesperrt", {"level": RanchKatalog.freischalt_level()})
 		)
 		return
+	AudioDirector.try_play(self, "ui_confirm")
 	if not RanchRouten.fahre_zur_ranch(get_tree()):
 		_zeige_toast("(Route %s — Router fehlt)" % RanchRouten.ROUTE_FAHRT)
 

@@ -238,7 +238,7 @@ func _baue_ui() -> void:
 	_ui.add_child(dialog)
 	dialog.effekt.connect(_on_dialog_effekt)
 	dialog.beendet.connect(_on_dialog_beendet)
-	_zurueck = Button.new()
+	_zurueck = SquishButton.new()
 	_zurueck.name = "Verlassen"
 	_zurueck.text = I18nService.t("city.ort.verlassen")
 	_zurueck.theme_type_variation = "GhostButton"
@@ -406,6 +406,7 @@ func _on_dialog_beendet() -> void:
 
 
 func _on_verlassen() -> void:
+	AudioDirector.try_play(self, "ui_back")
 	verlassen_angefordert.emit()
 	var router := get_node_or_null("/root/SceneRouter")
 	if router != null:

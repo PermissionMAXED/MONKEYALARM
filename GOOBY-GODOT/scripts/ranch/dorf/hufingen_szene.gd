@@ -446,7 +446,8 @@ func _baue_hud() -> void:
 	titel.add_theme_color_override("font_outline_color", Color(1, 0.98, 0.93, 0.9))
 	titel.add_theme_constant_override("outline_size", 8)
 	_hud.add_child(titel)
-	var heim := Button.new()
+	# Audio-Grammatik: SquishButton; Reise bleibt stumm (LoadingVeil-Foley).
+	var heim := SquishButton.new()
 	heim.text = I18nService.t("rdorf.heimreiten")
 	heim.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	heim.grow_horizontal = Control.GROW_DIRECTION_BEGIN

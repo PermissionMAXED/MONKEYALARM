@@ -54,21 +54,27 @@ func _ready() -> void:
 	var knoepfe := HBoxContainer.new()
 	knoepfe.add_theme_constant_override("separation", 10)
 	box.add_child(knoepfe)
-	_bereit_btn = Button.new()
+	# Audio-Grammatik: SquishButton (Squish + Haptik zentral); Klänge in
+	# den Handlern (ui_confirm/ui_back).
+	_bereit_btn = SquishButton.new()
 	_bereit_btn.theme_type_variation = &"PrimaryButton"
 	_bereit_btn.text = I18nService.t("ranch_mp.lobby.bereit_knopf")
 	_bereit_btn.pressed.connect(_on_bereit)
 	knoepfe.add_child(_bereit_btn)
-	_revanche_btn = Button.new()
+	_revanche_btn = SquishButton.new()
 	_revanche_btn.theme_type_variation = &"PrimaryButton"
 	_revanche_btn.text = I18nService.t("ranch_mp.ergebnis.revanche")
 	_revanche_btn.visible = false
 	_revanche_btn.pressed.connect(_on_revanche)
 	knoepfe.add_child(_revanche_btn)
-	_verlassen_btn = Button.new()
+	_verlassen_btn = SquishButton.new()
 	_verlassen_btn.theme_type_variation = &"GhostButton"
 	_verlassen_btn.text = I18nService.t("ranch_mp.lobby.verlassen")
-	_verlassen_btn.pressed.connect(func() -> void: leave_pressed.emit())
+	_verlassen_btn.pressed.connect(
+		func() -> void:
+			AudioDirector.try_play(_verlassen_btn, "ui_back")
+			leave_pressed.emit()
+	)
 	knoepfe.add_child(_verlassen_btn)
 	# G7/P57 (FB3-Altbefund „Verlassen/Bereit! 18,7–36,7 pt"): physischer
 	# Touch-Floor — Theme-Höhen sind Design-px und auf Retina zu klein.
@@ -161,9 +167,13 @@ func _on_rematch_declined(data: Dictionary) -> void:
 func _on_bereit() -> void:
 	if service == null:
 		return
+	AudioDirector.try_play(self, "ui_confirm")
 	_bereit_btn.disabled = true
 	var res: Dictionary = await service.set_ready()
 	if not res["ok"]:
+		# Netz-„Nö“: der Fehler-Ausgang klingt (Grammatik ui_error + warn).
+		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		_bereit_btn.disabled = false
 		_hinweis.text = RanchMultiplayerService.fehler_text(str(res["code"]))
 		_hinweis.visible = true
@@ -172,8 +182,11 @@ func _on_bereit() -> void:
 func _on_revanche() -> void:
 	if service == null:
 		return
+	AudioDirector.try_play(self, "ui_confirm")
 	var res: Dictionary = await service.rematch()
 	if not res["ok"]:
+		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		_hinweis.text = RanchMultiplayerService.fehler_text(str(res["code"]))
 		_hinweis.visible = true
 

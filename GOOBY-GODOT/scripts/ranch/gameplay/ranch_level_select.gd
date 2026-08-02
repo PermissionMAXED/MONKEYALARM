@@ -64,7 +64,9 @@ func _ready() -> void:
 	_grid.add_theme_constant_override("v_separation", 8)
 	column.add_child(_grid)
 	for id in range(1, RanchSpieleProgress.LEVEL_COUNT + 1):
-		var tile := Button.new()
+		# Audio-Grammatik: SquishButton — gesperrte Level sind disabled und
+		# bekommen zentral das „Nö“; die Wahl klingt in _on_tile.
+		var tile := SquishButton.new()
 		tile.custom_minimum_size = Vector2(96, 64)
 		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tile.add_theme_font_size_override("font_size", 18)
@@ -83,7 +85,7 @@ func _ready() -> void:
 	_stars_label.add_theme_font_size_override("font_size", 18)
 	_stars_label.add_theme_color_override("font_color", RAND_INK)
 	footer.add_child(_stars_label)
-	var done := Button.new()
+	var done := SquishButton.new()
 	done.text = I18nService.t("ranchplay.select.done")
 	done.custom_minimum_size = Vector2(140, 48)
 	done.pressed.connect(

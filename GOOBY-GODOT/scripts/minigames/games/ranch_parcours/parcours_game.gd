@@ -722,13 +722,15 @@ func _build_hud() -> void:
 	_hint_label.text = I18nService.t("mg.ranchParcours.hint")
 	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hud.add_child(_hint_label)
-	_galopp_btn = Button.new()
+	# Audio-Grammatik: SquishButton — Fahr-Foley gehört dem Spiel, der Druck
+	# bleibt stumm (Haptik + Squish zentral).
+	_galopp_btn = SquishButton.new()
 	_galopp_btn.toggle_mode = true
 	_galopp_btn.text = I18nService.t("mg.ranchParcours.galopp")
 	_galopp_btn.custom_minimum_size = Vector2(150, 64)
 	_galopp_btn.toggled.connect(func(an: bool) -> void: galopp = an)
 	_hud.add_child(_galopp_btn)
-	_sprung_btn = Button.new()
+	_sprung_btn = SquishButton.new()
 	_sprung_btn.text = I18nService.t("mg.ranchParcours.sprung")
 	_sprung_btn.custom_minimum_size = Vector2(150, 64)
 	_sprung_btn.pressed.connect(_sprung_input)

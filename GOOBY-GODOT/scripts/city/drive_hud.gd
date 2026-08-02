@@ -67,12 +67,20 @@ func _ready() -> void:
 	)
 	_reverse_btn.offset_left += 130.0
 	_reverse_btn.offset_right += 130.0
-	_reverse_btn.toggled.connect(func(on: bool) -> void: reverse_changed.emit(on))
+	_reverse_btn.toggled.connect(
+		func(on: bool) -> void:
+			AudioDirector.try_play(_reverse_btn, "ui_toggle")
+			reverse_changed.emit(on)
+	)
 	_home_btn = _baue_knopf(I18nService.t("city.fahren.nach_hause"), "PrimaryButton")
 	_home_btn.set_anchors_and_offsets_preset(
 		Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 16
 	)
-	_home_btn.pressed.connect(func() -> void: nach_hause_pressed.emit())
+	_home_btn.pressed.connect(
+		func() -> void:
+			AudioDirector.try_play(_home_btn, "ui_click")
+			nach_hause_pressed.emit()
+	)
 	minimap = CityMinimap.new()
 	minimap.name = "Minimap"
 	minimap.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, 16)
@@ -289,7 +297,10 @@ func _on_zone_input(event: InputEvent, links: bool) -> void:
 
 
 func _baue_knopf(text: String, variation: String) -> Button:
-	var btn := Button.new()
+	# Audio-Grammatik: SquishButton (Squish + Haptik zentral). Die Bremse
+	# ist ein Halte-Knopf (button_down/up, kein pressed-Handler) und bleibt
+	# bewusst stumm — Fahr-Foley gehört der Fahrszene.
+	var btn := SquishButton.new()
 	btn.text = text
 	btn.theme_type_variation = variation
 	btn.custom_minimum_size = Vector2(72.0, 72.0)
@@ -314,12 +325,13 @@ func _baue_prompt() -> void:
 	_prompt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_prompt_label)
-	_prompt_btn = Button.new()
+	_prompt_btn = SquishButton.new()
 	_prompt_btn.text = I18nService.t("city.fahren.betreten")
 	_prompt_btn.theme_type_variation = "PrimaryButton"
 	_prompt_btn.pressed.connect(
 		func() -> void:
 			if not _prompt_ort.is_empty():
+				AudioDirector.try_play(_prompt_btn, "ui_click")
 				betreten_pressed.emit(_prompt_ort)
 	)
 	box.add_child(_prompt_btn)

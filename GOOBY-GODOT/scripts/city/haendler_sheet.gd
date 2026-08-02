@@ -123,7 +123,9 @@ func _buch_zeile(buch: Dictionary) -> Control:
 	name_label.text = str(buch.get("name_de", buch.get("id", "?")))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	zeile.add_child(name_label)
-	var btn := Button.new()
+	# Audio-Grammatik: SquishButton + ui_buy beim Druck (nicht kaufbar =
+	# disabled, das zentrale „Nö“ übernimmt der SquishButton selbst).
+	var btn := SquishButton.new()
 	btn.name = "BuchKnopf"
 	btn.theme_type_variation = "AccentButton"
 	var schon := im_regal(buch)
@@ -134,7 +136,11 @@ func _buch_zeile(buch: Dictionary) -> Control:
 	else:
 		btn.text = I18nService.t("city.laden.kaufen").format({"preis": int(buch.get("preis", 0))})
 		btn.disabled = not kann_kaufen(buch)
-		btn.pressed.connect(func() -> void: kaufe_buch(buch))
+		btn.pressed.connect(
+			func() -> void:
+				AudioDirector.try_play(btn, "ui_buy")
+				kaufe_buch(buch)
+		)
 	zeile.add_child(btn)
 	return zeile
 
@@ -158,11 +164,15 @@ func _zeile(ware: Dictionary) -> Control:
 		rezept.theme_type_variation = "CaptionLabel"
 		rezept.text = I18nService.t("city.laden.rezept_noetig")
 		zeile.add_child(rezept)
-	var btn := Button.new()
+	var btn := SquishButton.new()
 	btn.theme_type_variation = "AccentButton"
 	btn.text = I18nService.t("city.laden.kaufen").format({"preis": int(ware.get("preis", 0))})
 	btn.disabled = not kann_kaufen(ware)
-	btn.pressed.connect(func() -> void: kaufe(ware))
+	btn.pressed.connect(
+		func() -> void:
+			AudioDirector.try_play(btn, "ui_buy")
+			kaufe(ware)
+	)
 	zeile.add_child(btn)
 	return zeile
 

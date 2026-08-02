@@ -72,6 +72,8 @@ func refresh() -> void:
 
 
 func select_recipe(recipe_id: String) -> void:
+	# Rezept-Wahl = Auswahl-Chip (Grammatik ui_chip).
+	AudioDirector.try_play(self, "ui_chip")
 	_recipe_id = recipe_id
 	_refresh_recipes()
 	_refresh_detail()
@@ -161,7 +163,9 @@ func _build_header() -> Control:
 	titel.theme_type_variation = "TitleLabel"
 	titel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(titel)
-	var zu := Button.new()
+	# Audio-Grammatik: SquishButton (Squish + Haptik zentral); der Klang
+	# kommt aus close() (ui_close — Outcome schlägt Press).
+	var zu := SquishButton.new()
 	zu.text = I18nService.t("craft.schliessen")
 	zu.theme_type_variation = "GhostButton"
 	zu.pressed.connect(close)
@@ -217,7 +221,7 @@ func _refresh_recipes() -> void:
 	for eintrag: Dictionary in CraftState.recipe_states(_gs):
 		var recipe: Dictionary = eintrag["recipe"]
 		var id := str(recipe["id"])
-		var btn := Button.new()
+		var btn := SquishButton.new()
 		btn.text = I18nService.t("craft.rezept.%s" % id)
 		btn.theme_type_variation = "AccentButton" if id == _recipe_id else "AcChip"
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -313,7 +317,9 @@ func _build_craft_row() -> Control:
 	_progress.show_percentage = false
 	_progress.visible = false
 	zeile.add_child(_progress)
-	_craft_button = Button.new()
+	# Druck bleibt stumm — der AUSGANG klingt in craft_selected
+	# (build_hammer bzw. ui_error), Grammatik „Outcome schlägt Press“.
+	_craft_button = SquishButton.new()
 	_craft_button.text = I18nService.t("craft.bauen")
 	_craft_button.theme_type_variation = "PrimaryButton"
 	var pruefung := CraftState.check(_gs, _recipe_id)

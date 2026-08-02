@@ -158,6 +158,8 @@ func _build_ui() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_child(title)
 	_title_label = title
+	# Status-Chip ist reine ANZEIGE (style_status_chip nimmt die Maus raus) —
+	# bewusst kein SquishButton.
 	_status_chip = Button.new()
 	header.add_child(_status_chip)
 

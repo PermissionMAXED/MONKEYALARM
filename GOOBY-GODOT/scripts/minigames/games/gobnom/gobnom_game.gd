@@ -919,7 +919,7 @@ func _build_end_overlay(won: bool, stars: int, total: int, first_clear: bool) ->
 
 
 func _overlay_button(key: String, action: Callable) -> Button:
-	var button := Button.new()
+	var button := SquishButton.new()
 	button.text = I18nService.t(key)
 	button.custom_minimum_size = Vector2(104, 48)
 	button.pressed.connect(func() -> void: AudioDirector.try_play(button, "ui_click"))

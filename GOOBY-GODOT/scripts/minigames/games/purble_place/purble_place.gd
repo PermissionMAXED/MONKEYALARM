@@ -519,7 +519,7 @@ func _cycle_shape() -> void:
 
 
 func _make_button(text: String, tint: Color) -> Button:
-	var button := Button.new()
+	var button := SquishButton.new()
 	button.text = text
 	button.clip_text = true
 	button.focus_mode = Control.FOCUS_NONE

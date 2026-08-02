@@ -85,7 +85,9 @@ func _build_ui() -> void:
 	# dieselbe Stelle wie in Arcade/Album/Profil).
 	var header := HBoxContainer.new()
 	_rows.add_child(header)
-	_back = Button.new()
+	# Audio-Grammatik: jeder interaktive Knopf ist ein SquishButton
+	# (Tap-Haptik + Press-Squish zentral).
+	_back = SquishButton.new()
 	_back.theme_type_variation = &"GhostButton"
 	_back.text = I18nService.t("net.friends.back")
 	_back.focus_mode = Control.FOCUS_NONE
@@ -97,6 +99,8 @@ func _build_ui() -> void:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_child(title)
+	# Status-Chip ist reine ANZEIGE (kein pressed-Handler) — bewusst kein
+	# SquishButton, sonst bekäme Deko-Tippen Squish/Haptik.
 	_status_chip = Button.new()
 	header.add_child(_status_chip)
 
@@ -141,7 +145,7 @@ func _build_ui() -> void:
 	_code_value.add_theme_color_override("font_color", AcTokens.TEAL_DARK)
 	_code_value.add_theme_font_size_override("font_size", 32)
 	code_row.add_child(_code_value)
-	_copy_button = Button.new()
+	_copy_button = SquishButton.new()
 	_copy_button.name = "CopyButton"
 	_copy_button.theme_type_variation = &"GhostButton"
 	_copy_button.text = I18nService.t("net.friends.copy")
@@ -167,7 +171,7 @@ func _build_ui() -> void:
 	_add_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_add_input.text_submitted.connect(func(_text: String) -> void: _on_add_pressed())
 	add_row.add_child(_add_input)
-	_add_button = Button.new()
+	_add_button = SquishButton.new()
 	_add_button.name = "AddButton"
 	_add_button.theme_type_variation = &"BtnTeal"
 	_add_button.text = I18nService.t("net.friends.add_button")
@@ -232,6 +236,7 @@ func _on_copy_pressed() -> void:
 	if code.is_empty():
 		return
 	DisplayServer.clipboard_set(code)
+	AudioDirector.try_play(self, "ui_confirm")
 	_copy_button.text = I18nService.t("net.friends.copied")
 	# Methoden-Callable statt Lambda (REST5, B2): wird der Screen vor dem
 	# Timeout geschlossen, trennt Godot die Verbindung automatisch — ein
@@ -301,12 +306,12 @@ func _build_request_row(row: Dictionary) -> Control:
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_child(who)
 	var from_code := str(row.get("from", ""))
-	var accept := Button.new()
+	var accept := SquishButton.new()
 	accept.theme_type_variation = &"BtnTeal"
 	accept.text = I18nService.t("net.friends.accept")
 	accept.pressed.connect(_on_accept_pressed.bind(from_code))
 	box.add_child(accept)
-	var decline := Button.new()
+	var decline := SquishButton.new()
 	decline.theme_type_variation = &"GhostButton"
 	decline.text = I18nService.t("net.friends.decline")
 	decline.pressed.connect(_on_decline_pressed.bind(from_code))
@@ -348,6 +353,9 @@ func _build_friend_row(row: Dictionary) -> Control:
 func _on_add_pressed() -> void:
 	var value := _add_input.text.strip_edges()
 	if value.is_empty():
+		# Leere Eingabe = gesperrte Aktion → zentrales „Nö“ am Knopf.
+		if _add_button is SquishButton:
+			(_add_button as SquishButton).nope()
 		return
 	if not _has_friends_service():
 		_show_feedback(NetErrorText.for_code("OFFLINE", "net.friends.add_error"), false)
@@ -365,16 +373,22 @@ func _on_add_pressed() -> void:
 
 
 func _on_accept_pressed(from_code: String) -> void:
+	AudioDirector.try_play(self, "ui_confirm")
 	if _has_friends_service():
 		await _net.friends.accept(from_code)
 
 
 func _on_decline_pressed(from_code: String) -> void:
+	AudioDirector.try_play(self, "ui_back")
 	if _has_friends_service():
 		await _net.friends.decline(from_code)
 
 
+## Ausgangs-Klang der Freund-Anfrage: bestätigt oder „Nö“ (Grammatik).
 func _show_feedback(text: String, ok: bool) -> void:
+	AudioDirector.try_play(self, "ui_confirm" if ok else "ui_error")
+	if not ok:
+		Haptics.warn(self)
 	_add_feedback.text = text
 	_add_feedback.visible = true
 	_add_feedback.add_theme_color_override(
@@ -387,6 +401,7 @@ func _has_friends_service() -> bool:
 
 
 func _on_back_pressed() -> void:
+	AudioDirector.try_play(self, "ui_back")
 	back_requested.emit()
 	if not auto_navigate:
 		return

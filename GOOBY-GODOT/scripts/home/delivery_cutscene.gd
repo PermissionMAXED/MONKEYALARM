@@ -104,13 +104,15 @@ func spielen() -> void:
 
 
 func ueberspringen() -> void:
+	AudioDirector.try_play(self, "ui_back")
 	_skip = true
 
 
 func _skip_taste() -> void:
 	if not _room.has_method("ui_layer"):
 		return
-	_skip_button = Button.new()
+	# Audio-Grammatik: SquishButton + ui_back (Überspringen = Abbrechen).
+	_skip_button = SquishButton.new()
 	_skip_button.text = I18nService.t("lieferung.ueberspringen")
 	_skip_button.theme = ThemeService.theme()
 	_skip_button.theme_type_variation = "GhostButton"

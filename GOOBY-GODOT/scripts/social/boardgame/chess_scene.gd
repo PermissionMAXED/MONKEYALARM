@@ -202,7 +202,9 @@ func _build_board() -> Control:
 	for row in 8:
 		grid.add_child(_coord_label(""))
 		for col in 8:
-			var btn := Button.new()
+			# Audio-Grammatik: SquishButton auch für Brett-Felder (Tap-Haptik
+			# zentral); die Zug-Klänge spielt die Schach-Logik selbst.
+			var btn := SquishButton.new()
 			btn.custom_minimum_size = Vector2(SQUARE_PX, SQUARE_PX)
 			btn.focus_mode = Control.FOCUS_NONE
 			btn.clip_contents = false

@@ -250,7 +250,9 @@ func _baue_ui() -> void:
 	_banner.visible = false
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_banner)
-	_streicheln_btn = Button.new()
+	# Audio-Grammatik: SquishButton — Spiel-Foley gehört der Reit-Szene,
+	# der Druck bleibt stumm (Haptik + Squish zentral).
+	_streicheln_btn = SquishButton.new()
 	_streicheln_btn.text = I18nService.t("rpferd.reiten.streicheln")
 	_streicheln_btn.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	_streicheln_btn.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -259,7 +261,7 @@ func _baue_ui() -> void:
 	_streicheln_btn.pressed.connect(_on_streicheln)
 	add_child(_streicheln_btn)
 	var dp := Touch.button_dp(button_wunsch_dp) * _dp_skala()
-	_sprung_btn = Button.new()
+	_sprung_btn = SquishButton.new()
 	_sprung_btn.text = I18nService.t("rpferd.reiten.springen")
 	_sprung_btn.custom_minimum_size = Vector2(dp, dp)
 	_sprung_btn.pivot_offset = Vector2(dp, dp) * 0.5

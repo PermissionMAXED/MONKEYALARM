@@ -240,13 +240,15 @@ func _baue_hud() -> void:
 		Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, 16
 	)
 	hud.add_child(_hud_status)
-	var hof := Button.new()
+	# Audio-Grammatik: SquishButton; Reise-Knöpfe bleiben stumm — den
+	# Szenenwechsel vertont der LoadingVeil (travel_whoosh_*).
+	var hof := SquishButton.new()
 	hof.theme_type_variation = "GhostButton"
 	hof.text = I18nService.t("rwelt.hud.zur_ranch")
 	hof.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
 	hof.pressed.connect(_on_zum_hof)
 	hud.add_child(hof)
-	var galopp := Button.new()
+	var galopp := SquishButton.new()
 	galopp.theme_type_variation = "PrimaryButton"
 	galopp.toggle_mode = true
 	galopp.text = I18nService.t("ranch.hof.pferde_galopp")

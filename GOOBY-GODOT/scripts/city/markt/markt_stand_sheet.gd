@@ -166,7 +166,7 @@ func _baue_slot_zeile(slot: Dictionary) -> void:
 			preis_label.text = _preis_text(ware, MarktStand.clamp_faktor(wert))
 	)
 	zeile.add_child(slider)
-	var runter := Button.new()
+	var runter := SquishButton.new()
 	runter.theme_type_variation = "GhostButton"
 	runter.text = I18nService.t("markt.slot.runter")
 	runter.pressed.connect(
@@ -194,7 +194,7 @@ func _baue_lager_zeile(liste: Control, eintrag: Dictionary) -> void:
 	)
 	if vorrat <= 1:
 		return
-	var alle := Button.new()
+	var alle := SquishButton.new()
 	alle.theme_type_variation = "PrimaryButton"
 	alle.text = I18nService.t("markt.lager.plus_alle", {"n": vorrat})
 	alle.custom_minimum_size = Vector2(CitySheetBausteine.KNOPF_ZWEIT_BREITE, 0.0)
@@ -232,12 +232,12 @@ func _baue_markttag(status: String) -> void:
 	var reihe := HBoxContainer.new()
 	reihe.add_theme_constant_override("separation", 10)
 	add_child(reihe)
-	var zuschauen := Button.new()
+	var zuschauen := SquishButton.new()
 	zuschauen.theme_type_variation = "AccentButton"
 	zuschauen.text = I18nService.t("markt.replay.knopf")
 	zuschauen.pressed.connect(_starte_replay)
 	reihe.add_child(zuschauen)
-	var holen := Button.new()
+	var holen := SquishButton.new()
 	holen.theme_type_variation = "PrimaryButton"
 	holen.text = I18nService.t("markt.abholen.knopf")
 	holen.pressed.connect(_hole_ergebnis)
@@ -253,6 +253,9 @@ func _starte_replay() -> void:
 	if sim.is_empty():
 		return
 	_replay_laeuft = true
+	# Replay-Start = Bestätigen (Grammatik ui_confirm); die Events selbst
+	# plingen als ui_coins in _zeige_event.
+	AudioDirector.try_play(self, "ui_confirm")
 	replay_gestartet.emit()
 	for kind in get_children():
 		kind.queue_free()
@@ -367,10 +370,14 @@ func zeige_abrechnung(karte: Dictionary) -> void:
 			"CaptionLabel"
 		)
 	CitySheetBausteine.label(box, I18nService.t("markt.abrechnung.rueck"), "CaptionLabel")
-	var ok := Button.new()
+	var ok := SquishButton.new()
 	ok.theme_type_variation = "PrimaryButton"
 	ok.text = I18nService.t("markt.abrechnung.ok")
-	ok.pressed.connect(aktualisiere)
+	ok.pressed.connect(
+		func() -> void:
+			AudioDirector.try_play(ok, "ui_confirm")
+			aktualisiere()
+	)
 	add_child(ok)
 
 

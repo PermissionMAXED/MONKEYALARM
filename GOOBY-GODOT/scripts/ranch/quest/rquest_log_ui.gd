@@ -82,10 +82,15 @@ func _build_layout() -> void:
 	_titelkarte.custom_minimum_size = Vector2(300.0, 380.0)
 	_titelkarte.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	links_box.add_child(_titelkarte)
-	var zurueck := Button.new()
+	# Audio-Grammatik: SquishButton (Squish + Haptik zentral).
+	var zurueck := SquishButton.new()
 	zurueck.theme_type_variation = "GhostButton"
 	zurueck.text = I18nService.t("rquest.log.schliessen")
-	zurueck.pressed.connect(func() -> void: back_pressed.emit())
+	zurueck.pressed.connect(
+		func() -> void:
+			AudioDirector.try_play(zurueck, "ui_back")
+			back_pressed.emit()
+	)
 	links_box.add_child(zurueck)
 
 	var rechts := VBoxContainer.new()
@@ -100,7 +105,7 @@ func _build_layout() -> void:
 		["neben", "rquest.log.tab_neben"],
 		["tages", "rquest.log.tab_tages"],
 	]:
-		var btn := Button.new()
+		var btn := SquishButton.new()
 		btn.text = I18nService.t(str(eintrag[1]))
 		btn.toggle_mode = true
 		btn.pressed.connect(_on_tab.bind(str(eintrag[0])))
@@ -118,6 +123,7 @@ func _build_layout() -> void:
 
 
 func _on_tab(tab: String) -> void:
+	AudioDirector.try_play(self, "ui_chip")
 	_tab = tab
 	_tabs_stylen()
 	refresh()
@@ -240,21 +246,24 @@ func _warte_anfuegen(box: VBoxContainer, quest_id: String, lauf: Dictionary) -> 
 
 func _knopf_anfuegen(box: VBoxContainer, gs: Object, quest_id: String, status: String) -> void:
 	if status == RQuestEngine.STATUS_VERFUEGBAR:
-		var annehmen := Button.new()
+		var annehmen := SquishButton.new()
 		annehmen.theme_type_variation = "PrimaryButton"
 		annehmen.text = I18nService.t("rquest.log.annehmen")
 		annehmen.pressed.connect(
 			func() -> void:
+				AudioDirector.try_play(annehmen, "ui_confirm")
 				RQuestState.annehmen(gs, quest_id)
 				refresh()
 		)
 		box.add_child(annehmen)
 	elif status == RQuestEngine.STATUS_ERFUELLBAR:
-		var abgeben := Button.new()
+		var abgeben := SquishButton.new()
 		abgeben.theme_type_variation = "AccentButton"
 		abgeben.text = I18nService.t("rquest.log.abgeben")
 		abgeben.pressed.connect(
 			func() -> void:
+				# Quest-Abgabe = Belohnung (Grammatik: Münz-Einnahme klingt).
+				AudioDirector.try_play(abgeben, "ui_coins")
 				RQuestState.abgeben(gs, quest_id)
 				refresh()
 		)

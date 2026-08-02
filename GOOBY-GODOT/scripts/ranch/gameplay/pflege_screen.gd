@@ -158,7 +158,7 @@ func _build_layout() -> void:
 	_name_label.add_theme_color_override("font_color", INK)
 	_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	kopf.add_child(_name_label)
-	var zurueck := Button.new()
+	var zurueck := SquishButton.new()
 	zurueck.text = I18nService.t("ranchplay.pflege.zurueck")
 	zurueck.custom_minimum_size = Vector2(120, 44)
 	zurueck.pressed.connect(
@@ -183,7 +183,9 @@ func _build_layout() -> void:
 	aktionen.add_theme_constant_override("v_separation", 8)
 	panel.add_child(aktionen)
 	for aktion: String in ["heu", "apfel", "karotte", "traenken", "striegeln", "ausmisten"]:
-		var btn := Button.new()
+		# Audio-Grammatik: SquishButton; der AUSGANG klingt in _on_aktion
+		# (mg_spill/ui_chip/…) — Outcome schlägt Press.
+		var btn := SquishButton.new()
 		btn.text = I18nService.t("ranchplay.pflege.%s" % aktion)
 		btn.custom_minimum_size = Vector2(120, 52)
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL

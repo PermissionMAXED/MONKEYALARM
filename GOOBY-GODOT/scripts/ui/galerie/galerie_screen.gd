@@ -259,7 +259,7 @@ func _refresh() -> void:
 
 func _thumb(foto: Dictionary) -> Control:
 	var pfad := str(foto["pfad"])
-	var karte := Button.new()
+	var karte := SquishButton.new()
 	karte.name = "Foto_%s" % pfad.get_file().get_basename()
 	karte.theme_type_variation = &"AcCard"
 	# G4-Nachfix: 200·f, aber in die Spalte geklemmt (s. _kachel_groesse).
@@ -304,6 +304,7 @@ func _thumb(foto: Dictionary) -> Control:
 
 
 func _zeige_vollansicht(pfad: String) -> void:
+	AudioDirector.try_play(self, "ui_open")
 	_schliesse_vollansicht()
 	_voll_pfad = pfad
 	_voll_zoom = 0

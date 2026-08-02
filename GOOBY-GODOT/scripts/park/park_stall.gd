@@ -33,7 +33,9 @@ func _baue_stand(food_id: String, preis: int) -> void:
 	var karte := CitySheetBausteine.karte(self)
 	CitySheetBausteine.label(karte, I18nService.t("park.stall.%s.name" % food_id), "HeadlineLabel")
 	CitySheetBausteine.label(karte, I18nService.t("park.stall.%s.pitch" % food_id), "CaptionLabel")
-	var btn := Button.new()
+	# Audio-Grammatik: SquishButton, Druck stumm — der AUSGANG klingt in
+	# _kaufe (ui_buy bzw. „Nö“ bei zu teuer).
+	var btn := SquishButton.new()
 	btn.theme_type_variation = "AccentButton"
 	btn.text = I18nService.t("park.stall.kaufen", {"preis": preis})
 	btn.pressed.connect(func() -> void: _kaufe(food_id, preis))
@@ -45,8 +47,11 @@ func _kaufe(food_id: String, preis: int) -> void:
 		return
 	# Vorab prüfen (Lambda-Captures sind by-value — kein Out-Flag möglich).
 	if _coins() < preis:
+		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		_zeige_toast(I18nService.t("park.ride.zu_teuer"))
 		return
+	AudioDirector.try_play(self, "ui_buy")
 	gs.update(
 		func(state: Dictionary) -> void:
 			if not Economy.spend(state["economy"], preis, "park"):

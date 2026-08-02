@@ -126,7 +126,9 @@ func _build_header(parent: Container) -> void:
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	parent.add_child(header)
-	var back := Button.new()
+	# Audio-Grammatik: jeder interaktive Knopf ist ein SquishButton
+	# (Tap-Haptik + Press-Squish zentral); Klänge sitzen in den Handlern.
+	var back := SquishButton.new()
 	back.theme_type_variation = &"GhostButton"
 	back.text = I18nService.t("save.transfer.back")
 	back.pressed.connect(_on_back_pressed)
@@ -148,7 +150,7 @@ func _build_auto_card(parent: Container) -> PanelContainer:
 	_auto_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_auto_label)
 	box.add_child(_caption(I18nService.t("save.transfer.auto.source_ios")))
-	var button := Button.new()
+	var button := SquishButton.new()
 	button.theme_type_variation = &"PrimaryButton"
 	button.text = I18nService.t("save.transfer.auto.preview")
 	button.pressed.connect(_on_auto_preview_pressed)
@@ -172,12 +174,12 @@ func _build_paste_card(parent: Container) -> PanelContainer:
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 8)
 	box.add_child(buttons)
-	var check := Button.new()
+	var check := SquishButton.new()
 	check.theme_type_variation = &"PrimaryButton"
 	check.text = I18nService.t("save.transfer.paste.check")
 	check.pressed.connect(_on_check_pressed)
 	buttons.add_child(check)
-	var from_file := Button.new()
+	var from_file := SquishButton.new()
 	from_file.theme_type_variation = &"GhostButton"
 	from_file.text = I18nService.t("save.transfer.file.button")
 	from_file.pressed.connect(_on_file_pressed)
@@ -205,12 +207,12 @@ func _build_preview_card(parent: Container) -> PanelContainer:
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 8)
 	box.add_child(buttons)
-	var apply := Button.new()
+	var apply := SquishButton.new()
 	apply.theme_type_variation = &"PrimaryButton"
 	apply.text = I18nService.t("save.transfer.preview.apply")
 	apply.pressed.connect(_on_apply_pressed)
 	buttons.add_child(apply)
-	var cancel := Button.new()
+	var cancel := SquishButton.new()
 	cancel.theme_type_variation = &"GhostButton"
 	cancel.text = I18nService.t("save.transfer.preview.cancel")
 	cancel.pressed.connect(_on_cancel_pressed)
@@ -241,7 +243,7 @@ func _build_done_card(parent: Container) -> PanelContainer:
 	box.add_child(title)
 	box.add_child(_caption(I18nService.t("save.transfer.done.body")))
 	box.add_child(_caption(I18nService.t("save.transfer.done.moving")))
-	var cont := Button.new()
+	var cont := SquishButton.new()
 	cont.theme_type_variation = &"PrimaryButton"
 	cont.text = I18nService.t("save.transfer.done.continue")
 	cont.pressed.connect(_on_back_pressed)
@@ -256,7 +258,7 @@ func _build_export_card(parent: Container) -> void:
 	title.theme_type_variation = &"HeadlineLabel"
 	title.text = I18nService.t("save.transfer.export.title")
 	box.add_child(title)
-	var button := Button.new()
+	var button := SquishButton.new()
 	button.theme_type_variation = &"GhostButton"
 	button.text = I18nService.t("save.transfer.export.button")
 	button.pressed.connect(_on_export_pressed)
@@ -300,17 +302,20 @@ func _probe_auto() -> void:
 
 
 func _on_auto_preview_pressed() -> void:
+	AudioDirector.try_play(self, "ui_click")
 	var probe: Variant = get_meta("auto_probe", {})
 	if probe is Dictionary and not (probe as Dictionary).is_empty():
 		_show_preview((probe as Dictionary)["preview"])
 
 
 func _on_check_pressed() -> void:
+	AudioDirector.try_play(self, "ui_click")
 	_preview_result = TransferService.preview_text(_input.text, _now_ms())
 	_show_preview(_preview_result)
 
 
 func _on_file_pressed() -> void:
+	AudioDirector.try_play(self, "ui_click")
 	if not DisplayServer.has_feature(DisplayServer.FEATURE_SUBWINDOWS):
 		_show_error(I18nService.t("save.transfer.file.unsupported"))
 		return
@@ -364,11 +369,18 @@ func _note_lines(migration: Dictionary) -> Array:
 
 
 func _show_error(body: String) -> void:
+	_nope_feedback()
 	phase = "input"
 	_preview_card.visible = false
 	_error_card.visible = true
 	_error_body.text = body
 	_scroll_to(_error_card)
+
+
+## Fehler-Karte = „Nö“-Ausgang (Grammatik: ui_error + warn-Haptik).
+func _nope_feedback() -> void:
+	AudioDirector.try_play(self, "ui_error")
+	Haptics.warn(self)
 
 
 ## Karte in den Blick scrollen — auf dem iPhone liegt die Vorschau sonst
@@ -387,6 +399,7 @@ func _on_apply_pressed() -> void:
 	if not TransferService.apply(_preview_result["state"], _game_state()):
 		_show_error(I18nService.t("save.transfer.error.body", {"error": "GameState fehlt"}))
 		return
+	AudioDirector.try_play(self, "ui_confirm")
 	phase = "done"
 	_auto_card.visible = false
 	_paste_card.visible = false
@@ -397,6 +410,7 @@ func _on_apply_pressed() -> void:
 
 
 func _on_cancel_pressed() -> void:
+	AudioDirector.try_play(self, "ui_back")
 	_preview_result = {}
 	_show_phase_input()
 
@@ -414,11 +428,13 @@ func _on_export_pressed() -> void:
 	if gs == null or not gs.has_method("state"):
 		return
 	DisplayServer.clipboard_set(MovingBoxImport.export_code(gs.state()))
+	AudioDirector.try_play(self, "ui_confirm")
 	_export_feedback.text = I18nService.t("save.transfer.export.copied")
 	_export_feedback.visible = true
 
 
 func _on_back_pressed() -> void:
+	AudioDirector.try_play(self, "ui_back")
 	back_requested.emit()
 	var router := get_node_or_null("/root/SceneRouter")
 	if router == null or not router.has_method("goto"):

@@ -425,7 +425,9 @@ func _show_safe_mode_banner() -> void:
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(label)
-	var retry := Button.new()
+	# Audio-Grammatik: SquishButton (Squish + Haptik zentral); der Klang
+	# kommt aus _on_safe_mode_retry (ui_confirm).
+	var retry := SquishButton.new()
 	retry.text = I18nService.t("updates.erneut_versuchen")
 	retry.custom_minimum_size = Vector2(0, 48)
 	retry.focus_mode = Control.FOCUS_NONE
@@ -437,6 +439,7 @@ func _show_safe_mode_banner() -> void:
 
 
 func _on_safe_mode_retry() -> void:
+	AudioDirector.try_play(self, "ui_confirm")
 	var loader := get_node_or_null("/root/PackLoader")
 	if loader != null and loader.has_method("reenable_all_packs"):
 		loader.reenable_all_packs()

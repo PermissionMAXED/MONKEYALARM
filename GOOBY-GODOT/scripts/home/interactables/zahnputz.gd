@@ -195,10 +195,15 @@ class BruchInfoKarte:
 		text.size = Vector2(340.0, 0.0)
 		text.text = I18nService.t("goobyman.bruch_info.text")
 		box.add_child(text)
-		var ok := Button.new()
+		# Audio-Grammatik: SquishButton + ui_close (Info-Karte zuklappen).
+		var ok := SquishButton.new()
 		ok.theme_type_variation = &"PrimaryButton"
 		ok.text = I18nService.t("goobyman.bruch_info.ok")
-		ok.pressed.connect(queue_free)
+		ok.pressed.connect(
+			func() -> void:
+				AudioDirector.try_play(ok, "ui_close")
+				queue_free()
+		)
 		box.add_child(ok)
 
 

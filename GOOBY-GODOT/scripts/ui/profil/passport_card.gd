@@ -710,7 +710,7 @@ func _baue_picker_raster(fotos: Array, m: Dictionary) -> Control:
 
 
 func _picker_kachel(pfad: String, f: float) -> Control:
-	var karte := Button.new()
+	var karte := SquishButton.new()
 	karte.name = "FotoWahl_%s" % pfad.get_file().get_basename()
 	karte.theme_type_variation = &"AcCard"
 	karte.custom_minimum_size = Vector2(128.0, 96.0) * f
@@ -730,6 +730,7 @@ func _picker_kachel(pfad: String, f: float) -> Control:
 
 
 func _on_foto_gewaehlt(pfad: String) -> void:
+	AudioDirector.try_play(self, "ui_confirm")
 	setze_passfoto(gs, pfad)
 	_schliesse_picker()
 	_baue_foto_slot()

@@ -59,10 +59,15 @@ func _build_layout() -> void:
 	titel.text = I18nService.t("rnpc.ui.titel")
 	titel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	kopf.add_child(titel)
-	var zurueck := Button.new()
+	# Audio-Grammatik: SquishButton (Squish + Haptik zentral).
+	var zurueck := SquishButton.new()
 	zurueck.theme_type_variation = "GhostButton"
 	zurueck.text = I18nService.t("rquest.log.schliessen")
-	zurueck.pressed.connect(func() -> void: back_pressed.emit())
+	zurueck.pressed.connect(
+		func() -> void:
+			AudioDirector.try_play(zurueck, "ui_back")
+			back_pressed.emit()
+	)
 	kopf.add_child(zurueck)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL

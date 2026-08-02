@@ -157,7 +157,9 @@ func _play_tick(beat: int) -> void:
 ## Vom Pregame gerufen (eine Zeile): Abschnitts-Label + „Timing anpassen"-
 ## Knopf (zeigt den gespeicherten Offset in ms) unter die Karte hängen.
 static func mount_pregame_section(host: Control, rows: VBoxContainer, state: Node) -> Button:
-	var button := Button.new()
+	# Audio-Grammatik: SquishButton (Squish + Haptik zentral); Klänge sitzen
+	# in den Handlern (ui_open/ui_confirm/ui_chip/ui_back).
+	var button := SquishButton.new()
 	button.name = "DanceKalibKnopf"
 	button.theme_type_variation = &"GhostButton"
 	button.custom_minimum_size = Vector2(0, 46)
@@ -239,7 +241,9 @@ func _build_ui() -> void:
 	_status_label.text = I18nService.t("mg.danceParty.kalib_text")
 	rows.add_child(_status_label)
 
-	_tap_button = Button.new()
+	# Tap-Knopf bewusst OHNE Press-Sound (Metronom-Timing) — Squish+Haptik
+	# kommen zentral vom SquishButton.
+	_tap_button = SquishButton.new()
 	_tap_button.name = "TapButton"
 	_tap_button.theme_type_variation = &"PrimaryButton"
 	_tap_button.text = I18nService.t("mg.danceParty.kalib_tap")
@@ -253,21 +257,21 @@ func _build_ui() -> void:
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override("separation", 10)
 	rows.add_child(buttons)
-	_start_button = Button.new()
+	_start_button = SquishButton.new()
 	_start_button.name = "StartButton"
 	_start_button.theme_type_variation = &"AcChip"
 	_start_button.custom_minimum_size = Vector2(0, 46)
 	_start_button.text = I18nService.t("mg.danceParty.kalib_start")
 	_start_button.pressed.connect(_on_start_pressed)
 	buttons.add_child(_start_button)
-	var reset := Button.new()
+	var reset := SquishButton.new()
 	reset.name = "ResetButton"
 	reset.theme_type_variation = &"AcChip"
 	reset.custom_minimum_size = Vector2(0, 46)
 	reset.text = I18nService.t("mg.danceParty.kalib_reset")
 	reset.pressed.connect(_reset_offset)
 	buttons.add_child(reset)
-	var close := Button.new()
+	var close := SquishButton.new()
 	close.name = "CloseButton"
 	close.theme_type_variation = &"GhostButton"
 	close.custom_minimum_size = Vector2(0, 46)

@@ -205,7 +205,7 @@ func _richte_kunden_ein() -> void:
 
 
 func _tab_knopf(text: String) -> Button:
-	var knopf := Button.new()
+	var knopf := SquishButton.new()
 	knopf.theme_type_variation = "GhostButton"
 	knopf.text = text
 	knopf.size_flags_horizontal = Control.SIZE_EXPAND_FILL

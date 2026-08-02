@@ -30,7 +30,11 @@ func _ready() -> void:
 	brake.button_up.connect(func() -> void: brake_changed.emit(false))
 	var stadt := _baue_knopf(I18nService.t("ranch.fahrt.zur_stadt"), "GhostButton")
 	stadt.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
-	stadt.pressed.connect(func() -> void: zur_stadt_pressed.emit())
+	stadt.pressed.connect(
+		func() -> void:
+			AudioDirector.try_play(stadt, "ui_click")
+			zur_stadt_pressed.emit()
+	)
 	_baue_prompt()
 
 
@@ -92,7 +96,9 @@ func _on_zone_input(event: InputEvent, links: bool) -> void:
 
 
 func _baue_knopf(text: String, variation: String) -> Button:
-	var btn := Button.new()
+	# Audio-Grammatik: SquishButton (Squish + Haptik zentral). Die Bremse
+	# ist ein Halte-Knopf (button_down/up) und bleibt bewusst stumm.
+	var btn := SquishButton.new()
 	btn.text = text
 	btn.theme_type_variation = variation
 	btn.custom_minimum_size = Vector2(72.0, 72.0)
@@ -117,7 +123,11 @@ func _baue_prompt() -> void:
 	_prompt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_prompt_label)
-	_prompt_btn = Button.new()
+	_prompt_btn = SquishButton.new()
 	_prompt_btn.theme_type_variation = "PrimaryButton"
-	_prompt_btn.pressed.connect(func() -> void: prompt_pressed.emit())
+	_prompt_btn.pressed.connect(
+		func() -> void:
+			AudioDirector.try_play(_prompt_btn, "ui_click")
+			prompt_pressed.emit()
+	)
 	box.add_child(_prompt_btn)

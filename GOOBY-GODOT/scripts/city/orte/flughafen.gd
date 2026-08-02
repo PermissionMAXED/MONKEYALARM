@@ -163,13 +163,13 @@ func _leben_konfig() -> Dictionary:
 
 func _baue_ui() -> void:
 	super._baue_ui()
-	var reise_btn := Button.new()
+	var reise_btn := SquishButton.new()
 	reise_btn.name = "Reise"
 	reise_btn.text = I18nService.t("travel.schalter.knopf")
 	reise_btn.theme_type_variation = "PrimaryButton"
 	reise_btn.custom_minimum_size = Vector2(220.0, 56.0)
 	reise_btn.pressed.connect(_on_reise)
-	_gfree_btn = Button.new()
+	_gfree_btn = SquishButton.new()
 	_gfree_btn.name = "GoobyFree"
 	_gfree_btn.text = I18nService.t("gfree.knopf")
 	_gfree_btn.theme_type_variation = "AccentButton"
@@ -178,7 +178,7 @@ func _baue_ui() -> void:
 	var knoepfe: Array[Button] = [reise_btn, _gfree_btn]
 	var gs := game_state()
 	if gs != null and OrtRaumstation.freigeschaltet(gs.state()):
-		var shuttle_btn := Button.new()
+		var shuttle_btn := SquishButton.new()
 		shuttle_btn.name = "Shuttle"
 		shuttle_btn.text = I18nService.t("gfree.shuttle_knopf")
 		shuttle_btn.theme_type_variation = "AccentButton"
@@ -271,6 +271,9 @@ func _on_gooby_free() -> void:
 		return
 	if not gooby_free_offen(gs.state()):
 		# Augenzwinkern: ohne Boarding kein Duty-Free — wie im echten Leben.
+		# Gesperrt klingt („Nö“-Grammatik): ui_error + warn-Haptik.
+		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		zeige_toast(I18nService.t("gfree.zu"))
 		return
 	AudioDirector.try_play(self, "ui_click")
@@ -325,7 +328,7 @@ func _gfree_zeile(ware: Dictionary, coins: int) -> Control:
 		exklusiv.theme_type_variation = "CaptionLabel"
 		exklusiv.text = I18nService.t("gfree.exklusiv")
 		zeile.add_child(exklusiv)
-	var btn := Button.new()
+	var btn := SquishButton.new()
 	btn.theme_type_variation = "AccentButton"
 	btn.text = I18nService.t("city.laden.kaufen").format({"preis": int(ware.get("preis", 0))})
 	btn.disabled = coins < int(ware.get("preis", 0))
@@ -341,8 +344,12 @@ func _on_gfree_kauf(ware: Dictionary) -> void:
 			AudioDirector.try_play(self, "ui_click")
 			zeige_toast(I18nService.t("gfree.gekauft").format({"name": gfree_name(ware)}))
 		KAUF_VOLL:
+			AudioDirector.try_play(self, "ui_error")
+			Haptics.warn(self)
 			zeige_toast(I18nService.t("gfree.lager_voll"))
 		KAUF_ZU:
+			AudioDirector.try_play(self, "ui_error")
+			Haptics.warn(self)
 			zeige_toast(I18nService.t("gfree.zu"))
 		_:
 			pass
