@@ -104,6 +104,23 @@ func _ready() -> void:
 		# Einladung daraus ("Bonus-Event: Doppel-Gold in Teeparty!").
 		if _gs is Node and (_gs as Node).has_signal("gooby_events"):
 			(_gs as Node).gooby_events.connect(_on_gooby_events)
+		# EVAL-Rest "Recovery-Toast unverdrahtet": GameState.initialize lief
+		# beim Boot VOR jedem UI-Baum (Autoload) — deshalb Pull statt Signal.
+		_zeige_recovery_hinweis.call_deferred()
+
+
+## EVAL-Rest: Save-Recovery-Hinweis beim Boot sichtbar machen (Strings
+## sys.save.* existierten seit W4 ohne Konsument). Der Hub holt den
+## einmaligen Hinweis vom GameState ab und zeigt ihn auf seiner obersten
+## Toast-Layer — egal, welcher Screen zuerst mountet.
+func _zeige_recovery_hinweis() -> void:
+	if _gs == null or not _gs.has_method("consume_recovery_notice"):
+		return
+	var notice := str(_gs.consume_recovery_notice())
+	if notice.is_empty():
+		return
+	var key := "sys.save.recovered_fresh" if notice == "fresh" else "sys.save.recovered_backup"
+	_toasts.show_toast(I18nService.t(key))
 
 
 ## REST-1: Tagesbonus beim ersten Start des Tages anbieten. Mit Router

@@ -62,3 +62,39 @@ func test_hub_feiert_fuetterung_ohne_album() -> void:
 func test_note_action_ohne_gs_crasht_nicht() -> void:
 	RewardHub.note_action(null)
 	assert_true(true, "note_action(null) ist ein No-Op")
+
+
+## EVAL-Rest "Recovery-Toast unverdrahtet": bootet der Hub an einem
+## GameState, dessen Save aus einer Sicherung zurueckgeholt wurde, zeigt er
+## GENAU EINMAL den sys.save.recovered_backup-Toast auf seiner Layer.
+func test_hub_zeigt_recovery_toast_beim_boot() -> void:
+	_seq += 1
+	var dir := "user://ef1_tests/recovery_%d_%d" % [Time.get_ticks_usec(), _seq]
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
+	var path := dir + "/save_v5.json"
+	var gs: Node = GameStateScript.new()
+	gs.clock.pin(NOW_MS)
+	gs.clock.set_utc_offset_minutes(0)
+	gs.initialize(path)
+	gs.save_now()
+	gs.save_now()  # rotiert Generation 1 nach bak1
+	gs.free()
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_string("{{{ kaputt %#!")
+	f = null
+	var gs2: Node = GameStateScript.new()
+	gs2.clock.pin(NOW_MS)
+	gs2.clock.set_utc_offset_minutes(0)
+	gs2.initialize(path)
+	var host := Node.new()
+	tree.root.add_child(host)
+	var hub := RewardHub.attach_to(host, gs2)
+	var erwartet := I18nService.t("sys.save.recovered_backup")
+	var gezeigt := await wait_until(
+		func() -> bool: return hub._toasts.queue.current() == erwartet, 5000
+	)
+	assert_true(gezeigt, "Recovery-Toast erscheint auf der Hub-Layer")
+	assert_eq(gs2.consume_recovery_notice(), "", "Hinweis ist verbraucht (kein Doppel-Toast)")
+	host.queue_free()
+	await wait_frames(1)
+	gs2.free()

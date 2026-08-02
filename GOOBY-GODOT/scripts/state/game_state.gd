@@ -60,6 +60,11 @@ var _manager := SaveManager.new()
 var _state: Dictionary = {}
 var _loaded := false
 var _tick_accum := 0.0
+## EVAL-Rest "Recovery-Toast unverdrahtet": merkt sich den Load-Ausgang fuer
+## den Boot-Hinweis ("backup" = aus tmp/bak wiederhergestellt, "fresh" =
+## Save kaputt + Neustart, "" = nichts) — der RewardHub holt ihn EINMALIG
+## per consume_recovery_notice() ab. Additiv; state_loaded bleibt eingefroren.
+var _recovery_notice := ""
 
 
 func _ready() -> void:
@@ -122,6 +127,11 @@ func initialize(save_path := "user://save_v5.json") -> void:
 	var events := GoobyTicker.catch_up(_state, clock.now_ms())
 	_loaded = true
 	_tick_accum = 0.0
+	_recovery_notice = ""
+	if bool(res["recovered"]):
+		# source "fresh" = Save UND alle Backups kaputt → Neustart-Hinweis;
+		# alles andere (tmp/bak1..3) = Sicherung wurde zurueckgeholt.
+		_recovery_notice = "fresh" if str(res["source"]) == "fresh" else "backup"
 	_manager.mark_dirty(Time.get_ticks_msec())
 	state_loaded.emit(res["fresh"], res["recovered"])
 	_emit_watched(_snapshot_watched_empty())
@@ -156,6 +166,15 @@ func run_live_tick() -> void:
 
 func is_loaded() -> bool:
 	return _loaded
+
+
+## Einmaliger Abruf des Boot-Recovery-Hinweises (s. _recovery_notice):
+## "backup" | "fresh" | "" — der zweite Aufruf liefert immer "" (der Toast
+## soll genau EINMAL erscheinen, nicht nach jedem Screen-Wechsel).
+func consume_recovery_notice() -> String:
+	var notice := _recovery_notice
+	_recovery_notice = ""
+	return notice
 
 
 ## Direct state reference — READ ONLY. Writes MUST go through set_value/update

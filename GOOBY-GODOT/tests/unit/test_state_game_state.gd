@@ -114,6 +114,39 @@ func test_save_and_reload_persists() -> void:
 	gs2.free()
 
 
+## EVAL-Rest "Recovery-Toast unverdrahtet": der Load-Ausgang ist als
+## einmaliger Hinweis abholbar — "backup" (Sicherung zurueckgeholt),
+## "fresh" (alles kaputt → Neustart), "" (normaler Boot/Erststart).
+func test_recovery_notice_einmalig_abrufbar() -> void:
+	# Normaler Erststart: kein Hinweis.
+	var gs := _fresh_game_state(_fresh_path())
+	assert_eq(gs.consume_recovery_notice(), "", "Erststart = kein Hinweis")
+	gs.free()
+	# Korrupter Save MIT Backup: "backup", und nur EINMAL.
+	var path := _fresh_path()
+	var gs2 := _fresh_game_state(path)
+	gs2.set_value("economy.coins", 777)
+	assert_true(gs2.save_now())
+	assert_true(gs2.save_now(), "zweiter Flush rotiert den ersten nach bak1")
+	gs2.free()
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_string("{{{ kaputt %#!")
+	f = null
+	var gs3 := _fresh_game_state(path)
+	assert_eq(gs3.get_value("economy.coins"), 777, "Backup-Stand geladen")
+	assert_eq(gs3.consume_recovery_notice(), "backup", "Sicherung zurueckgeholt")
+	assert_eq(gs3.consume_recovery_notice(), "", "Hinweis ist einmalig")
+	gs3.free()
+	# Korrupter Save OHNE Backups: "fresh".
+	var path2 := _fresh_path()
+	var f2 := FileAccess.open(path2, FileAccess.WRITE)
+	f2.store_string("kein json")
+	f2 = null
+	var gs4 := _fresh_game_state(path2)
+	assert_eq(gs4.consume_recovery_notice(), "fresh", "alles kaputt = Neustart-Hinweis")
+	gs4.free()
+
+
 func test_xp_ratio_full_at_max_level() -> void:
 	var gs := _fresh_game_state(_fresh_path())
 	gs.update(
