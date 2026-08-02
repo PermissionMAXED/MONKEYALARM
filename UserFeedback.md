@@ -264,13 +264,59 @@ Playtests, den Planner-Ideen und den restlichen G6-Paketen:
       10+ priorisierte Ideen für seinen Bereich (≈100+ Ideen), konsolidiert
       zur Roadmap
 - [ ] **Wellen J+: Umsetzung** — Playtest-Bugs + beste Planner-Ideen + die
-      restlichen G6-Pakete (DLC-Ladebildschirme, Audio-Feel, Doku-Refresh);
-      schon raus: Ball-Wurf, Warn-Sweep, CI-Release-Notes — und jetzt auch
-      DLC Welle B BEIDER Läden, die McGooby-Bühne und der Alwin-NPC
-      (alles direkt unten abgehakt)
+      restlichen G6-Pakete (DLC-Ladebildschirme); schon raus: Ball-Wurf,
+      Warn-Sweep, CI-Release-Notes, DLC Welle B BEIDER Läden, McGooby-Bühne,
+      Alwin-NPC — und jetzt auch Audio-Feel (Dialog-Ducking) und der
+      Doku-Refresh (alles direkt unten abgehakt)
 
 **Schon in W18 gelandet** (vorgezogene Warteschlangen-Pakete + Playtest-Funde):
 
+- [x] **Audio-Feel: Dialog-Ducking + Laden-Ambience** — solange eine
+      Sprechblase spricht, treten Musik (−6 dB) und Laden-Gemurmel (−5 dB)
+      mit weichen Flanken zurück und kommen danach weich wieder;
+      Ambience-Loops blenden 0,9 s ein statt hart zu schneiden, lange Betten
+      starten an zufälliger Stelle (klingt nie zweimal gleich) und das
+      REHWEI/Baumarkt/Kino/Flughafen-Gemurmel skaliert mit der ECHTEN
+      Besucherschar; beide Regeln stehen verbindlich in AUDIO-GRAMMATIK.md,
+      8 neue Dauer-Wachen.
+- [x] **Szenenwechsel-Audit: kein Weg am Wipe vorbei** — Audit über alle
+      782 Produktions-Dateien bestätigt: JEDE Reise läuft über den
+      Veil-/Tür-Wipe des Routers, einzige sanktionierte Ausnahme ist der
+      Soft-Restart-Reboot (jetzt dokumentiert); eine neue Rückbau-Wache
+      lässt keinen Direkt-Szenenwechsel mehr durch (Mutations-Probe:
+      die Wache schlägt sofort an).
+- [x] **Squish + Sound + Haptik KOMPLETT (Audio-Grammatik)** — alle ~120
+      restlichen nackten Knöpfe in 54 Screens drücken sich jetzt (Squish +
+      Tap), gesperrte Knöpfe sagen zentral „Nö" (Fehlerton + Warn-Haptik +
+      Schütteln statt still zu verpuffen), und jeder Knopf spielt GENAU
+      EINEN Klang nach der festen Grammatik (Zurück/Auswahl/Bestätigen/
+      Kauf/Schalter …); eine repo-weite Quelltext-Wache verhindert neue
+      nackte Buttons.
+- [x] **P56-Typo: Minispiel-HUDs im EINEN Rahmen** (Playtest-Fund F4) —
+      Timer/Unterzeile/Hinweis der 7 abweichenden Spiele (basketBounce,
+      burgerBuild, gardenRush, veggieChop, pancakeTower, pipeFlow,
+      ranchParcours) ziehen Typografie UND Milchglas-Plates jetzt aus der
+      zentralen Rahmen-Fabrik; dabei den „bildschirmhohe Riesen-Plate"-
+      Layoutfehler an der Wurzel gefixt (Godots Umbruch-Cache klemmte
+      Hinweis-Boxen auf über 1300 px Höhe).
+- [x] **GvZ-PvP-Server gehärtet** — Lobby-Leck gefixt (wer nach dem
+      Annehmen offline ging, sperrte BEIDE Spieler dauerhaft), Hash-Flut
+      gedeckelt, Aktions-Nachrichten auf strikte Form geprüft (kein
+      Schmuggel-Seitenkanal), Ergebnis-Klemme + Einladungs-Hygiene;
+      6 neue Wachen, Server-Suite jetzt 157/157 — dazu ein neuer MP-Smoke,
+      der den ECHTEN Server bootet und den 2-Client-Handshake abfährt.
+- [x] **Playtest-Fund F3 „Invalid polygon data" an der Wurzel gefixt** —
+      der sporadische Zeichen-Fehler in Wipe-Momenten kam vom Sweep der
+      Lade-Pill (kollabierende Kappen erzeugten Doppelpunkte, die die
+      Triangulation je nach Rundung ablehnte); die Pill-Punkte werden jetzt
+      dedupliziert und der Boot-Balken teilt dasselbe Rezept; 6
+      instrumentierte Playtest-Lanes: vorher 2 Treffer, nachher 0.
+- [x] **Doku-Refresh** — STATUS.md komplett neu auf den ehrlichen
+      Post-W18-Stand (78/79 Web-Features, Lücken ehrlich kuratiert, tote
+      Links ersetzt) + EVAL-VOLLSTAENDIGKEIT.md auf Revision W18 („Web-
+      paritätisch, Politur-/Playtest-Phase"); IOS-BUILD.md/UPDATES.md gegen
+      den echten CI-Workflow abgeglichen (Größenwacht, UNVERIFIED-Artefakt,
+      Concurrency, Schedule-Vorbehalte).
 - [x] **DLC „Goo und Bye" Welle B: Großmarkt + eigene Preise** — der Laden
       lernt Einkaufen und Preise machen: Bestellzettel mit ±-Steppern und
       Staffelrabatt ab 10 Stück einer Ware (der Kauf bucht ATOMAR — bei
@@ -492,7 +538,7 @@ gewandert — Welle H läuft bereits, Ball-Wurf und Warn-Sweep sind gelandet.)_
 
 | | |
 |---|---|
-| **Qualität (Stand 2.8., W18)** | Hauptsuite **3511 Tests / 0 rot**, Server-Tests **151 / 0**, UI-Audit **204 Screens / 0 Befunde** — Leitformat iPhone 17 Pro Max quer (2868×1320) |
+| **Qualität (Stand 2.8., W18)** | Hauptsuite **3529 Tests / 0 rot** (letzter sauberer Voll-Lauf; der jüngste 3530er-Lauf hatte nur ein bekanntes fremdes In-Flight-Rot), Server-Tests **157 / 0**, UI-Audit **204 Screens / 0 Befunde** — Leitformat iPhone 17 Pro Max quer (2868×1320) |
 | **Playtests** | Subagents SPIELEN das Spiel wirklich (eigene Instanz, echte Taps/Wische, Screenshots): Reports unter `docs/playtests/` (PT-home, PT-ui-loops, PT-stadt, PT-minigames-a/b, PT-meta), Start per `tools/ci/run_playtest.sh alle` |
 | **Testen** | GitHub → Actions → Lauf „GOOBY Godot" → Artefakt `GOOBY-godot-unsigned-ipa` herunterladen, mit AltStore/Sideloadly installieren. Anleitung: `docs/godot-rewrite/IOS-BUILD.md` — Release-Notes werden jetzt automatisch aus den Commits generiert |
 | **Spielstand von früher** | Einstellungen → Spielstand → „Alten Spielstand übertragen"; Anleitung: `docs/godot-rewrite/SAVE-TRANSFER.md` |
