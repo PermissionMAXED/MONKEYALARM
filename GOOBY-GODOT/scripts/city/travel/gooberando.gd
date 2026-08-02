@@ -401,7 +401,10 @@ func karten_kante() -> float:
 
 
 func _render_vor_der_tuer() -> void:
-	_liefer_gooby()
+	_liefer_gooby("wave")
+	# CITY-2 „lebendig“: der Fahrer hat auch was zu sagen — rotierende
+	# Sprüche über den OrtLeben-Baustein (Domain city_leben.gooberando).
+	_fahrer_spruch()
 	_label(I18nService.t("travel.gooberando.klingel"))
 	var btn := _knopf(I18nService.t("travel.gooberando.annehmen"), "PrimaryButton")
 	btn.pressed.connect(_on_uebergabe)
@@ -409,7 +412,8 @@ func _render_vor_der_tuer() -> void:
 
 
 func _render_trinkgeld() -> void:
-	_liefer_gooby()
+	# Übergabe geschafft — der Fahrer freut sich sichtbar (celebrate).
+	_liefer_gooby("celebrate")
 	_label(I18nService.t("travel.gooberando.uebergeben"))
 	var geben := _knopf(I18nService.t("travel.gooberando.trinkgeld_geben"), "PrimaryButton")
 	geben.pressed.connect(_on_trinkgeld.bind(true))
@@ -419,8 +423,18 @@ func _render_trinkgeld() -> void:
 	_box.add_child(winken)
 
 
+## Rotierende Fahrer-Zeile unterm Porträt (OrtLeben-Rotation: nichts
+## wiederholt sich, bevor alle Zeilen dran waren).
+func _fahrer_spruch() -> void:
+	var zeile := OrtLeben.naechster_spruch("gooberando")
+	if not zeile.is_empty():
+		_caption("„%s“" % zeile)
+
+
 ## Oranger Liefer-Gooby (W1b-Rig, Fell-Tint #FF7A00) im SubViewport-Porträt.
-func _liefer_gooby() -> void:
+## CITY-2 „lebendig“: dazu das orange Dienst-Käppi (OrtLeben-Baustein),
+## die GOOBERANDO-Papiertüte neben ihm und ein Begrüßungs-Clip.
+func _liefer_gooby(clip := "wave") -> void:
 	var container := SubViewportContainer.new()
 	container.stretch = true
 	container.custom_minimum_size = Vector2(
@@ -447,11 +461,44 @@ func _liefer_gooby() -> void:
 				var kopie: StandardMaterial3D = mat.duplicate()
 				kopie.albedo_color = kopie.albedo_color.lerp(ORANGE, 0.6)
 				mi.set_surface_override_material(i, kopie)
+	rig.add_child(OrtLeben.baue_kaeppi(ORANGE))
+	rig.play_clip(clip)
+	viewport.add_child(_papier_tuete())
 	var kamera := Camera3D.new()
 	# Nah ran: Porträt-Framing — bei 2,6 m wirkt der Liefer-Gooby verloren.
 	kamera.position = Vector3(0.0, 0.75, 1.5)
 	kamera.rotation_degrees = Vector3(-6.0, 0.0, 0.0)
 	viewport.add_child(kamera)
+
+
+## Die GOOBERANDO-Papiertüte (Doc E §5-Kleinteil, Bordmittel statt Asset):
+## brauner Korpus + oranges Marken-Band, steht neben dem Fahrer.
+func _papier_tuete() -> Node3D:
+	var tuete := Node3D.new()
+	tuete.name = "PapierTuete"
+	tuete.position = Vector3(0.42, 0.0, 0.28)
+	tuete.rotation_degrees = Vector3(0.0, -18.0, 0.0)
+	var korpus := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.26, 0.32, 0.18)
+	var papier := StandardMaterial3D.new()
+	papier.albedo_color = Color("#D9B48A")
+	papier.roughness = 0.9
+	box.material = papier
+	korpus.mesh = box
+	korpus.position = Vector3(0.0, 0.16, 0.0)
+	tuete.add_child(korpus)
+	var band := MeshInstance3D.new()
+	var streifen := BoxMesh.new()
+	streifen.size = Vector3(0.262, 0.07, 0.182)
+	var marke := StandardMaterial3D.new()
+	marke.albedo_color = ORANGE
+	marke.roughness = 0.7
+	streifen.material = marke
+	band.mesh = streifen
+	band.position = Vector3(0.0, 0.18, 0.0)
+	tuete.add_child(band)
+	return tuete
 
 
 ## --------------------------------------------------------------- Actions

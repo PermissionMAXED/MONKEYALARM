@@ -196,3 +196,10 @@ G5 P35 MG-EXPRESS-2 | W17
 Intro-Ziel-Banner der G5-Politur P31 MG-GHOST-SPLIT; alle übrigen
 `mg.ghostHunt.*`-Keys bleiben beim MG-2-Owner in `mg_batch2.json`, Loader
 merged flach) | G5 P31 MG-GHOST-SPLIT | W17
+
+>> NEUE `kino.*`-Domain (Datei `strings/<locale>/kino.json` — Kino GOOBYWOOD aus
+CITY-2 „Orte lebendig 3“: Programm-Sheet, Ticket, Vorstellung/Abspann,
+Parodie-Filmtitel) + `city.ort.kino`-Key (additiv in `city.json`) + NEUE
+`city_leben.sprueche.flughafen/kino/gooberando`-Listen (additiv in
+`city_leben.json` — Ambient-Reisende, Kinogänger, GOOBERANDO-Fahrer) |
+CITY-2 ORTE-LEBENDIG-3 | W18

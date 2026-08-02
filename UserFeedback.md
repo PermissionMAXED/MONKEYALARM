@@ -365,6 +365,14 @@ G6-Pakete wurden neu einsortiert (zwei davon sind oben schon gelandet)._
       IKEA-Katalog klingt nach Möbelhaus (Tür-Pling + leises Gemurmel) und
       bringt rotierende Laden-Durchsagen über der Vitrine („Bitte nicht auf
       den Ausstellungsbetten einschlafen. Danke!“, DE/EN).
+      → CITY-2-Ausbau „Orte lebendig 3": der Flughafen hat jetzt Reisende
+      (einer checkt am Schalter ein — der Schalter-Gooby piept), die Stadt
+      hat ein NEUES Kino „GOOBYWOOD" im Zentrum (Frau Lumi Leinwand an der
+      Popcorn-Kasse, Tagesfilm-Programm mit Parodie-Titeln wie „Möhrenkrieg:
+      Eine neue Knolle", Ticket 15 Münzen → die Leinwand flackert und Gooby
+      bekommt Spaß, Ambient-Kinogänger inklusive Popcorn-Käufer), und der
+      GOOBERANDO-Fahrer ist lebendig (orangenes Dienst-Käppi, Papiertüte,
+      Winken/Freuen, rotierende Fahrer-Sprüche — „Erstmal Goobyn!").
 - [x] **P56 Ein-Spiel-Gefühl** — einheitlicher Minispiel-Rahmen (Intro/
       Outro/Pause im Gooby-Look überall) + einheitliche Szenen-Übergänge,
       damit sich nichts mehr wie ein Fremd-Spiel anfühlt.
