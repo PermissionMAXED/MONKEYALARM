@@ -1,11 +1,16 @@
 # Spielstand übertragen: Alte App (Web/Capacitor) → GOOBY 5 (Godot)
 
-**Stand: 2026-07-25 (FIX-6).** Antwort auf die User-Frage *„Wo genau überträgt
-man seinen Save Game von davor?"* — es gibt jetzt DREI Wege, alle laufen durch
-dieselbe geprüfte Migrationskette (`scripts/state/migration_v4.gd`,
-v0–v4 → v5). Vor JEDER Übernahme wird der aktuelle Stand automatisch
-gesichert (`user://save_v5.pre_import.json`) — ein Import kann nichts
-endgültig zerstören.
+**Stand: 2026-08-02 (W18-Sync; ursprünglich FIX-6).** Antwort auf die
+User-Frage *„Wo genau überträgt man seinen Save Game von davor?"* — es gibt
+DREI Wege, alle laufen durch dieselbe geprüfte Migrationskette
+(`scripts/state/migration_v4.gd`, v0–v4 → v5). Beide Einstiege sind
+inzwischen verdrahtet: der Auto-Check beim allerersten Start
+(`scripts/home/home_entry.gd: _offer_legacy_transfer()`) und die
+Settings-Zeile (Einstellungen → Gruppe „Spielstand"). Vor JEDER Übernahme
+wird der aktuelle Stand automatisch gesichert
+(`user://save_v5.pre_import.json`) — ein Import kann nichts endgültig
+zerstören; dass die Sicherung **vor** dem Ersetzen auf der Platte liegt, ist
+per Test bewiesen (s. Verifikation).
 
 Screenshots in diesem Dokument: `/tmp/gooby-godot/artifacts/FIX6/`.
 
@@ -46,11 +51,13 @@ zusätzlich nach `NSUserDefaults` (Datei
 | `Library/WebKit/**/LocalStorage/*.sqlite3` (WKWebView-localStorage) | Nein — SQLite-Binärformat | Bewusst nicht gebaut; die Preferences-Spiegelung trägt denselben Stand. Nur URALT-Installationen ohne jedes Update hätten NUR localStorage → für die gilt Weg B |
 | Natives Plugin (`LegacySaveReader`, ~40 Zeilen ObjC `stringForKey:`) | — | Nicht nötig; der Code probiert es trotzdem ZUERST, falls es je gebaut wird (`Engine.get_singleton("LegacySaveReader")`), und fällt dann auf den Plist-Parser zurück |
 
-**Einschränkung heute:** Der Boot-Flow (`scripts/boot/main.gd`, gehört W1a)
-ruft das Angebot beim allerersten Start noch nicht auf — Handoff
-`/tmp/gooby-godot/handoffs/FIX6-boot-request.md` liegt bereit (~6 Zeilen).
-Bis dahin erreicht man dieselbe Auto-Erkennung über Weg B: der
-Transfer-Screen sucht beim Öffnen selbstständig.
+**Verdrahtung (seit W6 erledigt):** Beim allerersten Start (solange
+`onboarding.done` false ist) sucht `scripts/home/home_entry.gd`
+(`_offer_legacy_transfer()`) den Alt-Spielstand selbst — bei einem Fund wird
+VOR dem Onboarding der Übernahme-Screen geroutet, ohne Fund läuft das
+normale Onboarding (ein billiger Datei-Read, kein Sonderfall). Dieselbe
+Auto-Erkennung läuft zusätzlich bei jedem Öffnen des Transfer-Screens
+(Weg B).
 
 ---
 
@@ -62,9 +69,11 @@ ANDEREN Gerät lebt.
 1. **In der alten App:** Einstellungen → **„Spielstand exportieren"**
    (siehe Weg C). Der Spielstand landet als Text in der Zwischenablage
    und/oder als Datei `gooby-spielstand-JJJJ-MM-TT.json`.
-2. **In der neuen App:** Einstellungen → **„Spielstand übertragen"**
-   (Settings-Zeile: Handoff `FIX6-settings-request.md` an FIX-1; der Screen
-   selbst ist fertig und unter der Route `state/transfer` registriert).
+2. **In der neuen App:** Einstellungen → Gruppe **„Spielstand"** →
+   **„Alten Spielstand übertragen"** (seit W6/W14 verdrahtet:
+   `scripts/ui/settings_screen.gd: _build_transfer_section()`; direkt
+   darunter liegt der davon getrennte W13-C-Knopf „Account umziehen" — der
+   überträgt nur die ONLINE-Identität, nicht den lokalen Spielstand).
    Screenshot `transfer_01_leer.png`.
 3. Den Text in das Feld **„Aus der alten App einfügen"** einfügen und
    **„Prüfen"** drücken — oder auf Desktops **„Aus Datei laden"**.
@@ -172,7 +181,23 @@ Alt-Spielstände. Tests: `tests/unit/test_state_migration.gd` +
   Vorschau aus echtem Fixture, Datei==Text-Determinismus, Vorsicherung vor
   Übernahme, kompletter Screen-Ablauf (Einfügen/Fehler/Auto-Karte),
   Feldlisten-Vertrag über alle 5 Fixtures, Urlaub-Sonderfall.
+- `tests/unit/test_migration_fuzz.gd` (W4-P5/E2): 20+ gezielte Mutationen
+  der echten Fixtures durch die komplette Kette — `migrate_any` crasht nie,
+  klemmt dokumentiert, `load_state` bootet IMMER (Recovery statt toter Save).
+- `tests/unit/test_transfer_fuzz.gd` (W18-GOOBY-SAVE): seeded Fuzz des
+  IMPORT-Trichters — 48 Zeichen-Mutationen echter Fixture-Texte durch
+  `preview_text` (nie Crash, voller Antwort-Vertrag, ok ⇒ normalize-stabil),
+  40 Ein-Zeichen-Mutationen eines echten GOOBY5-Codes (CRC/Format lehnen ab
+  — **nie stille Korruption**), bplist-Byte-Fuzz + `probe_legacy` auf
+  Müll-Plists, Datei-Deckel (> 8 MiB abgelehnt). Dazu der
+  **Backup-VOR-Import-Beweis**: ein Fake mit echter Persistenz-Semantik
+  protokolliert, dass `user://save_v5.pre_import.json` im Moment des
+  `import_state`-Aufrufs BEREITS auf der Platte liegt und den alten Stand
+  trägt, die Sicherung die sofortige Persistenz des neuen Stands überlebt,
+  pro Import überschrieben wird (nicht gestapelt) und ohne Alt-Save keine
+  Geister-Datei entsteht.
 - `tests/unit/test_state_migration.gd`: Feld-für-Feld-Asserts (W1d).
-- Haupt-Runner: **1179 Tests, 0 Fehler**; `gdlint`/`gdformat` sauber.
+- Haupt-Runner (Stand W18): **~3490 Tests**, alle Migrations-/Transfer-/
+  Fuzz-Suiten grün; `gdlint`/`gdformat` sauber.
 - Fixtures gegen die ECHTE Web-Kette validiert (Node,
   `GOOBY/src/core/save.js: load()` — 5/5 unverändert akzeptiert).
