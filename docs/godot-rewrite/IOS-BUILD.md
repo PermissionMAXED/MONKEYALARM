@@ -15,9 +15,14 @@ Die IPA ist absichtlich **unsigniert**:
 - AltStore oder Sideloadly signiert sie beim Installieren mit dem eigenen
   Apple-Entwicklerkonto neu.
 
-Der CI-Job lädt die IPA nur hoch, wenn eine Post-Build-Prüfung unter anderem
-Bundle-ID, iPhone-Unterstützung, arm64, Launch-Screen, Icons, PCK und alle
-importierten Assets bestätigt.
+Der CI-Job lädt die IPA nur hoch, wenn eine Post-Build-Prüfung
+(`tools/ci/verify_ipa.py`) unter anderem Bundle-ID, iPhone-Unterstützung,
+arm64, Launch-Screen, Icons, PCK und alle importierten Assets bestätigt.
+Teil der Prüfung ist eine **Größenwacht** (CI-36): die IPA-Größe wird gegen
+`tools/ci/ipa_baseline.json` verglichen — ab **+10 %** Wachstum warnt der Lauf,
+ab **+50 %** wird er rot; der Report landet in der Job-Summary. Gewolltes
+Wachstum: `size_bytes` in der Baseline auf den im Log gedruckten Byte-Wert
+setzen.
 
 ## Artefakt aus GitHub Actions laden
 
@@ -31,6 +36,23 @@ importierten Assets bestätigt.
 Wichtig: Ein roter Gesamt-Lauf kann trotzdem einen grünen `ios-ipa`-Job und ein
 gültiges Artefakt haben, wenn ein unabhängiger Lint-Job fehlgeschlagen ist. Für
 eine Veröffentlichung sollten trotzdem alle Jobs grün sein.
+
+Drei weitere Fallstricke bei der Lauf-Auswahl:
+
+- **Roter Linux-Vorlauf:** `ios-ipa` baut auch nach roten `linux-checks` noch
+  eine IPA zum Testen — das Artefakt heißt dann
+  `GOOBY-godot-unsigned-ipa-UNVERIFIED-linux-<ergebnis>` und wird nie
+  released. Für echte Installationen das normale, verifizierte Artefakt
+  `GOOBY-godot-unsigned-ipa` aus einem Lauf mit grünen `linux-checks` nehmen.
+- **Nächtlicher `schedule`-Lauf (CI-38):** der Cron-Lauf fährt bewusst nur
+  `lint` + `linux-checks`; `ios-ipa` wird übersprungen, es gibt also **kein**
+  IPA-Artefakt. Immer einen Push- oder Dispatch-Lauf wählen. (GitHub-Vorbehalt:
+  der Cron feuert ohnehin nur aus dem Workflow-Stand des Default-Branches.)
+- **Verdrängte Läufe (CI-35):** Branch-Pushes teilen sich pro Ref eine
+  Concurrency-Gruppe mit `cancel-in-progress` — wer schnell hintereinander
+  pusht, findet für die überholten Commits abgebrochene Läufe ohne Artefakt.
+  Nur Release-Läufe (Tag `ipa-v*` bzw. Dispatch mit `release_version`) sind
+  davon ausgenommen und werden nie abgebrochen.
 
 ## Mit AltStore installieren
 

@@ -409,6 +409,15 @@ git tag ipa-v5.1.0 && git push origin ipa-v5.1.0
 Alternativ ohne Tag: GitHub → Actions → **GOOBY Godot** → „Run workflow“ →
 Input `release_version` = `5.1.0` (leer lassen = normaler Build ohne Release).
 
+Release-Läufe sind zusätzlich concurrency-geschützt (CI-35): normale
+Branch-Pushes teilen sich pro Ref eine Gruppe und verdrängen einander
+(`cancel-in-progress`), Release-Läufe (Tag `ipa-v*` oder Dispatch mit
+`release_version`) bekommen dagegen eine EIGENE Gruppe und werden nie
+abgebrochen — ein halb veröffentlichtes Release ließe sich nicht sauber
+aufräumen. Der nächtliche `schedule`-Lauf (CI-38) fährt nur
+`lint`+`linux-checks`; `ios-ipa` und damit `release` sind dort per Event-Gate
+ausgeschlossen.
+
 Der Job dann:
 
 1. baut wie bei jedem Push die verifizierte unsignierte .ipa (`ios-ipa`),
@@ -445,7 +454,10 @@ meldet die frisch installierte App sich selbst als „zu alt“.
 - Export-Presets: `GOOBY-GODOT/export_presets.cfg` (`pack-<id>` + `ios`). Der
   `ios-ipa`-Job in `.github/workflows/gooby-godot.yml` ist seit W6 scharf und
   baut bei jedem Push eine verifizierte unsignierte .ipa (Artefakt
-  `GOOBY-godot-unsigned-ipa`; Runbook: `docs/godot-rewrite/IOS-BUILD.md`).
+  `GOOBY-godot-unsigned-ipa`; nach rotem Linux-Vorlauf stattdessen
+  `GOOBY-godot-unsigned-ipa-UNVERIFIED-linux-<ergebnis>` — nur zum Testen,
+  wird nie released; die Verifikation enthält die Größenwacht CI-36 gegen
+  `tools/ci/ipa_baseline.json`. Runbook: `docs/godot-rewrite/IOS-BUILD.md`).
 
 ## 6a. Token für Spieler (privates Repo)
 
