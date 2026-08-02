@@ -42,3 +42,25 @@ jobs:
 
       - name: Server-Tests (node --test)
         run: node --test
+
+  # MP-SMOKE (GOOBY MP-SMOKE): startet den ECHTEN Server-Prozess und fährt den
+  # 2-Client-Handshake ab (HELLO/WELCOME, PING/PONG, Freundschaft, Presence,
+  # SIGTERM/GOING_DOWN) — Skript + Doku: tools/ci/mp_smoke.sh. Läuft NUR bei
+  # manuellem workflow_dispatch; der Push-Pfad (server-tests) bleibt unverändert.
+  mp-smoke:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: GOOBY-SERVER/package-lock.json
+
+      # Das Skript zieht fehlende Dependencies selbst per npm ci nach und
+      # räumt Server-Prozess + Temp-DATA_DIR über trap wieder ab.
+      - name: MP-Smoke (Server-Start + 2-Client-Handshake)
+        run: bash tools/ci/mp_smoke.sh

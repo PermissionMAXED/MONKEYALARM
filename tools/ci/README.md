@@ -84,6 +84,28 @@ als `LEAK <spiel>: +n orphans, +m nodes`; Exit-Code 0 = dicht, 1 = Leck.
 Laufzeit ~2 min (38 Spiele × ~3 s). NICHT automatisch in `preflight.sh`/CI
 eingehängt — das entscheidet der Orchestrator.
 
+## MP-Smoke: GOOBY-SERVER Start + 2-Client-Handshake
+
+`tools/ci/mp_smoke.sh` ist der Prozess-Pfad-Beleg für den Multiplayer-Server
+(die Unit-Tests unter `GOOBY-SERVER/test/` decken die Logik in-process ab —
+der Smoke prüft, dass der ECHTE `node server.js`-Prozess bootet und zwei
+Clients gegeneinander funktionieren):
+
+```bash
+bash tools/ci/mp_smoke.sh          # Exit 0 = bestanden, Log = Beleg
+MP_SMOKE_PORT=8765 bash tools/ci/mp_smoke.sh   # fester Port statt OS-Wahl
+```
+
+Ablauf: Server-Start (Temp-`DATA_DIR`, freier Port aus der Boot-Zeile) →
+`/health` → zwei WS-Clients HELLO→WELCOME (eigene friendCodes) → PING/PONG →
+Freundschafts-Handshake beidseitig → `PRESENCE_SET`→`FRIEND_PRESENCE`-Push →
+SIGTERM → `GOING_DOWN(SHUTDOWN)` an beide + Server-Exit 0. Details im
+Skript-Header. Voraussetzung: Node ≥ 18; fehlende `node_modules` zieht das
+Skript selbst per `npm ci` nach. CI: Job `mp-smoke` in
+`.github/workflows/gooby-server.yml`, läuft NUR bei manuellem
+`workflow_dispatch` (Push-Trigger unverändert). Der große Feature-Smoke
+(Ranch-MP inkl. Rejoin) bleibt `GOOBY-SERVER/tools/smoke-rmp.mjs`.
+
 ## Konventionen für neue Tests (alle Wellen)
 
 - Datei `GOOBY-GODOT/tests/unit/test_<thema>.gd`, erbt von `TestCase`,
