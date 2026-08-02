@@ -263,13 +263,21 @@ Playtests, den Planner-Ideen und den restlichen G6-Paketen:
 - [ ] **Welle I: 30+ Ideen-Planner** — 10 Planner parallel, jeder liefert
       10+ priorisierte Ideen für seinen Bereich (≈100+ Ideen), konsolidiert
       zur Roadmap
-- [ ] **Wellen J+: Umsetzung** — Playtest-Bugs + beste Planner-Ideen + die
-      restlichen G6-Pakete (DLC-Ladebildschirme); schon raus: Ball-Wurf,
-      Warn-Sweep, CI-Release-Notes, DLC Welle B BEIDER Läden, McGooby-Bühne,
-      Alwin-NPC — und jetzt auch Audio-Feel (Dialog-Ducking) und der
+- [ ] **Wellen J+: Umsetzung** — Playtest-Bugs + beste Planner-Ideen; die
+      G6-Pakete sind damit KOMPLETT raus: Ball-Wurf, Warn-Sweep,
+      CI-Release-Notes, DLC Welle B BEIDER Läden, McGooby-Bühne, Alwin-NPC,
+      DLC-Ladebildschirme — und auch Audio-Feel (Dialog-Ducking) und der
       Doku-Refresh (alles direkt unten abgehakt)
 
 **Schon in W18 gelandet** (vorgezogene Warteschlangen-Pakete + Playtest-Funde):
+
+- [x] **DLC-Ladebildschirme (letztes G6-Paket)** — Reisen in die eigenen
+      Läden tragen jetzt dedizierte Ladekarten: „Goo und Bye" und McGooby
+      zeigen ihr Katalog-Coverart samt eigener Ready-Zeile und eigenem
+      Tipp-Pool („Die Kasse übt ihr Piep-Konzert…", „GOOBERANDO schnallt
+      die Lieferbox fest…") statt der generischen Ausflugs-Karte; Aufbau,
+      Sticker und Balken bleiben die vertraute Veil-Karte, DE/EN paritätisch,
+      eigene Dauer-Wache.
 
 - [x] **Audio-Feel: Dialog-Ducking + Laden-Ambience** — solange eine
       Sprechblase spricht, treten Musik (−6 dB) und Laden-Gemurmel (−5 dB)

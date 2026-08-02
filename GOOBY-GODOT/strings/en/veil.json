@@ -26,6 +26,24 @@
 				"Tip: The first round of each game every day pays double coins!",
 				"Tip: Hard mode pays ×1.3 coins — Endless is pure bragging rights."
 			]
+		},
+		"goobye": {
+			"titel": "Goo und Bye",
+			"bereit": "The key is already jingling…",
+			"tips": [
+				"Stocking up the shelves…",
+				"The register is rehearsing its beep…",
+				"Uncle Alwin waves from retirement…"
+			]
+		},
+		"mcgooby": {
+			"titel": "McGooby",
+			"bereit": "The apron is tied on…",
+			"tips": [
+				"The fryer is bubbling itself warm…",
+				"Polishing the golden arches…",
+				"GOOBERANDO is strapping down the delivery box…"
+			]
 		}
 	}
 }

@@ -17,6 +17,12 @@ extends CanvasLayer
 ##   kleinen Ausflug…“ + Trip-Tipps.
 ## - home: alles andere (Rückkehr/Default) — „Trautes Heim“ /
 ##   „Auf dem Heimweg…“ + Home-Tipps.
+## Dazu die dedizierten DLC-Karten (G6-Paket „DLC-Ladebildschirme“,
+## DLC_KARTEN): Reisen in die eigenen Läden — „Goo und Bye“
+## (dlc/goobye_laden) und McGooby (mcgooby_schicht) — tragen ihr
+## Katalog-Coverart + eigene Titel-/Ready-/Tipp-Texte statt der
+## generischen Trip-Karte; Aufbau/Verhalten bleiben exakt die home/trip-
+## Karte (gleicher Sticker, gleicher Balken, gleiche Tipp-Rotation).
 ## Ein/Aus ist seit W16/G2b der Signature-Übergang der Web-Version
 ## (loadingVeil.js V6/F2, Spez §2.2): der PETAL-SWEEP-WIPE. Backdrop +
 ## Karte wischen GEMEINSAM links→rechts herein (ease-out) und hinaus
@@ -78,6 +84,15 @@ const MOTIV_GAME_PFAD := "res://assets/acui/gooby_loading_motif.png"
 ## und alle Stadt-Ziele (die Klinik ist der Stadt-Ort city/ort/tierarzt).
 const TRIP_ZIELE: Array[String] = ["ikea"]
 const TRIP_PRAEFIXE: Array[String] = ["city"]
+## Dedizierte DLC-Ladekarten: Karten-Modus → {ziele: Routen-Ziele
+## (GoobyeRouten/McGoobyRouten), cover: Katalog-Coverart aus
+## content/dlc/data/dlcs.json}. Die Texte folgen dem Bestandsmuster
+## veil.<modus>.titel/bereit/tips (strings/*/veil.json); die
+## DLC-Bibliothek selbst (Route `dlc`) bleibt bewusst eine Home-Reise.
+const DLC_KARTEN: Dictionary = {
+	"goobye": {"ziele": ["dlc/goobye_laden"], "cover": "res://assets/dlc/goo_und_bye.png"},
+	"mcgooby": {"ziele": ["mcgooby_schicht"], "cover": "res://assets/dlc/mcgooby.png"},
+}
 
 static var _travel_hint: Dictionary = {}
 static var _tip_cursor := 0
@@ -156,17 +171,29 @@ static func clear_travel_hint() -> void:
 	_travel_hint = {}
 
 
-## Karten-Modus fürs Ziel (Web-Regel §2.4): Shop-/Stadt-/Klinik-Ausflüge
-## sind „trip“, alles andere (Rückkehr/Default) „home“; „game“ setzt der
-## Minigame-Hint in _apply_variant.
+## Karten-Modus fürs Ziel (Web-Regel §2.4): die eigenen DLC-Läden tragen
+## ihre dedizierte Karte, Shop-/Stadt-/Klinik-Ausflüge sind „trip“, alles
+## andere (Rückkehr/Default) „home“; „game“ setzt der Minigame-Hint in
+## _apply_variant.
 static func modus_fuer_ziel(target: StringName) -> String:
 	var ziel := String(target)
+	for modus: String in DLC_KARTEN:
+		if ((DLC_KARTEN[modus] as Dictionary)["ziele"] as Array).has(ziel):
+			return modus
 	if TRIP_ZIELE.has(ziel):
 		return "trip"
 	for praefix in TRIP_PRAEFIXE:
 		if ziel == praefix or ziel.begins_with(praefix + "/"):
 			return "trip"
 	return "home"
+
+
+## Cover-Bild eines Karten-Modus ohne Minigame-Hint: DLC-Karten tragen ihr
+## Katalog-Coverart, home/trip bleiben beim portierten Heim-Cover.
+static func cover_pfad_fuer_modus(modus: String) -> String:
+	if DLC_KARTEN.has(modus):
+		return str((DLC_KARTEN[modus] as Dictionary)["cover"])
+	return COVER_HOME_PFAD
 
 
 ## I18n-Key der rotierenden Tipps eines Modus (strings/*/veil.json).
@@ -387,9 +414,10 @@ void fragment() {
 
 
 ## Karte auf den aktiven Modus stellen (Web buildCard): home/trip nutzen
-## das Heim-Cover + Winke-Gooby-Sticker, game das Spiel-Cover aus dem
-## Travel-Hint + das Game-Motiv. Der Vorhang bleibt in ALLEN Modi das
-## statische Blätter-Pattern auf Papier (Web .acui-veil).
+## das Heim-Cover + Winke-Gooby-Sticker, die DLC-Modi ihr Katalog-Coverart
+## (cover_pfad_fuer_modus), game das Spiel-Cover aus dem Travel-Hint + das
+## Game-Motiv. Der Vorhang bleibt in ALLEN Modi das statische
+## Blätter-Pattern auf Papier (Web .acui-veil).
 func _apply_variant() -> void:
 	if _root == null:
 		return
@@ -397,7 +425,7 @@ func _apply_variant() -> void:
 	var ranch := _ranch_aktiv and not minigame
 	_modus = "game" if minigame else modus_fuer_ziel(_ranch_ziel)
 	var cover_tex: Texture2D = (
-		_active_hint.get("cover") if minigame else _lade_textur(COVER_HOME_PFAD)
+		_active_hint.get("cover") if minigame else _lade_textur(cover_pfad_fuer_modus(_modus))
 	)
 	_cover_rect.texture = cover_tex
 	_cover_rect.visible = cover_tex != null

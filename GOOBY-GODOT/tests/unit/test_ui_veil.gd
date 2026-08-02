@@ -5,7 +5,8 @@ extends W1cTestCase
 ## gehalten — hier kommen die Optik-Varianten dazu: die drei Karten-Modi
 ## home/trip/game (Titel, Ready-Zeile, Cover, Motiv-Sticker), das statische
 ## Blätter-Pattern, Tipp-Rotation je Modus, Indeterminate-Sweep vs. echter
-## Balken und die geteilten Arcade-Cover-Texturen.
+## Balken, die geteilten Arcade-Cover-Texturen und die dedizierten
+## DLC-Karten (G6 „DLC-Ladebildschirme“: goobye/mcgooby mit Katalog-Cover).
 ##
 ## Bewusste W16-Anpassung (Spez ladebild-alt.md §2.4): statt EINEM
 ## `veil.tips`-Pool (5–8) gibt es je Modus einen eigenen Pool mit den
@@ -13,7 +14,7 @@ extends W1cTestCase
 ## Modus plus DE/EN-Parität.
 
 const VEIL_SCENE := preload("res://scripts/core/loading_veil.tscn")
-const MODI: Array[String] = ["home", "trip", "game"]
+const MODI: Array[String] = ["home", "trip", "game", "goobye", "mcgooby"]
 ## W16/G2b: Petal-Sweep-Wipe (Maske+Stempel auf/über dem FROZEN Root).
 const VeilWipe := preload("res://scripts/core/loading_veil_wipe.gd")
 
@@ -130,6 +131,65 @@ func test_minigame_variante_cover_titel_tipp() -> void:
 	check(
 		(veil.get_node("%Cover") as TextureRect).texture != ArcadeScreen.COVERS["gvz"],
 		"Hint wurde statisch gelöscht"
+	)
+	_cleanup(veil)
+
+
+## G6 „DLC-Ladebildschirme“: Reisen in die eigenen Läden tragen dedizierte
+## DLC-Karten — Katalog-Coverart + eigener Titel/Ready/Tipp-Pool statt der
+## generischen Trip-Karte; die DLC-Bibliothek (Route `dlc`) bleibt home.
+func test_dlc_karten_goobye_und_mcgooby() -> void:
+	check_eq(LoadingVeil.modus_fuer_ziel(&"dlc/goobye_laden"), "goobye", "Laden-Reise = goobye")
+	check_eq(LoadingVeil.modus_fuer_ziel(&"mcgooby_schicht"), "mcgooby", "Schicht = mcgooby")
+	check_eq(LoadingVeil.modus_fuer_ziel(&"dlc"), "home", "DLC-Bibliothek bleibt home")
+	for modus: String in LoadingVeil.DLC_KARTEN:
+		var cover := LoadingVeil.cover_pfad_fuer_modus(modus)
+		check(ResourceLoader.exists(cover), "DLC-Coverart existiert: %s" % cover)
+	check_eq(
+		LoadingVeil.cover_pfad_fuer_modus("home"),
+		LoadingVeil.COVER_HOME_PFAD,
+		"home/trip bleiben beim Heim-Cover"
+	)
+	var veil := _fresh_veil()
+	veil.prepare_for_travel(&"dlc/goobye_laden")
+	check_eq(
+		(veil.get_node("%Cover") as TextureRect).texture,
+		load("res://assets/dlc/goo_und_bye.png"),
+		"Goo-und-Bye-Karte trägt das Katalog-Coverart"
+	)
+	check_eq(
+		(veil.get_node("%Title") as Label).text,
+		I18nService.t("veil.goobye.titel"),
+		"Titel „Goo und Bye“"
+	)
+	check_eq(
+		(veil.get_node("%Ready") as Label).text,
+		I18nService.t("veil.goobye.bereit"),
+		"eigene Ready-Zeile der Laden-Karte"
+	)
+	check((veil.get_node("%Tip") as Label).text != "", "Laden-Tipp nicht leer")
+	check((veil.get_node("%Gooby") as Control).visible, "Motiv-Sticker bleibt sichtbar")
+	veil.prepare_for_travel(&"mcgooby_schicht")
+	check_eq(
+		(veil.get_node("%Cover") as TextureRect).texture,
+		load("res://assets/dlc/mcgooby.png"),
+		"McGooby-Karte trägt das Katalog-Coverart"
+	)
+	check_eq(
+		(veil.get_node("%Title") as Label).text,
+		I18nService.t("veil.mcgooby.titel"),
+		"Titel „McGooby“"
+	)
+	check_eq(
+		(veil.get_node("%Ready") as Label).text,
+		I18nService.t("veil.mcgooby.bereit"),
+		"eigene Ready-Zeile der Schicht-Karte"
+	)
+	veil.prepare_for_travel(&"home")
+	check_eq(
+		(veil.get_node("%Cover") as TextureRect).texture,
+		load(LoadingVeil.COVER_HOME_PFAD),
+		"Rückreise kehrt zum Heim-Cover zurück"
 	)
 	_cleanup(veil)
 
