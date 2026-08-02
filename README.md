@@ -35,15 +35,24 @@ passte nicht mehr zum Inhalt dieses Branches.
 
 ## Spielen / Testen (iPhone)
 
-1. Jeder Push, der `GOOBY-GODOT/**` berührt, baut in GitHub Actions
-   (Workflow `.github/workflows/gooby-godot.yml`, Job `ios-ipa`) eine
-   **unsignierte** `.ipa` und lädt sie als Artefakt **`GOOBY-godot-unsigned-ipa`**
-   hoch — dort herunterladen.
-2. Mit **AltStore** oder **Sideloadly** auf das iPhone sideloaden (die Tools
+1. Jeder Push, der `GOOBY-GODOT/**`, `tools/ci/**` oder den Workflow selbst
+   berührt, baut in GitHub Actions (Workflow
+   `.github/workflows/gooby-godot.yml`, Job `ios-ipa`) eine **unsignierte**
+   `.ipa` und lädt sie als Artefakt **`GOOBY-godot-unsigned-ipa`** hoch.
+2. Artefakt herunterladen — zwei Wege:
+   - **Web:** GitHub → **Actions → GOOBY Godot** → neuesten Lauf des Branches
+     öffnen (Job `ios-ipa` muss grün sein) → unter **Artifacts** das Artefakt
+     **`GOOBY-godot-unsigned-ipa`** laden. Das geladene ZIP **einmal**
+     entpacken — darin liegt `GOOBY-godot-unsigned.ipa` (die IPA selbst nicht
+     noch einmal entpacken).
+   - **CLI:** Lauf-ID mit `gh run list --workflow gooby-godot.yml` ermitteln,
+     dann `gh run download <run-id> --name GOOBY-godot-unsigned-ipa` (lädt die
+     `.ipa` direkt, ohne ZIP-Umweg).
+3. Mit **AltStore** oder **Sideloadly** auf das iPhone sideloaden (die Tools
    signieren beim Installieren mit der eigenen Apple-ID).
-3. Schritt-für-Schritt-Anleitung inkl. Troubleshooting:
+4. Schritt-für-Schritt-Anleitung inkl. Troubleshooting:
    [`docs/godot-rewrite/IOS-BUILD.md`](docs/godot-rewrite/IOS-BUILD.md).
-4. Spielstand aus der alten Web-/Capacitor-App übernehmen:
+5. Spielstand aus der alten Web-/Capacitor-App übernehmen:
    [`docs/godot-rewrite/SAVE-TRANSFER.md`](docs/godot-rewrite/SAVE-TRANSFER.md)
    (drei Wege, automatisches Backup vor jedem Import).
 
