@@ -951,30 +951,13 @@ func _draw_pips() -> void:
 func _draw_cheer() -> void:
 	var alpha := clampf(_cheer, 0.0, 1.0)
 	var y := view_size.y * 0.1
-	var font := ThemeService.font(800)
-	var text := I18nService.t("mg.goalieGooby.cheer")
-	var px := int(26.0 * _ui)
-	draw_rect(
-		Rect2(0.0, y - 28.0 * _ui, view_size.x, 40.0 * _ui), Color(0.12, 0.2, 0.13, 0.5 * alpha)
-	)
-	draw_string_outline(
-		font,
-		Vector2(0.0, y),
-		text,
-		HORIZONTAL_ALIGNMENT_CENTER,
-		view_size.x,
-		px,
-		int(5.0 * _ui),
-		Color(0.08, 0.16, 0.1, 0.9 * alpha)
-	)
-	draw_string(
-		font,
-		Vector2(0.0, y),
-		text,
-		HORIZONTAL_ALIGNMENT_CENTER,
-		view_size.x,
-		px,
-		Color(1.0, 0.85, 0.4, alpha)
+	_draw_band_text(
+		Rect2(0.0, y - 28.0 * _ui, view_size.x, 40.0 * _ui),
+		Color(0.12, 0.2, 0.13, 0.5 * alpha),
+		y,
+		int(26.0 * _ui),
+		Color(1.0, 0.85, 0.4, alpha),
+		I18nService.t("mg.goalieGooby.cheer")
 	)
 
 
@@ -982,17 +965,31 @@ func _draw_flash() -> void:
 	if _flash <= 0.0 or _flash_text.is_empty():
 		return
 	var alpha := clampf(_flash * 1.5, 0.0, 1.0)
-	# Ohne dunkles Band verschwindet Pink auf dem Rasen.
+	# PT-minigames-a F5: „Tor kassiert…" war auf dem hellen Rasen fast
+	# unlesbar — Band kräftiger (0,68 statt 0,5) und die Schrift bekommt
+	# dieselbe dunkle Kontur wie das Jubelband, statt nackt auf Grün zu stehen.
 	var y := view_size.y * 0.78
-	draw_rect(
-		Rect2(0.0, y - 34.0 * _ui, view_size.x, 48.0 * _ui), Color(0.12, 0.2, 0.13, 0.5 * alpha)
-	)
-	draw_string(
-		ThemeService.font(800),
-		Vector2(0.0, y),
-		_flash_text,
-		HORIZONTAL_ALIGNMENT_CENTER,
-		view_size.x,
+	_draw_band_text(
+		Rect2(0.0, y - 34.0 * _ui, view_size.x, 48.0 * _ui),
+		Color(0.12, 0.2, 0.13, 0.68 * alpha),
+		y,
 		int(32.0 * _ui),
-		Color(1.0, 0.86, 0.5, alpha)
+		Color(1.0, 0.86, 0.5, alpha),
+		_flash_text
 	)
+
+
+## M7-Bandtext (Jubelband und Trefferflash teilen den Maler): dunkles Band,
+## Kontur-Pass, Schrift-Pass — zentriert über die volle Breite. Die Kontur-
+## Tinte hängt an der Schrift-Deckkraft, damit beide gemeinsam ausblenden.
+func _draw_band_text(
+	rect: Rect2, band: Color, y: float, px: int, tint: Color, text: String
+) -> void:
+	var font := ThemeService.font(800)
+	var at := Vector2(0.0, y)
+	var ink := Color(0.08, 0.16, 0.1, 0.9 * tint.a)
+	draw_rect(rect, band)
+	draw_string_outline(
+		font, at, text, HORIZONTAL_ALIGNMENT_CENTER, view_size.x, px, int(5.0 * _ui), ink
+	)
+	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_CENTER, view_size.x, px, tint)
