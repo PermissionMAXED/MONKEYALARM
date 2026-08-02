@@ -293,7 +293,7 @@ func _aktion_tipp_control(schritt: Dictionary, aktion: String) -> Dictionary:
 			"erwartung": "sichtbares Bedienelement mit %s" % beschreibung,
 			"beobachtung": "nicht gefunden — %s" % _zustand_text(),
 		}
-	await _tippe_canvas(ziel.get_global_rect().get_center())
+	await _tippe_canvas(canvas_punkt(ziel))
 	return {"ok": true}
 
 
@@ -370,7 +370,7 @@ func _aktion_eingabe(schritt: Dictionary) -> Dictionary:
 			"beobachtung": "nicht gefunden — %s" % _zustand_text(),
 		}
 	# Erst antippen (Fokus wie ein Spieler), dann Text setzen.
-	await _tippe_canvas(feld.get_global_rect().get_center())
+	await _tippe_canvas(canvas_punkt(feld))
 	(feld as LineEdit).text = str(schritt.get("text", ""))
 	(feld as LineEdit).text_changed.emit((feld as LineEdit).text)
 	await _warte_frames(TAP_FRAMES)
@@ -510,7 +510,7 @@ func _nebenbei_tippen(schritt: Dictionary) -> void:
 	_letzter_nebenbei_ms = jetzt
 	var canvas := _canvas_groesse() * 0.5
 	if node is Control:
-		canvas = (node as Control).get_global_rect().get_center()
+		canvas = canvas_punkt(node as Control)
 	var px := _fenster_px(canvas)
 	_maus_knopf(px, true)
 	_maus_knopf(px, false)
@@ -537,6 +537,29 @@ func _fenster_px(canvas_pos: Vector2) -> Vector2:
 
 func _canvas_groesse() -> Vector2:
 	return root.get_visible_rect().size
+
+
+## Fenster-Canvas-Punkt der Control-MITTE — auch für Controls, die in einem
+## SubViewport leben (PT-MG-Befund: der MinigameHost rendert das Spiel in
+## einen SubViewport mit Pillar-/Letterbox-Offset; get_global_rect() liefert
+## dort VIEWPORT-Koordinaten, ein roher Tap ginge um den Stage-Offset
+## daneben). Die Kette wird über alle SubViewportContainer nach außen
+## abgebildet (Offset + Stretch-Skala je Ebene).
+func canvas_punkt(ziel: Control) -> Vector2:
+	var punkt := ziel.get_global_rect().get_center()
+	var viewport := ziel.get_viewport()
+	while viewport is SubViewport:
+		var container := (viewport as SubViewport).get_parent()
+		if not (container is SubViewportContainer):
+			break
+		var rect := (container as SubViewportContainer).get_global_rect()
+		var vp_groesse := Vector2((viewport as SubViewport).size)
+		var skala := Vector2.ONE
+		if vp_groesse.x > 0.0 and vp_groesse.y > 0.0:
+			skala = rect.size / vp_groesse
+		punkt = rect.position + punkt * skala
+		viewport = (container as SubViewportContainer).get_viewport()
+	return punkt
 
 
 func _maus_knopf(px: Vector2, gedrueckt: bool) -> void:
