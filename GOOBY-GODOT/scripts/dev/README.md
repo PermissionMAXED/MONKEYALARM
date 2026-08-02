@@ -44,3 +44,36 @@ alle Szenen liegen komfortabel im Budget. FPS/Frame-Zeit aus diesem Lauf
 sind NICHT aussagekräftig (Software-Rasterizer llvmpipe, ~5–8 FPS) — auf
 echter Hardware zählen nur die Draw-Call-/Tris-/VRAM-Spalten; FPS bitte
 auf dem Gerät mit dem Overlay selbst ablesen.
+
+### Messwerte GOOBY-PERF (2026-08-02, Godot 4.4.1, xvfb/llvmpipe, 1280×720)
+
+Gleicher Messaufbau wie W4 (`perf_probe.gd` über `run_godot_isolated.sh`).
+Draw/Tris/Nodes = Max über 60 Frames; Zähler enthalten den Schattenpass
+der einen Außen-Directional.
+
+| Szene | Draw Calls | Primitive (Tris) | Nodes | VRAM MB |
+|---|---|---|---|---|
+| Stadt (city_scene, freie Fahrt) | 256 | 342 506 | 524 | 71,3 |
+| Raum bathroom | 62 | 14 040 | 283 | 65,7 |
+| Raum bedroom | 58 | 20 214 | 307 | 74,6 |
+| Raum garden | 58 | 6 372 | 302 | 61,2 |
+| Raum kitchen | 77 | 9 661 | 308 | 65,6 |
+| Raum living | 80 | 10 962 | 346 | 66,1 |
+
+Einordnung: Räume 58–80 Calls / ≤ 20k Tris — im ≤-150er-Raumbudget (§7),
+Wachstum seit W4 (+15–23 Calls) = Content (Garten-Beete, Props, Leben).
+Die Stadt ist seit FIX-5 bewusst dicht (Kulisse/Möblierung/Parker als
+MultiMesh-Gruppen): 256 Calls liegen im eigenen Stadt-Budget ≤ 400
+(`city_kulisse.gd::DRAW_CALL_BUDGET`, Heuristik + dieser Messlauf als
+Nachweis); die 342k Tris sind MultiMesh-Instanzen + Schattenpass und
+llvmpipe-seitig fillrate-, nicht draw-call-limitiert. VRAM ≤ 75 MB ≪ 350.
+Wichtig: die Probe läuft OHNE Autoloads, also ohne `QualityService` —
+gemessen wird das rohe Maximum (Schatten an, Skala 1,0); auf dem Gerät
+zieht das Auto-Profil die Kosten weiter runter.
+
+Boot-Proxy headless (`run_godot_isolated.sh godot --headless --quit`,
+Autoloads + main.tscn + erster Frame, 4-Core-VM): 2 140 / 2 175 / 2 167 ms
+≈ **2,16 s** — vor W16/BOOTPERF waren es ≈ 2,3 s (E4 §4), der Gewinn hält.
+Bekannt und exit-only: die ObjectDB-Warnung beim Quit (1 suspendiertes
+`_lade_welt`-GDScriptFunctionState, nur wenn mitten im Boot gequittet
+wird — E4 §3, kosmetisch, wächst nicht).

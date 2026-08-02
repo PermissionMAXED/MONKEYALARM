@@ -35,7 +35,10 @@ das native Plugin — die Stufen-Parameter sind hier schon definiert.
 ProMotion meldet (`DeviceProfile`); der iOS-Export braucht zusätzlich
 `display/window/ios/allow_high_refresh_rate` (Godot-Default: an). Ob ein
 Gerät die 8,33 ms hält, entscheidet die Notbremse zur Laufzeit — kein
-Marketing-Schalter.
+Marketing-Schalter. Die erste Bremsstufe aus dem 120er-Bündel
+(`QualityProfiles.STUFE_HOCH_120`) ist „hoch“@60 (Doc §3.7 „… sonst
+automatisch 60 Hz“) — Schatten/Auflösung fallen erst bei weiterem Einbruch;
+ein per Stromsparmodus auf 60 gedeckeltes Gerät bleibt so voll hübsch.
 
 ## Wirkungs-Nachweis (welcher Regler → welche Godot-Einstellung)
 

@@ -58,6 +58,20 @@ func test_device_snapshot_ist_headless_sicher() -> void:
 	assert_true(["niedrig", "mittel", "hoch"].has(str(result["klasse"])))
 
 
+func test_device_memory_reserve_der_6gb_klasse() -> void:
+	# Android meldet MemTotal minus Kernel-Reserve: nominale 6 GB koennen als
+	# ~5,4 GB ankommen — die 6-GB-Klasse muss trotzdem "hoch" bleiben.
+	var hoch := DeviceProfile.classify(
+		{"memory_mb": 5400.0, "screen_px": Vector2(2778, 1284), "refresh_hz": 60.0}
+	)
+	assert_eq(hoch["klasse"], "hoch", "6-GB-Geraet trotz OS-Reserve hoch")
+	# Kein 4-GB-Geraet meldet ueber ~3,9 GB — keine Klassen-Ueberlappung.
+	var mittel := DeviceProfile.classify(
+		{"memory_mb": 3900.0, "screen_px": Vector2(2532, 1170), "refresh_hz": 60.0}
+	)
+	assert_eq(mittel["klasse"], "mittel", "4-GB-Geraet bleibt mittel")
+
+
 ## --------------------------------------------------- QualityProfiles (pur)
 
 
@@ -72,6 +86,31 @@ func test_profile_buendel_und_auto() -> void:
 	assert_eq(QualityProfiles.stufe_darunter("hoch"), "mittel")
 	assert_eq(QualityProfiles.stufe_darunter("mittel"), "niedrig")
 	assert_eq(QualityProfiles.stufe_darunter("niedrig"), "", "unter Niedrig geht nichts")
+
+
+func test_120er_buendel_ist_spitzenstufe_und_bremst_erst_auf_60() -> void:
+	var auto_120 := QualityProfiles.resolve_auto({"klasse": "hoch", "supports_120": true})
+	assert_eq(
+		auto_120,
+		QualityProfiles.bundle(QualityProfiles.STUFE_HOCH_120),
+		"Auto+ProMotion loest exakt das hoch120-Buendel auf"
+	)
+	# Doc §4.2 Zeile "120 Hz": Schatten wie Mittel, Sichtweite 0,85x,
+	# Partikel 75 % — das 8,33-ms-Budget zahlt die Nebenkosten.
+	assert_eq(auto_120["shadows"], "niedrig", "120 Hz faehrt Schatten wie Mittel")
+	assert_almost(float(auto_120["draw_distance"]), 0.85, 0.001, "Sichtweite 0,85x")
+	assert_eq(
+		QualityProfiles.stufe_von(auto_120),
+		QualityProfiles.STUFE_HOCH_120,
+		"stufe_von erkennt 120 FPS als Spitzenstufe"
+	)
+	# Erste Bremsstufe: NUR 120 -> 60, das volle Hoch-Buendel kommt zurueck
+	# (Doc §3.7 "... sonst automatisch 60 Hz").
+	var darunter := QualityProfiles.stufe_darunter(QualityProfiles.STUFE_HOCH_120)
+	assert_eq(darunter, "hoch", "hoch120 bremst zuerst auf hoch@60")
+	var buendel_darunter := QualityProfiles.bundle(darunter)
+	assert_eq(int(buendel_darunter["fps"]), 60)
+	assert_eq(buendel_darunter["shadows"], "hoch", "Schatten ueberleben die 120er-Bremse")
 
 
 ## ------------------------------------------------------- PerfGovernor (pur)
@@ -217,6 +256,28 @@ func test_autosave_schalter_steuert_debounce() -> void:
 	settings.set_setting("game.autosave", true)
 	assert_eq(int(manager.debounce_ms), QualityService.AUTOSAVE_ON_DEBOUNCE_MS)
 	manager.debounce_ms = prev_debounce
+	svc.free()
+	(pair[1] as Node).free()
+	settings.free()
+	Engine.max_fps = prev_fps
+
+
+func test_notbremse_misst_echte_zeit_trotz_zeitlupe() -> void:
+	var prev_fps := Engine.max_fps
+	var prev_scale := Engine.time_scale
+	var settings: Node = AppSettingsScript.new(_fresh_path("settings.json"))
+	var pair := _service_mit(settings)
+	var svc: QualityService = pair[0]
+	svc.brake_enabled = true
+	var reduziert: Array = []
+	svc.quality_reduced.connect(func(_von: String, _nach: String) -> void: reduziert.append(true))
+	# MomentRegie-Zeitlupe (time_scale 0,55): echte 25 FPS (40 ms) kommen als
+	# process-delta 22 ms an und saehen ungefiltert wie 45+ FPS (= gut) aus.
+	Engine.time_scale = 0.55
+	for _i in 240:
+		svc._process(0.040 * 0.55)
+	Engine.time_scale = prev_scale
+	assert_eq(reduziert.size(), 1, "Bremse feuert trotz Zeitlupen-gestauchtem delta")
 	svc.free()
 	(pair[1] as Node).free()
 	settings.free()

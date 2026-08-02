@@ -12,6 +12,7 @@ extends Node
 ## - graphics.msaa       → Viewport.msaa_3d
 ## - graphics.shadows    → Viewport.positional_shadow_atlas_size +
 ##                         RenderingServer.directional_shadow_atlas_set_size
+##                         (Directional gedeckelt auf 2048, A-engine §7)
 ## - graphics.draw_distance → Viewport.mesh_lod_threshold + Faktor-API
 ##                         (`draw_distance_factor()`) für Szenen-Deko
 ## - graphics.particles  → Faktor-API (`particle_factor()`) + Signal
@@ -64,7 +65,11 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not brake_enabled or _auto_stufe.is_empty():
 		return
-	_governor.feed(delta)
+	# Engine.time_scale (MomentRegie-Zeitlupe 0,55×) staucht das process-
+	# delta — die Notbremse misst ECHTE Frame-Zeit, sonst liest sie
+	# Zeitlupen-Frames als schnell und verpasst reale Einbrüche.
+	var ts := Engine.time_scale
+	_governor.feed(delta / ts if ts > 0.0 else delta)
 	if _governor.should_step_down():
 		_brake_step_down()
 
@@ -190,8 +195,11 @@ func _apply_bundle(bundle: Dictionary) -> void:
 		var shadows := String(bundle.get("shadows", "hoch"))
 		viewport.positional_shadow_atlas_size = int(SHADOW_ATLAS.get(shadows, 4096))
 		viewport.mesh_lod_threshold = float(LOD_THRESHOLD.get(shadows, 1.0))
+		# §7-Budget (A-engine): die EINE Außen-Directional rendert in einen
+		# 2048er-Atlas — 4096 („hoch“) wäre 4× Schatten-Füllrate ohne
+		# Budget-Deckung; der Positional-Atlas behält seine Stufenwerte.
 		RenderingServer.directional_shadow_atlas_set_size(
-			maxi(256, int(SHADOW_ATLAS.get(shadows, 4096))), true
+			clampi(int(SHADOW_ATLAS.get(shadows, 4096)), 256, 2048), true
 		)
 		_apply_post_fx(viewport, String(bundle.get("post_fx", "dezent")))
 	quality_changed.emit(_applied.duplicate())

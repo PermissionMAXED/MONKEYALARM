@@ -36,6 +36,12 @@ const HOCH := {
 }
 ## Reihenfolge fürs Herunterschalten der Notbremse (Index 0 = niedrigste).
 const STUFEN: Array[String] = ["niedrig", "mittel", "hoch"]
+## Virtuelle Spitzenstufe über „hoch“: das 120-Hz-Bündel für ProMotion
+## (Doc §4.2, Zeile „120 Hz“). Die Notbremse fällt von hier ZUERST auf
+## „hoch“@60 zurück („… sonst automatisch 60 Hz“, Doc §3.7) — ein Gerät,
+## das nur das 8,33-ms-Budget reißt (Thermik, iOS-Stromsparmodus deckelt
+## auf 60), verliert so nicht grundlos Schatten/Auflösung/Sichtweite.
+const STUFE_HOCH_120 := "hoch120"
 
 
 ## Bündel zu einem Profilnamen (unbekannt → MITTEL, konservativ).
@@ -47,26 +53,25 @@ static func bundle(preset: String) -> Dictionary:
 			return MITTEL.duplicate()
 		"hoch":
 			return HOCH.duplicate()
+		"hoch120":
+			return _hoch_120()
 		_:
 			return MITTEL.duplicate()
 
 
 ## „Auto“ → konkretes Bündel aus der Geräteklasse; ProMotion-Geräte der
-## Klasse „hoch“ bekommen 120 FPS mit leicht reduzierter Last (Doc §4.2,
-## Zeile „120 Hz“: 0,85er-Skala, Partikel 75 %, sparsames Post-FX).
+## Klasse „hoch“ bekommen das 120-Hz-Bündel (STUFE_HOCH_120).
 static func resolve_auto(device: Dictionary) -> Dictionary:
 	var klasse := String(device.get("klasse", "mittel"))
-	var result := bundle(klasse)
 	if klasse == "hoch" and bool(device.get("supports_120", false)):
-		result["fps"] = 120
-		result["scale_3d"] = 0.85
-		result["particles"] = 0.75
-		result["post_fx"] = "dezent"
-	return result
+		return _hoch_120()
+	return bundle(klasse)
 
 
 ## Nächstniedrigere Stufe für die Notbremse ("" = schon ganz unten).
 static func stufe_darunter(preset: String) -> String:
+	if preset == STUFE_HOCH_120:
+		return "hoch"
 	var idx := STUFEN.find(preset)
 	if idx <= 0:
 		return ""
@@ -74,10 +79,27 @@ static func stufe_darunter(preset: String) -> String:
 
 
 ## Klassifiziert ein konkretes Bündel zurück auf einen Stufen-Namen (für die
-## Notbremse, wenn „auto“ aufgelöst wurde): nimmt die Stufe mit gleicher
-## Schattenqualität, sonst „mittel“.
+## Notbremse, wenn „auto“ aufgelöst wurde): 120 FPS ist eindeutig die
+## Spitzenstufe, sonst entscheidet gleiche Schattenqualität („mittel“ als
+## konservativer Rest).
 static func stufe_von(applied: Dictionary) -> String:
+	if int(applied.get("fps", 0)) == 120:
+		return STUFE_HOCH_120
 	for name in STUFEN:
 		if bundle(name)["shadows"] == applied.get("shadows", ""):
 			return name
 	return "mittel"
+
+
+## Doc §4.2, Zeile „120 Hz“: 0,85er-Skala, Schatten wie Mittel, Sichtweite
+## 0,85×, Partikel 75 %, sparsames Post-FX — das halbe Framebudget (8,33 ms)
+## wird über gesenkte Nebenkosten bezahlt, nicht über die Kern-Optik.
+static func _hoch_120() -> Dictionary:
+	var result := HOCH.duplicate()
+	result["fps"] = 120
+	result["scale_3d"] = 0.85
+	result["shadows"] = "niedrig"
+	result["draw_distance"] = 0.85
+	result["particles"] = 0.75
+	result["post_fx"] = "dezent"
+	return result

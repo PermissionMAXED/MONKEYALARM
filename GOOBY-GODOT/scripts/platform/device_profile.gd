@@ -10,9 +10,13 @@ extends RefCounted
 ##
 ## `snapshot()` sammelt die Fakten headless-sicher vom laufenden System.
 
-## Ab dieser physischen RAM-Größe gilt ein Gerät als „hoch“ (etwa iPhone 12+
-## Klasse); darunter „mittel“, unter MEMORY_MITTEL_MB „niedrig“.
-const MEMORY_HOCH_MB := 5500.0
+## Ab dieser physischen RAM-Größe gilt ein Gerät als „hoch“ — gemeint ist
+## die 6-GB-Klasse (iPhone 12 Pro Max / 13 Pro aufwärts, Android-Oberklasse).
+## Schwelle 5000 statt 5500: Android meldet in /proc/meminfo MemTotal MINUS
+## Kernel-/Carveout-Reserve (nominale 6 GB erscheinen teils als ~5,4 GB);
+## kein 4-GB-Gerät meldet über ~3,9 GB, die Klassen überlappen also nicht.
+## Darunter „mittel“, unter MEMORY_MITTEL_MB „niedrig“.
+const MEMORY_HOCH_MB := 5000.0
 const MEMORY_MITTEL_MB := 3500.0
 ## Ab dieser gemessenen Bildwiederholrate gilt das Display als ProMotion.
 const REFRESH_PROMOTION_HZ := 100.0
