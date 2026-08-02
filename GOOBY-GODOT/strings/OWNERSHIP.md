@@ -203,3 +203,23 @@ Parodie-Filmtitel) + `city.ort.kino`-Key (additiv in `city.json`) + NEUE
 `city_leben.sprueche.flughafen/kino/gooberando`-Listen (additiv in
 `city_leben.json` — Ambient-Reisende, Kinogänger, GOOBERANDO-Fahrer) |
 CITY-2 ORTE-LEBENDIG-3 | W18
+
+>> NEUE `city_leben.sprueche.laden/baumarkt/markt`-Listen (additiv in
+`city_leben.json` — Ambient-Besucher-Sprüche des OrtLeben-Systems in
+REHWEI/Baumarkt/Wochenmarkt; die Basis-Domain `city_leben.*` bleibt bei W13B
+GOBERANDO, die `sprueche.flughafen/kino/gooberando`-Listen bei CITY-2) + NEUE
+`shop.ikea.durchsagen`-Liste (additiv in `shop.json` — rotierende
+Laden-Durchsagen über der IKEA-Katalog-Vitrine) | G7 P55 LAEDEN-LEBENDIG | W17
+
+>> NEUE `dlc_mcgooby.angebot.*`/`station.*`/`zutat.*`-Blöcke + additive
+`knopf.schicht`/`knopf.angebot`- und
+`schicht.lage/drauf/daneben/hilfe/lagen`-Keys (alles in `dlc_mcgooby.json` —
+McGooby Welle B: Kauf-Gate/Angebots-Sheet „Das Eckgrundstück“,
+Belegstation-Ticket + Zutatenleiste, Stations-Schilder; die
+Parodie-Rezeptnamen bleiben im Content-Pack
+`content/dlc/data/mcgooby_menu.json`) | G5 P25 DLC-MCGOOBY-B | G5
+
+>> NEUE `dlc_goobye.grossmarkt.*`- + `dlc_goobye.preise.*`-Blöcke (ERSETZEN
+den Welle-A-`nachschub`-Block) + `dlc_goobye.alwin.*`-Block
+(Onkel-Alwin-Tagesroutine + 12 Antipp-Gags, Gag-Vertrag §6.3) — alles in
+`dlc_goobye.json`, Ownership unverändert | G5 P24 DLC-GOOBYE-B | G5
