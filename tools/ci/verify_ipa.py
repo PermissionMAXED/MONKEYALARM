@@ -9,12 +9,23 @@ bewussten Preset-Wechsel in W6/FIX (`portrait_upside_down=false`) 8 CI-Runs in
 Folge rot gemacht, obwohl die .ipa korrekt war. Ein abgeleiteter Check kann
 nicht mehr veralten: Preset aendern == Erwartung aendert sich mit.
 
+GROESSENWACHT (CI-36): Die .ipa-Groesse wird gegen tools/ci/ipa_baseline.json
+verglichen. Wachstum ab +10 % gibt eine Warnung, ab +50 % wird der Lauf ROT —
+das faengt versehentlich eingepackte Assets (unkomprimierte Audios, doppelte
+Texturen) ab, bevor Sideload-Nutzer 100 MB mehr ziehen. Gewolltes Wachstum:
+`size_bytes` in der Baseline auf den im Log gedruckten Byte-Wert setzen.
+Der Report (Gesamt/Baseline/Delta + Anteil PCK/Mach-O/Assets.car) landet
+zusaetzlich in GITHUB_STEP_SUMMARY, sofern die Variable gesetzt ist (im
+ios-ipa-Job immer).
+
 Aufruf: python3 tools/ci/verify_ipa.py [ipa-pfad] [projekt-dir]
-Exit 0 = PASS (druckt ".ipa gebaut: X MB, Y Dateien im PCK"), Exit 1 = Fehler.
+Exit 0 = PASS (druckt ".ipa gebaut: X MB, Y Dateien im PCK"), Exit 1 = Fehler
+(inklusive Groessenwacht-FAIL ab +50 %).
 """
 
 from __future__ import annotations
 
+import json
 import os
 import plistlib
 import re
@@ -22,6 +33,12 @@ import struct
 import sys
 import zipfile
 from pathlib import Path, PurePosixPath
+
+# Groessenwacht-Schwellen (CI-36) — Policy gehoert in den Code, nur die
+# Baseline-ZAHL ist Daten (tools/ci/ipa_baseline.json).
+WARN_GROWTH_PERCENT = 10.0
+FAIL_GROWTH_PERCENT = 50.0
+BASELINE_PATH = Path(__file__).with_name("ipa_baseline.json")
 
 ORIENTATION_KEYS = {
     "orientation/portrait": "UIInterfaceOrientationPortrait",
@@ -125,6 +142,32 @@ def verify_macho(executable: bytes) -> None:
     assert not has_signature, "Artefakt soll vor dem Sideload unsigniert sein"
 
 
+def mb(size_bytes: float) -> str:
+    return f"{size_bytes / (1024 * 1024):.1f} MB"
+
+
+def load_baseline(path: Path) -> tuple[int, str]:
+    """Fail-closed: eine fehlende/kaputte Baseline ist ein Repo-Fehler."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        size = int(data["size_bytes"])
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise SystemExit(f"FEHLER: IPA-Baseline unlesbar ({path}): {error!r}")
+    if size <= 0:
+        raise SystemExit(f"FEHLER: IPA-Baseline size_bytes muss > 0 sein: {size}")
+    return size, str(data.get("quelle", "unbekannt"))
+
+
+def size_verdict(size_bytes: int, baseline_bytes: int) -> tuple[str, float]:
+    """OK / WARN (ab +10 %) / FAIL (ab +50 %) gegen die Baseline."""
+    delta_percent = (size_bytes - baseline_bytes) / baseline_bytes * 100.0
+    if delta_percent >= FAIL_GROWTH_PERCENT:
+        return "FAIL", delta_percent
+    if delta_percent >= WARN_GROWTH_PERCENT:
+        return "WARN", delta_percent
+    return "OK", delta_percent
+
+
 def main() -> int:
     ipa = Path(sys.argv[1] if len(sys.argv) > 1 else "build/ios/GOOBY-godot-unsigned.ipa")
     project = Path(sys.argv[2] if len(sys.argv) > 2 else "GOOBY-GODOT")
@@ -211,18 +254,70 @@ def main() -> int:
         for source in direct_json:
             assert source in entries, f"JSON fehlt im PCK: {source}"
 
-    size_mb = ipa.stat().st_size / (1024 * 1024)
+        # Groessenwacht-Anteile: komprimierte Groesse IM ZIP (= was der
+        # Sideload-Download wirklich kostet), nicht die entpackte.
+        compressed = {
+            part: archive.getinfo(app + part).compress_size
+            for part in ("GOOBY.pck", "GOOBY", "Assets.car")
+        }
+
+    size_bytes = ipa.stat().st_size
+    baseline_bytes, baseline_quelle = load_baseline(BASELINE_PATH)
+    verdict, delta_percent = size_verdict(size_bytes, baseline_bytes)
+    rest_bytes = size_bytes - sum(compressed.values())
+
     summary = (
-        f".ipa gebaut: {size_mb:.1f} MB, {len(entries)} Dateien im PCK "
+        f".ipa gebaut: {mb(size_bytes)}, {len(entries)} Dateien im PCK "
         f"({len(imported_assets)} Assets + {len(direct_json)} JSON verifiziert, "
         f"Orientierungen: {sorted(want_orientations)})"
     )
     print("IPA PASS:", summary)
+    print(
+        f"IPA GROESSE: {size_bytes} Bytes ({mb(size_bytes)}), "
+        f"Baseline {baseline_bytes} Bytes ({mb(baseline_bytes)}), "
+        f"Delta {delta_percent:+.1f} % -> {verdict}"
+    )
+    baseline_hinweis = (
+        f"gewolltes Wachstum? size_bytes={size_bytes} in "
+        f"tools/ci/ipa_baseline.json setzen"
+    )
+    if verdict == "WARN":
+        print(
+            f"::warning::.ipa {delta_percent:+.1f} % ueber Baseline "
+            f"({mb(baseline_bytes)} -> {mb(size_bytes)}) — ab "
+            f"+{FAIL_GROWTH_PERCENT:.0f} % wird der Job rot; {baseline_hinweis}"
+        )
+    elif verdict == "FAIL":
+        print(
+            f"::error::.ipa {delta_percent:+.1f} % ueber Baseline "
+            f"({mb(baseline_bytes)} -> {mb(size_bytes)}), erlaubt sind "
+            f"+{FAIL_GROWTH_PERCENT:.0f} %; {baseline_hinweis}"
+        )
+
+    schwellen = (
+        f"Warnung ab +{WARN_GROWTH_PERCENT:.0f} %, "
+        f"rot ab +{FAIL_GROWTH_PERCENT:.0f} %"
+    )
     step_summary = os.environ.get("GITHUB_STEP_SUMMARY", "")
     if step_summary:
         with open(step_summary, "a", encoding="utf-8") as handle:
-            handle.write(f"**{summary}**\n")
-    return 0
+            handle.write(f"**{summary}**\n\n")
+            handle.write("### .ipa-Groessenwacht (CI-36)\n\n")
+            handle.write("| Messwert | Wert |\n| --- | --- |\n")
+            handle.write(f"| .ipa gesamt | {mb(size_bytes)} ({size_bytes} Bytes) |\n")
+            handle.write(f"| Baseline | {mb(baseline_bytes)} — {baseline_quelle} |\n")
+            handle.write(
+                f"| Delta | {delta_percent:+.1f} % — **{verdict}** ({schwellen}) |\n"
+            )
+            handle.write(f"| GOOBY.pck (komprimiert) | {mb(compressed['GOOBY.pck'])} |\n")
+            handle.write(f"| GOOBY Mach-O (komprimiert) | {mb(compressed['GOOBY'])} |\n")
+            handle.write(f"| Assets.car (komprimiert) | {mb(compressed['Assets.car'])} |\n")
+            handle.write(
+                f"| Rest (Storyboard, Icons, ZIP-Overhead) | {mb(rest_bytes)} |\n"
+            )
+            if verdict != "OK":
+                handle.write(f"\n{verdict}: {baseline_hinweis}.\n")
+    return 1 if verdict == "FAIL" else 0
 
 
 if __name__ == "__main__":

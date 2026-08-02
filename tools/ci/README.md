@@ -52,6 +52,16 @@ Zeilenlänge 100 (siehe `.editorconfig` + `.gdlintrc` in `GOOBY-GODOT/`).
   lädt `GOOBY-godot-unsigned-ipa` hoch. Er läuft auch nach roten Linux-Tests,
   damit ein testbares Build verfügbar bleibt; dieses Artefakt heißt dann klar
   `GOOBY-godot-unsigned-ipa-UNVERIFIED-linux-<status>`.
+- Größenwacht (CI-36): `verify_ipa.py` vergleicht die .ipa-Größe gegen
+  `tools/ci/ipa_baseline.json` — Warnung ab **+10 %**, rot ab **+50 %** —
+  und schreibt den Report (Gesamt/Baseline/Delta + Anteile PCK/Mach-O/
+  Assets.car) in die `GITHUB_STEP_SUMMARY`. Gewolltes Wachstum: `size_bytes`
+  in der Baseline auf den Byte-Wert der Log-Zeile `IPA GROESSE:` setzen.
+- **Artefakt herunterladen:** Web: Actions → „GOOBY Godot" → Lauf öffnen →
+  **Artifacts** → `GOOBY-godot-unsigned-ipa` (ZIP einmal entpacken, darin
+  liegt die `.ipa`). CLI: `gh run list --workflow gooby-godot.yml`, dann
+  `gh run download <run-id> --name GOOBY-godot-unsigned-ipa`.
+  Sideload-Anleitung: `docs/godot-rewrite/IOS-BUILD.md`.
 
 ## Leak-Gate über alle Minigames (Preflight-fähig, W13C)
 

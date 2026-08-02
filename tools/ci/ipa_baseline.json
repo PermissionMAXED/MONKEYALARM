@@ -1,0 +1,5 @@
+{
+  "_hinweis": "Groessenwacht-Baseline fuer die unsignierte .ipa (CI-36). tools/ci/verify_ipa.py vergleicht dagegen: Warnung ab +10 %, ROT ab +50 % (Schwellen = Policy, stehen im Script). Bei GEWOLLTEM Wachstum size_bytes auf den Byte-Wert aus der Log-Zeile 'IPA GROESSE: ... Bytes' des gruenen Laufs setzen und quelle aktualisieren.",
+  "size_bytes": 198045007,
+  "quelle": "ios-ipa-Lauf 30742605497 (2026-08-02, 188.9 MB)"
+}
