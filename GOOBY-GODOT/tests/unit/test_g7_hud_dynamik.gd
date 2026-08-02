@@ -267,6 +267,33 @@ func test_blatt_zaehler_zwei_blaetter_und_baumodus_mix() -> void:
 	_set_reduced_motion(rm_vorher)
 
 
+## G7-P50-Folgefix: Overlays wie die Tour-Karte hören auf
+## `verdeckung_geaendert` — das Signal muss BEIDE Übergänge feuern.
+func test_verdeckung_signal_feuert_beide_uebergaenge() -> void:
+	var rm_vorher := _set_reduced_motion(true)
+	var hud := _hud_bauen()
+	await wait_frames(2)
+	var meldungen: Array[bool] = []
+	hud.sichtbarkeit().verdeckung_geaendert.connect(
+		func(verdeckt: bool) -> void: meldungen.append(verdeckt)
+	)
+	var blatt: PanelSheet = SHEET_SCENE.instantiate()
+	tree.root.add_child(blatt)
+	await wait_frames(1)
+	blatt.open()
+	await wait_frames(1)
+	blatt.close()
+	await wait_frames(1)
+	assert_eq(meldungen.size(), 2, "genau zwei Übergänge gemeldet")
+	if meldungen.size() == 2:
+		assert_true(meldungen[0], "erst verdeckt=true")
+		assert_false(meldungen[1], "dann verdeckt=false")
+	blatt.free()
+	hud.free()
+	PanelStack.clear()
+	_set_reduced_motion(rm_vorher)
+
+
 func test_eigenes_status_sheet_verdeckt_hud_nicht() -> void:
 	var rm_vorher := _set_reduced_motion(true)
 	var hud := _hud_bauen()

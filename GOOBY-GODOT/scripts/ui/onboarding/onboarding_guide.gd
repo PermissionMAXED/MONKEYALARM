@@ -398,7 +398,16 @@ func _find_hud() -> Control:
 			break
 	if _hud_ref != null:
 		_hud_ref.visibility_changed.connect(_sync_card_visible)
+		# G7-P50: die Tour-Karte WEICHT mit dem HUD (Baumodus/Blätter) —
+		# sonst schwebte „Los geht’s!“ über Bau-Dock-Knöpfen (Audit-Rest
+		# GuideWeiter × Wand/Decke/Einlagern); Erfüllung läuft weiter.
+		if _hud_ref.has_method("sichtbarkeit") and _hud_ref.sichtbarkeit() != null:
+			_hud_ref.sichtbarkeit().verdeckung_geaendert.connect(_on_hud_verdeckung)
 	return _hud_ref
+
+
+func _on_hud_verdeckung(_verdeckt: bool) -> void:
+	_sync_card_visible()
 
 
 ## W16 (FB3-Audit content_mitte): über Einstellungen/Patchnotes versteckt
@@ -409,6 +418,17 @@ func _sync_card_visible() -> void:
 	if _card == null:
 		return
 	if _hud_ref != null and is_instance_valid(_hud_ref) and not _hud_ref.visible:
+		_card.visible = false
+		return
+	# G7-P50: HUD verdeckt (Baumodus offen / Blatt liegt drüber) → die
+	# Karte duckt sich mit und kommt mit dem HUD zurück.
+	if (
+		_hud_ref != null
+		and is_instance_valid(_hud_ref)
+		and _hud_ref.has_method("sichtbarkeit")
+		and _hud_ref.sichtbarkeit() != null
+		and _hud_ref.sichtbarkeit().verdeckt()
+	):
 		_card.visible = false
 		return
 	var router := get_node_or_null("/root/SceneRouter")

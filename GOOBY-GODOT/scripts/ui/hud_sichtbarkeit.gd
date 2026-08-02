@@ -26,6 +26,11 @@ extends Node
 ## Ruhelage herstellen) und `nach_layout()` (Verdeckung erneut erzwingen,
 ## Soll-Sichtbarkeit des frischen Layouts merken) um jeden Layout-Pass.
 
+## G7-P50-Folgefix: andere Overlays (z. B. die Onboarding-Tour-Karte)
+## wollen MIT dem HUD weichen — feuert bei jedem Übergang des effektiven
+## Verdeckt-Zustands (Baumodus ODER ≥1 Blatt).
+signal verdeckung_geaendert(verdeckt: bool)
+
 enum Stil { RUTSCH, BLENDE }
 
 ## Ausblenden zügig (Web --dur-pop), Einblenden federnd etwas länger
@@ -171,6 +176,7 @@ func _apply(stil: int) -> void:
 		_verstecke(stil)
 	else:
 		_zeige(stil)
+	verdeckung_geaendert.emit(ziel)
 
 
 func _verstecke(stil: int) -> void:
