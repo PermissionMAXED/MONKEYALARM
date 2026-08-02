@@ -287,6 +287,58 @@ func _stueckzahl(plan: Dictionary) -> int:
 	return summe
 
 
+## ------------------------------------------------------------ Onkel Alwin
+
+
+func test_alwin_routine_und_uhrzeit() -> void:
+	# Tagesroutine (§6.3): 5 Schritte ab Alwins 9-Uhr-Minute, Minuten
+	# steigen strikt — die Laden-Szene tickt sie 1:1 als Zettel durch.
+	var routine := GoobyeAlwin.routine()
+	assert_eq(routine.size(), 5, "5 Routine-Schritte")
+	var ids: Array = []
+	var vorher := -1
+	for eintrag: Dictionary in routine:
+		ids.append(str(eintrag["id"]))
+		assert_true(int(eintrag["minute"]) > vorher, "Minuten steigen strikt")
+		vorher = int(eintrag["minute"])
+		assert_true(str(eintrag["text_key"]).begins_with("dlc_goobye.alwin.routine_"), "Key-Schema")
+	assert_eq(ids, ["ankunft", "kennerblick", "polieren", "moehre", "abschied"])
+	assert_eq(int(routine[0]["minute"]), GoobyeMarkttag.ALWIN_MINUTE, "Start 9:00")
+	assert_eq(int(GoobyeAlwin.schritt("polieren")["minute"]), 62, "Polieren 9:02")
+	assert_true(GoobyeAlwin.schritt("gibtsnicht").is_empty(), "unbekannter Schritt = {}")
+	# Uhrzeit: Minute 0 = Ladenöffnung 8:00 (§2.2).
+	assert_eq(GoobyeAlwin.uhrzeit(0), "8:00")
+	assert_eq(GoobyeAlwin.uhrzeit(GoobyeMarkttag.ALWIN_MINUTE), "9:00")
+	assert_eq(GoobyeAlwin.uhrzeit(64), "9:04")
+	assert_eq(GoobyeAlwin.uhrzeit(719), "19:59", "letzte Minute vor Ladenschluss")
+
+
+func test_alwin_gag_rotation_deterministisch() -> void:
+	# Antippen (Auftrag): >=10 Gags, Rotation OHNE Wiederholung im Zyklus,
+	# Seed-stabil (Zeit/Zufall injiziert, AGENTS-Regel).
+	assert_true(GoobyeAlwin.GAG_ANZAHL >= 10, "mindestens 10 Gags")
+	var gesehen: Dictionary = {}
+	for tipp in GoobyeAlwin.GAG_ANZAHL:
+		var key := GoobyeAlwin.gag_key(GOLDEN_SEED, tipp)
+		assert_true(key.begins_with("dlc_goobye.alwin.gag_"), "Key-Schema")
+		gesehen[key] = true
+	assert_eq(gesehen.size(), GoobyeAlwin.GAG_ANZAHL, "keine Wiederholung im Zyklus")
+	assert_eq(
+		GoobyeAlwin.gag_key(GOLDEN_SEED, GoobyeAlwin.GAG_ANZAHL),
+		GoobyeAlwin.gag_key(GOLDEN_SEED, 0),
+		"nach dem Zyklus beginnt die Rotation von vorn"
+	)
+	assert_eq(
+		GoobyeAlwin.gag_reihenfolge(GOLDEN_SEED),
+		GoobyeAlwin.gag_reihenfolge(GOLDEN_SEED),
+		"gleicher Seed = gleiche Tagesreihenfolge"
+	)
+	assert_true(
+		GoobyeAlwin.gag_reihenfolge(1) != GoobyeAlwin.gag_reihenfolge(2),
+		"verschiedene Tage mischen verschieden"
+	)
+
+
 ## ------------------------------------------------------------ Regal
 
 

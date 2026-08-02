@@ -34,6 +34,26 @@
 			"zeile3": "The door says “Goo!” on the way in and “Bye…” on the way out. From now on it's up to you: shelf by shelf, carrot by carrot, beep by beep.",
 			"knopf": "Take the key!"
 		},
+		"alwin": {
+			"zettel": "{uhrzeit} · Uncle Alwin: {text}",
+			"routine_ankunft": "arrives for his daily check-up — the door says an extra friendly “Goo!”",
+			"routine_kennerblick": "inspects “his” old store with an expert eye",
+			"routine_polieren": "polishes a shelf in passing — spotless, +1 decor point!",
+			"routine_moehre": "buys EXACTLY one carrot. Old habit.",
+			"routine_abschied": "tips his hat — “Bye…” until tomorrow, 9 o'clock.",
+			"gag_1": "“Just ONE carrot, as always. A second one would be reckless.”",
+			"gag_2": "“Forty years behind this till. She still purrs if you scratch her right.”",
+			"gag_3": "“The carrot cruise? Splendid. Carrots everywhere. And sea.”",
+			"gag_4": "“The left shelf has squeaked since 1987. Leave it — that's its character.”",
+			"gag_5": "“Watered the till? Twice a week, no more — she can't take it.”",
+			"gag_6": "“The store used to be called ‘Bye und Goo’. Nobody came. So I flipped the sign.”",
+			"gag_7": "“Just checking. Out of habit. And love. Mostly love.”",
+			"gag_8": "“At night, when all is quiet, the cooler shelf hums the song of the sea.”",
+			"gag_9": "“Your stacks are crooked. Mine were crookeder. That's how it should be.”",
+			"gag_10": "“I taught the door sensor the ‘Goo!’. It already knew the ‘Bye’.”",
+			"gag_11": "“On the ship I miss just one thing: that beeping. Sounds like home.”",
+			"gag_12": "“The store likes you. It told me so itself, just yesterday.”"
+		},
 		"laden": {
 			"titel": "Goo und Bye",
 			"verlassen": "‹ Leave",

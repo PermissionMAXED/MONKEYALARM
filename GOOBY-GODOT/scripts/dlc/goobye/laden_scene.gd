@@ -20,6 +20,7 @@ signal ready_for_reveal
 
 const Economy := preload("res://scripts/logic/economy.gd")
 const PanelSheetScene := preload("res://scripts/ui/panel_sheet.tscn")
+const AlwinAuftrittScript := preload("res://scripts/dlc/goobye/goobye_alwin_auftritt.gd")
 const INNEN := "res://assets/city/innen"
 
 ## Tages-Phasen: einräumen → offen (Kundenstrom) → abschluss (Kassensturz).
@@ -89,6 +90,7 @@ var _slot_stapel: Array[Node3D] = []
 
 var _ui: Control
 var _toast: Node
+var _alwin: Node
 var _sheet: PanelSheet
 var _verlassen: Button
 var _titel_label: Label
@@ -228,6 +230,8 @@ func _naechster_kunde() -> void:
 	_tinte_rig(_kunde, KUNDEN_TINTE.get(str(bon.get("archetyp", "")), Color.WHITE))
 	_kunde.set_locomotion(1.0)
 	_zeige_toast(I18nService.t("dlc_goobye.laden.kunde_hinweis", {"name": _kunden_name(bon)}))
+	if str(bon.get("archetyp", "")) == GoobyeMarkttag.ARCHETYP_ALWIN:
+		_alwin.betritt(_kunde, int(bon.get("minute", GoobyeMarkttag.ALWIN_MINUTE)))
 	var tween := create_tween()
 	tween.tween_property(_kunde, "position", REGAL_STOP, LAUF_SEC * tempo)
 	tween.tween_callback(_kunde_stoebert)
@@ -239,6 +243,7 @@ func _naechster_kunde() -> void:
 func _kunde_stoebert() -> void:
 	if _kunde != null:
 		_kunde.set_locomotion(0.0)
+	_alwin.stoebert()
 
 
 ## Kassen-Moment (§1.2): pro Bon-Position EIN Gebrabbel-Piep — die Tonhöhe
@@ -246,6 +251,7 @@ func _kunde_stoebert() -> void:
 func _kassiere(bon: Dictionary) -> void:
 	if _kunde != null:
 		_kunde.set_locomotion(0.0)
+	_alwin.kassiert()
 	var tween := create_tween()
 	for position: Dictionary in bon.get("positionen", []):
 		tween.tween_callback(_piep_position.bind(position))
@@ -270,12 +276,14 @@ func _kunde_fertig() -> void:
 		return
 	_kunde.set_locomotion(1.0)
 	_kunde.rotation.y = -PI / 2.0
+	_alwin.geht()
 	var tween := create_tween()
 	tween.tween_property(_kunde, "position", TUER_POS, LAUF_SEC * tempo)
 	tween.tween_callback(_kunde_weg)
 
 
 func _kunde_weg() -> void:
+	_alwin.weg()
 	if _kunde != null:
 		_kunde.queue_free()
 		_kunde = null
@@ -621,6 +629,13 @@ func _baue_ui() -> void:
 	_toast.theme = ThemeService.theme()
 	layer.add_child(_toast)
 	_toast.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Onkel Alwins Auftritt (§6.3): Routine-Zettel + Antipp-Knopf.
+	_alwin = AlwinAuftrittScript.new()
+	_alwin.name = "AlwinAuftritt"
+	_alwin.tempo = tempo
+	_alwin.seed_wert = _seed()
+	add_child(_alwin)
+	_alwin.einrichten(_ui, _cam, _toast, _slot_knoepfe)
 	_umsatz_label_setzen()
 	_lager_label_aktualisieren()
 	_slots_aktualisieren()
@@ -793,6 +808,8 @@ func _relayout_ui() -> void:
 	)
 	_layout_slots()
 	_layout_leiste(f, canvas, insets)
+	if _alwin != null:
+		_alwin.relayout(_m)
 
 
 ## Slot-Knöpfe über die 3D-Anker legen (unproject je Relayout, nie pro

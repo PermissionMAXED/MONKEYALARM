@@ -34,6 +34,26 @@
 			"zeile3": "Die Tür sagt „Goo!“ beim Reinkommen und „Bye…“ beim Rausgehen. Ab jetzt entscheidest du: Regal für Regal, Möhre für Möhre, Piep für Piep.",
 			"knopf": "Schlüssel nehmen!"
 		},
+		"alwin": {
+			"zettel": "{uhrzeit} · Onkel Alwin: {text}",
+			"routine_ankunft": "kommt zur täglichen Kontrolle — die Tür sagt extra freundlich „Goo!“",
+			"routine_kennerblick": "prüft „seinen“ alten Laden mit Kennerblick",
+			"routine_polieren": "poliert im Vorbeigehen ein Regal — blitzblank, +1 Deko-Punkt!",
+			"routine_moehre": "kauft GENAU eine Möhre. Alte Gewohnheit.",
+			"routine_abschied": "tippt sich an den Hut — „Bye…“ bis morgen, 9 Uhr.",
+			"gag_1": "„Nur EINE Möhre, wie immer. Die zweite wäre Übermut.“",
+			"gag_2": "„40 Jahre hinter dieser Kasse. Sie schnurrt noch, wenn man sie richtig krault.“",
+			"gag_3": "„Die Möhren-Kreuzfahrt? Herrlich. Überall Möhren. Und Meer.“",
+			"gag_4": "„Das Regal links quietscht seit 1987. Lass es — das ist sein Charakter.“",
+			"gag_5": "„Kasse gegossen? Zweimal die Woche, mehr verträgt sie nicht.“",
+			"gag_6": "„Früher hieß der Laden ‚Bye und Goo‘. Kam keiner. Dann hab ich das Schild umgedreht.“",
+			"gag_7": "„Ich prüfe nur. Aus Gewohnheit. Und aus Liebe. Hauptsächlich aus Liebe.“",
+			"gag_8": "„Nachts, wenn alles still ist, summt das Kühlregal das Lied vom Meer.“",
+			"gag_9": "„Deine Warenstapel sind schief. Meine waren schiefer. Das gehört so.“",
+			"gag_10": "„Dem Türsensor hab ich das ‚Goo!‘ beigebracht. Das ‚Bye‘ konnte er schon.“",
+			"gag_11": "„Auf dem Schiff fehlt mir nur eins: dieses Piepen. Klingt wie Zuhause.“",
+			"gag_12": "„Der Laden mag dich. Er hat es mir gestern selbst gesagt.“"
+		},
 		"laden": {
 			"titel": "Goo und Bye",
 			"verlassen": "‹ Raus",

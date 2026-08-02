@@ -416,6 +416,14 @@ func test_strings_de_en_paritaet() -> void:
 			I18nService.has_key(str(ware.get("name_key", ""))),
 			"name_key auflösbar: %s" % ware.get("name_key")
 		)
+	# Alwins Antipp-Gags + Routine-Zettel (§6.3) lösen vollständig auf.
+	for i in GoobyeAlwin.GAG_ANZAHL:
+		assert_true(de.has("dlc_goobye.alwin.gag_%d" % (i + 1)), "DE-Gag %d da" % (i + 1))
+	for eintrag: Dictionary in GoobyeAlwin.routine():
+		assert_true(
+			I18nService.has_key(str(eintrag["text_key"])),
+			"Routine-Key auflösbar: %s" % eintrag["text_key"]
+		)
 
 
 ## ------------------------------------------------------------ Laden-Szene
@@ -538,6 +546,50 @@ func test_laden_szene_preisfaktor_wirkt() -> void:
 	for bon: Dictionary in plan["bons"]:
 		for position: Dictionary in bon["positionen"]:
 			assert_eq(int(position["preis"]), 4, "Apfel kostet 4 statt 6 (−30 %)")
+	szene.queue_free()
+	await wait_frames(2)
+	_teardown_gs(gs)
+
+
+func test_laden_szene_alwin_routine_und_antippen() -> void:
+	GoobyeKatalog.reset_cache()
+	var gs := _fresh_gs(12, GoobyeKatalog.preis())
+	GoobyeKauf.kaufe(gs)
+	gs.set_value("dlc.goobye.erstbesuchGesehen", true)
+	var szene: GoobyeLadenScene = LadenSzene.instantiate()
+	szene.game_state_override = gs
+	szene.seed_override = 12345
+	# Langsame Choreo, damit Alwin mitten im Besuch angetippt werden kann.
+	szene.tempo = 3.0
+	szene.auto_navigate = false
+	tree.root.add_child(szene)
+	await wait_frames(3)
+	var knopf: Button = szene.find_child("AlwinTippen", true, false)
+	var zettel: Label = szene.find_child("AlwinRoutine", true, false)
+	assert_true(knopf != null and zettel != null, "Antipp-Knopf + Routine-Zettel existieren")
+	assert_false(knopf.visible, "vor Ladenöffnung kein Alwin, kein Knopf")
+	szene.slot_tippen(0)
+	szene.laden_oeffnen()
+	# Kunde 0 ist IMMER Alwin (§6.3) — mit ihm erscheinen Zettel + Knopf.
+	var da := await wait_until(func() -> bool: return knopf.visible, 5000)
+	assert_true(da, "Antipp-Knopf läuft mit Alwin mit")
+	assert_true(zettel.visible, "Tagesroutine sichtbar")
+	assert_true(zettel.text.contains(GoobyeAlwin.uhrzeit(60)), "Ankunft um 9:00 auf dem Zettel")
+	var m := ScreenShell.metrics(szene.get_viewport())
+	var floor_px: float = m["floor_px"]
+	assert_true(
+		knopf.custom_minimum_size.x >= floor_px and knopf.custom_minimum_size.y >= floor_px,
+		"Antipp-Knopf hält den Touch-Floor"
+	)
+	# Antippen: Gags kommen deterministisch aus der Tages-Rotation.
+	var auftritt: Node = szene.find_child("AlwinAuftritt", true, false)
+	knopf.pressed.emit()
+	assert_eq(str(auftritt.get("letzter_gag")), GoobyeAlwin.gag_key(12345, 0), "Gag 1 der Rotation")
+	knopf.pressed.emit()
+	assert_eq(
+		str(auftritt.get("letzter_gag")), GoobyeAlwin.gag_key(12345, 1), "Gag 2, keine Doppel"
+	)
+	assert_true(I18nService.has_key(str(auftritt.get("letzter_gag"))), "Gag-Key löst auf")
 	szene.queue_free()
 	await wait_frames(2)
 	_teardown_gs(gs)
