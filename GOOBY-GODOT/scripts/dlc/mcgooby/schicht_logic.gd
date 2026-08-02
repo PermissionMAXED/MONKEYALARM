@@ -93,8 +93,19 @@ static func bewerte_liegengelassen(bal: Dictionary) -> Dictionary:
 	return {"wertung": WERTUNG_ROESTAROMA, "punkte": int(bal.get("punkte_roestaroma", 5))}
 
 
+## Rezept-Definition aus dem Menü per id ({} = unbekannt) — kleiner Helfer,
+## damit Bot und Szene dieselbe Quelle nutzen.
+static func rezept_aus(menu: Array, rezept_id: String) -> Dictionary:
+	for kandidat: Variant in menu:
+		if kandidat is Dictionary and str((kandidat as Dictionary).get("id", "")) == rezept_id:
+			return kandidat
+	return {}
+
+
 ## Deterministische Bot-Zertifizierung (Doc §10.4): derselbe Seed erzeugt
 ## dieselbe Bestell-Folge UND dieselben Bot-Taps → exakte Goldwerte.
+## Welle B: nach dem Grill stapelt der Bot den Zutaten-Turm der Belegstation
+## (McGoobyBelegenLogic.simulate_lagen — gleiche Klemm-Regel wie die Szene).
 ## menu wie bestell_folge; Rückgabe inkl. Abrechnung (McGoobyAbrechnung).
 static func simulate_autoplay(seed_wert: int, menu: Array, bal: Dictionary) -> Dictionary:
 	var folge := bestell_folge(seed_wert, menu, bal)
@@ -104,6 +115,8 @@ static func simulate_autoplay(seed_wert: int, menu: Array, bal: Dictionary) -> D
 	var ergebnisse: Array[Dictionary] = []
 	var perfekt := 0
 	var roestaroma := 0
+	var lagen := 0
+	var fehlgriffe := 0
 	for bestellung: Dictionary in folge:
 		var punkte := 0
 		var fehlerfrei := true
@@ -115,6 +128,13 @@ static func simulate_autoplay(seed_wert: int, menu: Array, bal: Dictionary) -> D
 				punkte += int(bal.get("punkte_roestaroma", 5))
 				roestaroma += 1
 				fehlerfrei = false
+		var ticket := McGoobyBelegenLogic.ticket_von(rezept_aus(menu, str(bestellung["rezept_id"])))
+		var turm := McGoobyBelegenLogic.simulate_lagen(rng, ticket, skill, bal, punkte)
+		punkte = int(turm["punkte"])
+		lagen += int(turm["lagen"])
+		if int(turm["fehlgriffe"]) > 0:
+			fehlgriffe += int(turm["fehlgriffe"])
+			fehlerfrei = false
 		punkte += int(bal.get("bestellung_fertig_bonus", 15))
 		ergebnisse.append({"punkte": punkte, "fehlerfrei": fehlerfrei})
 	var kasse := McGoobyAbrechnung.abrechnung(ergebnisse, bal)
@@ -123,6 +143,8 @@ static func simulate_autoplay(seed_wert: int, menu: Array, bal: Dictionary) -> D
 		"bestellungen": folge.size(),
 		"perfekt": perfekt,
 		"roestaroma": roestaroma,
+		"lagen": lagen,
+		"fehlgriffe": fehlgriffe,
 		"punkte": int(kasse["punkte"]),
 		"trinkgeld": int(kasse["trinkgeld"]),
 		"muenzen": int(kasse["muenzen"]),

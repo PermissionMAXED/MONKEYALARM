@@ -73,9 +73,12 @@ static func status_fuer(dlc: Dictionary, gs: Object) -> String:
 			if not GoobyeState.ist_freigeschaltet(gs):
 				return STATUS_GESPERRT
 		"mcgooby":
-			# Welle A (G5/P25): Probeschicht frei spielbar — Kauf-Gate kommt
-			# mit Welle B (dann Muster GoobyeState nachziehen).
-			return STATUS_INSTALLIERT
+			# Welle B: Kauf-Gate nach dem Ranch-/Goobye-Muster (Doc §6.2 —
+			# Level 14 + 3000, Werte aus dem Balance-Pack).
+			if McGoobyState.ist_gekauft(gs):
+				return STATUS_INSTALLIERT
+			if not McGoobyState.ist_freigeschaltet(gs):
+				return STATUS_GESPERRT
 	return STATUS_VERFUEGBAR
 
 
@@ -125,6 +128,10 @@ static func unlock_text(dlc: Dictionary) -> String:
 		"goo_und_bye":
 			return vorlage.format(
 				{"level": GoobyeKatalog.freischalt_level(), "preis": GoobyeKatalog.preis()}
+			)
+		"mcgooby":
+			return vorlage.format(
+				{"level": McGoobyKatalog.freischalt_level(), "preis": McGoobyKatalog.preis()}
 			)
 	return vorlage
 

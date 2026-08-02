@@ -3,7 +3,17 @@
 		"titel": "McGooby",
 		"zurueck": "‹ Zurück",
 		"knopf": {
-			"schicht": "Probeschicht starten!"
+			"schicht": "Schicht starten!",
+			"angebot": "Grundstück ansehen"
+		},
+		"angebot": {
+			"titel": "Das Eckgrundstück",
+			"text": "Ein leerstehendes Eckgrundstück, ein Bauschild, ein Traum: zwei goldene Bögen, die bei genauem Hinsehen aussehen wie Löffel mit Ohren. Der Makler-Gooby wedelt mit dem Vertrag: „Beste Lage. Riecht schon nach Pommes.“",
+			"preis": "{preis} Münzen",
+			"frage": "Kaufst du das Grundstück für deinen eigenen Laden?",
+			"kaufen": "Grundstück kaufen!",
+			"spaeter": "Später",
+			"zu_wenig": "Noch nicht genug Münzen — der Traum kostet {preis}. Das Bauschild bleibt stehen."
 		},
 		"intro": {
 			"titel": "Die große Eröffnung",
@@ -15,24 +25,42 @@
 		"schicht": {
 			"bestellung": "Bestellung {nr}/{gesamt}",
 			"patty": "Patty {nr}/{gesamt}",
+			"lage": "Lage {nr}/{gesamt}",
 			"roh": "Brutzel … noch roh!",
 			"goldbraun": "JETZT wenden!",
 			"kohle": "Uups — Kohle-Style!",
 			"perfekt": "Perfekt!",
 			"roestaroma": "Röstaroma-Spezial!",
+			"drauf": "Drauf!",
+			"daneben": "Uups — {zutat} kommt später!",
 			"punkte": "Punkte: {punkte}",
 			"pause": "Pause",
-			"hilfe": "Tippe den Patty, sobald er goldbraun leuchtet — im goldenen Fenster gibt es ein „Perfekt!“. Zu spät ist nie verloren: dann wird es eben ein Röstaroma-Spezial mit halben Punkten."
+			"hilfe": "Grill: Tippe den Patty, sobald er goldbraun leuchtet — im goldenen Fenster gibt es ein „Perfekt!“. Zu spät ist nie verloren: dann wird es eben ein Röstaroma-Spezial mit halben Punkten. Belegstation: Stapel die Zutaten in Ticket-Reihenfolge aufs Brötchen — ein Fehlgriff kostet nur ein Lächeln (und nie die Basis-Punkte der Kette)."
+		},
+		"station": {
+			"grill": "Station: Grill",
+			"belegen": "Station: Belegstation"
 		},
 		"ende": {
 			"titel": "Feierabend!",
 			"untertitel": "Gooby dreht das Schild auf GESCHLOSSEN — die Löffel-Bögen leuchten.",
 			"punkte": "Punkte",
 			"perfekt": "Perfekt-Wendungen",
+			"lagen": "Saubere Lagen",
 			"trinkgeld": "Trinkgeld",
 			"muenzen": "Münzen",
 			"nochmal": "Noch eine Schicht",
 			"feierabend": "Feierabend machen"
+		},
+		"zutat": {
+			"broetchen": "Brötchen",
+			"patty": "Patty",
+			"gold_sosse": "Gold-Soße",
+			"salat": "Salat",
+			"kaese": "Käse",
+			"gurke": "Gurke",
+			"kuerbis_patty": "Kürbis-Patty",
+			"tomate": "Tomate"
 		}
 	}
 }

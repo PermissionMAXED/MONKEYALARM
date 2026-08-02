@@ -1,12 +1,14 @@
 {
 	"schema": 1,
-	"kommentar": "McGooby-DLC Welle A (P25) — Start-Menü + Balance. Quelle: docs/godot-rewrite/DLC-MCGOOBY.md §2/§3. Parodie-Namen liegen BEIDSPRACHIG hier (Muster dlcs.json); alle Zahlen sind Balance-Daten und per Update-Pack überschattbar (Ranch-Blaupause). Gelesen von McGoobyKatalog (scripts/dlc/mcgooby/mcgooby_katalog.gd).",
+	"kommentar": "McGooby-DLC Welle A+B — Start-Menü + Balance. Quelle: docs/godot-rewrite/DLC-MCGOOBY.md §2/§3. Parodie-Namen liegen BEIDSPRACHIG hier (Muster dlcs.json); alle Zahlen sind Balance-Daten und per Update-Pack überschattbar (Ranch-Blaupause). Gelesen von McGoobyKatalog (scripts/dlc/mcgooby/mcgooby_katalog.gd). Welle B: belegen_* = Belegstations-Grammatik nach burger_build (+5 Lage / −2 Fehlgriff, geklemmt bei 0).",
 	"balance": {
 		"bestellungen_min": 2,
 		"bestellungen_max": 4,
 		"punkte_perfekt": 10,
 		"punkte_roestaroma": 5,
 		"bestellung_fertig_bonus": 15,
+		"belegen_punkte_lage": 5,
+		"belegen_malus_falsch": 2,
 		"coin_divisor": 4,
 		"coin_min": 6,
 		"coin_max": 30,

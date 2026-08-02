@@ -1,17 +1,19 @@
 class_name McGoobySchichtScene
 extends Control
-## McGooby-Mini-Schicht (Welle A, Doc §2.2 #1): EINE Station — Burger braten.
-## 2–4 Kunden-Bestellungen nacheinander (deterministisch aus dem Tages-Seed,
-## McGoobySchichtLogic), taktiles Wenden im goldenen Timing-Fenster mit
-## „Perfekt!“-Callout, Bestellglocke + Brutzel-Feedback aus BESTEHENDEN
-## SfxMap-Ids, Schicht-Ende-Karte mit Kassensturz (McGoobyAbrechnung).
-## Beim Erststart erzählt eine Dialog-Karte den Eröffnungs-Hook (Doc §1.3);
-## der Haken wird im additiven Save-Slice `mcgooby` gemerkt (McGoobyState).
-## Jederzeit pausierbar über das bestehende MinigamePauseModal-Muster.
+## McGooby-Schicht (Welle A+B, Doc §2.2 #1+#2): ZWEI Stationen pro
+## Bestellung — erst Burger braten (taktiles Wenden im goldenen Fenster),
+## dann an der Belegstation den Zutaten-Turm in Ticket-Reihenfolge stapeln
+## (Bühne wechselt automatisch, McGoobySchichtBuehne). 2–4 Bestellungen
+## nacheinander (deterministisch aus dem Tages-Seed, McGoobySchichtLogic),
+## Bestellglocke + Brutzel-Feedback aus BESTEHENDEN SfxMap-Ids,
+## Schicht-Ende-Karte mit Kassensturz (McGoobyAbrechnung). Beim Erststart
+## erzählt eine Dialog-Karte den Eröffnungs-Hook (Doc §1.3); der Haken wird
+## im additiven Save-Slice `mcgooby` gemerkt (McGoobyState). Jederzeit
+## pausierbar über das bestehende MinigamePauseModal-Muster.
 ##
-## Route `mcgooby_schicht` — der DLC-Hub (P24) verweist später per
-## Katalog-Eintrag hierher; die Route registriert sich selbst (Muster
-## ChessScene/DlcScreen), der Hub muss nur `register_routes()` + `goto()`.
+## Route `mcgooby_schicht` — seit Welle B hinter dem Kauf-Gate: der DLC-Hub
+## reist erst nach dem Grundstückskauf hierher (McGoobyOffer/McGoobyKauf);
+## die Route registriert sich selbst (Muster ChessScene/DlcScreen).
 
 signal ready_for_reveal
 
@@ -27,10 +29,12 @@ const FARBE_KOHLE := Color("#54382A")
 const FARBE_TEXT_HELL := Color("#FFF3DC")
 const FARBE_TEXT_DUNKEL := Color("#6B4A2B")
 
-## Wunschgröße des Patty-Knopfs (Design-px, skaliert mit f; nie unter Floor).
-const PATTY_BASIS := 168.0
 ## Karten-Wunschbreite der Intro-/Ende-Overlays (Design-px).
 const KARTE_BASIS := 360.0
+
+## Stations-Phasen einer Bestellung (Welle B: Grill → Belegstation).
+const PHASE_GRILL := "grill"
+const PHASE_BELEGEN := "belegen"
 
 ## Tests/Screenshots: GameState-Double statt /root/GameState.
 var gs_override: Object = null
@@ -47,11 +51,16 @@ var _runde := 0
 var _laeuft := false
 var _pausiert := false
 var _bestellung_idx := 0
+var _phase := PHASE_GRILL
 var _patty_idx := 0
 var _patty_zeit := 0.0
 var _patty_aktiv := false
 var _patty_timing: Dictionary = {}
 var _patty_zustand := McGoobySchichtLogic.ZUSTAND_ROH
+var _ticket: Array[String] = []
+var _lage_idx := 0
+var _lage_fehlgriff := false
+var _lagen_sauber := 0
 var _punkte := 0
 var _perfekt_gesamt := 0
 var _bestellung_punkte := 0
@@ -66,10 +75,9 @@ var _pause_btn: Button
 var _punkte_label: Label
 var _bestellung_label: Label
 var _gericht_label: Label
-var _patty_label: Label
+var _schritt_label: Label
 var _callout: Label
-var _patty_btn: Button
-var _garbar: ProgressBar
+var _buehne: McGoobySchichtBuehne
 var _intro_overlay: Control
 var _intro_karte: PanelContainer
 var _intro_knopf: Button
@@ -168,7 +176,25 @@ func patty_zeit_setzen(t_sec: float) -> void:
 
 
 func patty_knopf() -> Button:
-	return _patty_btn
+	return _buehne.patty_knopf()
+
+
+## Aktuelle Stations-Phase der Bestellung (Welle B: grill/belegen).
+func phase_aktuell() -> String:
+	return _phase
+
+
+func ticket_aktuell() -> Array[String]:
+	return _ticket.duplicate()
+
+
+## Die als Nächstes gebrauchte Lage ("" = kein Belegen aktiv/fertig).
+func naechste_zutat() -> String:
+	return McGoobyBelegenLogic.naechste_lage(_ticket, _lage_idx)
+
+
+func zutat_knopf(zutat_id: String) -> Button:
+	return _buehne.zutat_knopf(zutat_id)
 
 
 ## ---------------------------------------------------------------- Aufbau
@@ -231,39 +257,32 @@ func _build_ui() -> void:
 	_gericht_label.theme_type_variation = &"TitleLabel"
 	_gericht_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	karte_box.add_child(_gericht_label)
-	_patty_label = Label.new()
-	_patty_label.name = "PattyZaehler"
-	_patty_label.theme_type_variation = &"CaptionLabel"
-	karte_box.add_child(_patty_label)
+	_schritt_label = Label.new()
+	_schritt_label.name = "PattyZaehler"
+	_schritt_label.theme_type_variation = &"CaptionLabel"
+	karte_box.add_child(_schritt_label)
 
-	# Mittig + Daumenzone: die Grill-Gruppe zentriert im Rest-Raum.
+	# Mittig + Daumenzone: die Stations-Bühne zentriert im Rest-Raum
+	# (Welle B: die Bühne wechselt selbst zwischen Grill und Belegstation).
 	var mitte := CenterContainer.new()
 	mitte.name = "Mitte"
 	mitte.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_rows.add_child(mitte)
-	var grill_box := VBoxContainer.new()
-	grill_box.add_theme_constant_override("separation", 14)
-	grill_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	mitte.add_child(grill_box)
+	var stage_box := VBoxContainer.new()
+	stage_box.add_theme_constant_override("separation", 14)
+	stage_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	mitte.add_child(stage_box)
 	_callout = Label.new()
 	_callout.name = "Callout"
 	_callout.theme_type_variation = &"HeadlineLabel"
 	_callout.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_callout.text = " "
-	grill_box.add_child(_callout)
-	_patty_btn = SquishButton.new()
-	_patty_btn.name = "PattyKnopf"
-	_patty_btn.focus_mode = Control.FOCUS_NONE
-	_patty_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_patty_btn.pressed.connect(_on_patty_tap)
-	grill_box.add_child(_patty_btn)
-	_garbar = ProgressBar.new()
-	_garbar.name = "GarBalken"
-	_garbar.min_value = 0.0
-	_garbar.max_value = 1.0
-	_garbar.show_percentage = false
-	_garbar.custom_minimum_size = Vector2(0.0, 10.0)
-	grill_box.add_child(_garbar)
+	stage_box.add_child(_callout)
+	_buehne = McGoobySchichtBuehne.new()
+	_buehne.name = "Buehne"
+	_buehne.patty_getippt.connect(_on_patty_tap)
+	_buehne.zutat_getippt.connect(_on_zutat_tap)
+	stage_box.add_child(_buehne)
 
 	_intro_overlay = _baue_intro_overlay()
 	_ende_overlay = _baue_ende_overlay()
@@ -395,6 +414,7 @@ func _starte_schicht() -> void:
 	_kasse = {}
 	_punkte = 0
 	_perfekt_gesamt = 0
+	_lagen_sauber = 0
 	_bestellung_idx = -1
 	_laeuft = not _folge.is_empty()
 	_pausiert = false
@@ -411,6 +431,7 @@ func _naechste_bestellung() -> void:
 	_bestellung_punkte = 0
 	_bestellung_fehlerfrei = true
 	_patty_idx = 0
+	_phase = PHASE_GRILL
 	# Bestellglocken-„Pling“ (Doc §2.2.6) aus dem Bestand: gvz_wave-Glocke.
 	AudioDirector.try_play(self, "gvz_wave")
 	_bestellung_anzeigen()
@@ -423,6 +444,8 @@ func _naechster_patty() -> void:
 	_patty_zustand = McGoobySchichtLogic.ZUSTAND_ROH
 	_patty_timing = McGoobyKatalog.timing("grill", _rezept_aktuell())
 	_patty_aktiv = true
+	_buehne.zeige_grill()
+	_station_beschriften("grill")
 	# Brutzel-Start: der Patty landet raschelnd-zischend auf dem Grill.
 	AudioDirector.try_play(self, "ranch_heu")
 	_bestellung_anzeigen()
@@ -430,7 +453,7 @@ func _naechster_patty() -> void:
 
 
 func _on_patty_tap() -> void:
-	if not _laeuft or _pausiert or not _patty_aktiv:
+	if not _laeuft or _pausiert or not _patty_aktiv or _phase != PHASE_GRILL:
 		return
 	var wertung := McGoobySchichtLogic.bewerte_tap(_patty_zeit, _patty_timing, _bal)
 	if str(wertung["wertung"]) == McGoobySchichtLogic.WERTUNG_ROH:
@@ -459,7 +482,65 @@ func _werte_patty(wertung: Dictionary) -> void:
 	if _patty_idx < int(bestellung.get("patties", 1)):
 		_naechster_patty()
 	else:
+		_starte_belegen()
+
+
+## Stationswechsel (Welle B, Doc §2.2 #2): das Ticket zeigt den Zutaten-
+## Turm, die Bühne baut Turm + Leiste — Rezepte ohne Belegen-Schritt gehen
+## direkt zur Kasse.
+func _starte_belegen() -> void:
+	_ticket = McGoobyBelegenLogic.ticket_von(_rezept_aktuell())
+	if _ticket.is_empty():
 		_bestellung_fertig()
+		return
+	_phase = PHASE_BELEGEN
+	_lage_idx = 0
+	_lage_fehlgriff = false
+	var leiste := McGoobyBelegenLogic.leiste_von(
+		_ticket, _basis_seed() + _runde * 101 + _bestellung_idx
+	)
+	_buehne.zeige_belegen()
+	_station_beschriften("belegen")
+	_buehne.belegen_fuellen(_ticket, leiste)
+	AudioDirector.try_play(self, "ui_tick")
+	_bestellung_anzeigen()
+
+
+func _on_zutat_tap(zutat_id: String) -> void:
+	if not _laeuft or _pausiert or _phase != PHASE_BELEGEN:
+		return
+	if zutat_id == McGoobyBelegenLogic.naechste_lage(_ticket, _lage_idx):
+		var punkte := McGoobyBelegenLogic.punkte_lage(_bal)
+		_punkte += punkte
+		_bestellung_punkte += punkte
+		if not _lage_fehlgriff:
+			_lagen_sauber += 1
+		_lage_fehlgriff = false
+		_lage_idx += 1
+		_buehne.lage_markieren(_lage_idx)
+		AudioDirector.try_play(self, "ui_chip")
+		_callout_zeigen(I18nService.t("dlc_mcgooby.schicht.drauf"))
+		_punkte_anzeigen()
+		if McGoobyBelegenLogic.ist_fertig(_ticket, _lage_idx):
+			_bestellung_fertig()
+		else:
+			_bestellung_anzeigen()
+		return
+	# Fehlgriff: comic statt Strafe — Malus nie unter 0, Kette bricht,
+	# der Knopf schüttelt den Kopf (Garderoben-Grammatik).
+	_bestellung_fehlerfrei = false
+	_lage_fehlgriff = true
+	var vorher := _bestellung_punkte
+	_bestellung_punkte = McGoobyBelegenLogic.nach_fehlgriff(_bestellung_punkte, _bal)
+	_punkte -= vorher - _bestellung_punkte
+	_buehne.zutat_wackeln(zutat_id)
+	AudioDirector.try_play(self, "mg_spill")
+	_callout_zeigen(
+		I18nService.t(
+			"dlc_mcgooby.schicht.daneben", {"zutat": McGoobySchichtBuehne.zutat_name(zutat_id)}
+		)
+	)
+	_punkte_anzeigen()
 
 
 func _bestellung_fertig() -> void:
@@ -493,6 +574,7 @@ func _ende_fuellen() -> void:
 		kind.queue_free()
 	_ende_zeile("punkte", str(int(_kasse.get("punkte", 0))))
 	_ende_zeile("perfekt", str(_perfekt_gesamt))
+	_ende_zeile("lagen", str(_lagen_sauber))
 	_ende_zeile("trinkgeld", str(int(_kasse.get("trinkgeld", 0))))
 	_ende_zeile("muenzen", str(int(_kasse.get("muenzen", 0))))
 
@@ -523,9 +605,21 @@ func _bestellung_anzeigen() -> void:
 		{"nr": int(bestellung.get("nr", 0)), "gesamt": _folge.size()}
 	)
 	_gericht_label.text = McGoobyKatalog.text_von(_rezept_aktuell(), "name")
-	_patty_label.text = I18nService.t(
-		"dlc_mcgooby.schicht.patty", {"nr": _patty_idx, "gesamt": int(bestellung.get("patties", 1))}
-	)
+	if _phase == PHASE_BELEGEN:
+		_schritt_label.text = I18nService.t(
+			"dlc_mcgooby.schicht.lage",
+			{"nr": mini(_lage_idx + 1, _ticket.size()), "gesamt": _ticket.size()}
+		)
+	else:
+		_schritt_label.text = I18nService.t(
+			"dlc_mcgooby.schicht.patty",
+			{"nr": _patty_idx, "gesamt": int(bestellung.get("patties", 1))}
+		)
+
+
+## Stations-Schild der Bühne (lokalisiert — die Bühne kennt keine Strings).
+func _station_beschriften(station_id: String) -> void:
+	_buehne.station_beschriften(I18nService.t("dlc_mcgooby.station." + station_id))
 
 
 func _punkte_anzeigen() -> void:
@@ -538,7 +632,7 @@ func _callout_zeigen(text: String) -> void:
 
 
 func _patty_visualisieren() -> void:
-	if _patty_btn == null:
+	if _buehne == null:
 		return
 	var farbe := FARBE_ROH
 	var text_farbe := FARBE_TEXT_DUNKEL
@@ -551,17 +645,9 @@ func _patty_visualisieren() -> void:
 			farbe = FARBE_KOHLE
 			text_farbe = FARBE_TEXT_HELL
 			hinweis = I18nService.t("dlc_mcgooby.schicht.kohle")
-	_patty_btn.text = hinweis
-	_patty_btn.add_theme_color_override("font_color", text_farbe)
-	_patty_btn.add_theme_color_override("font_pressed_color", text_farbe)
-	_patty_btn.add_theme_color_override("font_hover_color", text_farbe)
-	var stil := StyleBoxFlat.new()
-	stil.bg_color = farbe
-	stil.set_corner_radius_all(int(_patty_btn.custom_minimum_size.y / 2.0))
-	_patty_btn.add_theme_stylebox_override("normal", stil)
-	_patty_btn.add_theme_stylebox_override("hover", stil)
-	_patty_btn.add_theme_stylebox_override("pressed", stil)
-	_garbar.value = McGoobySchichtLogic.fortschritt(_patty_zeit, _patty_timing)
+	_buehne.patty_darstellen(
+		hinweis, farbe, text_farbe, McGoobySchichtLogic.fortschritt(_patty_zeit, _patty_timing)
+	)
 
 
 func _apply_metrics() -> void:
@@ -575,9 +661,7 @@ func _apply_metrics() -> void:
 	for knopf: Button in [_intro_knopf, _nochmal_knopf, _feierabend_knopf]:
 		if knopf != null:
 			ScreenShell.touch_target(knopf, _m)
-	var patty_seite := maxf(float(_m["floor_px"]), PATTY_BASIS * f)
-	_patty_btn.custom_minimum_size = Vector2(patty_seite, patty_seite)
-	_garbar.custom_minimum_size = Vector2(patty_seite, 10.0 * f)
+	_buehne.apply_metrics(_m)
 	for karte: PanelContainer in [_intro_karte, _ende_karte]:
 		if karte != null:
 			karte.custom_minimum_size.x = ScreenShell.card_width(_m, KARTE_BASIS)

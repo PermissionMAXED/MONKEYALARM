@@ -13,11 +13,28 @@ const PACK_DATEI := "res://content/dlc/data/mcgooby_menu.json"
 ## Bekannte Stations-Ids (Reihenfolge = Anzeige-Reihenfolge, Doc §2.2).
 const STATION_IDS: Array[String] = ["grill", "belegen", "fritteuse", "shake"]
 
+## Kauf-Gate-Fallbacks (Doc §6.2: Level 14 + 3000 — EINEN Level vor der
+## Ranch, dafür teurer, weil der Laden eine Einkommens-Maschine ist). Die
+## echten Werte liegen in der balance-Domain (content/dlc/data/balance.json)
+## und sind per Update-Pack nachsteuerbar — Muster GoobyeKatalog.
+const DEFAULT_PREIS := 3000
+const DEFAULT_FREISCHALT_LEVEL := 14
+
 ## Tests injizieren hier eine Registry-Attrappe (null = Autoload benutzen).
 static var registry_override: Object = null
 
 static var _cache: Dictionary = {}
 static var _loaded := false
+
+
+## Kaufpreis des Eckgrundstücks in ᴳ (Balance-Domain, nachlieferbar).
+static func preis() -> int:
+	return maxi(0, int(_balance("mcgooby.preis", DEFAULT_PREIS)))
+
+
+## Level-Gate fürs Angebot im DLC-Hub.
+static func freischalt_level() -> int:
+	return maxi(1, int(_balance("mcgooby.freischalt_level", DEFAULT_FREISCHALT_LEVEL)))
 
 
 ## Kompletter Daten-Block (tiefe Kopie): {balance, timing, stationen, rezepte}.
@@ -39,6 +56,17 @@ static func rezept(id: String) -> Dictionary:
 	for kandidat: Variant in rezepte():
 		if kandidat is Dictionary and str((kandidat as Dictionary).get("id", "")) == id:
 			return kandidat
+	return {}
+
+
+## Stations-Definition per id ({} = unbekannt) — Name/Geste fürs Stations-
+## Schild der Bühne (Welle B), Texte via text_von.
+static func station(id: String) -> Dictionary:
+	var raw: Variant = daten().get("stationen", [])
+	if raw is Array:
+		for kandidat: Variant in raw:
+			if kandidat is Dictionary and str((kandidat as Dictionary).get("id", "")) == id:
+				return kandidat
 	return {}
 
 
@@ -134,6 +162,13 @@ static func _lade_pack_datei() -> Dictionary:
 		push_warning("McGooby-Menü-Datei kaputt: %s" % PACK_DATEI)
 		return {}
 	return parsed
+
+
+static func _balance(key: String, default_value: Variant) -> Variant:
+	var registry := _registry()
+	if registry == null or not registry.has_method("get_balance"):
+		return default_value
+	return registry.get_balance(key, default_value)
 
 
 static func _registry() -> Object:

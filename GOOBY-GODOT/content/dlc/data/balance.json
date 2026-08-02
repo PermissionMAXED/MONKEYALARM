@@ -11,6 +11,10 @@
 			"bio_aufschlag": 0.1,
 			"staffel_ab": 10,
 			"staffel_rabatt": 0.05
+		},
+		"mcgooby": {
+			"preis": 3000,
+			"freischalt_level": 14
 		}
 	}
 }

@@ -345,6 +345,8 @@ func _spielen_text(id: String) -> String:
 
 ## Angebots-Knopf-Text je DLC („Zur Ranch“ / „Schlüssel ansehen“).
 func _angebot_text(id: String) -> String:
+	if id == "mcgooby":
+		return I18nService.t("dlc_mcgooby.knopf.angebot")
 	if id == "goo_und_bye":
 		return I18nService.t("dlc_goobye.knopf.angebot")
 	return I18nService.t("dlc.knopf.zur_ranch")
@@ -371,7 +373,9 @@ func _starte_dlc(sheet: PanelSheet, id: String) -> void:
 func _zum_angebot(sheet: PanelSheet, id: String) -> void:
 	sheet.close()
 	sheet.queue_free()
-	if id == "goo_und_bye":
+	if id == "mcgooby":
+		McGoobyOffer.zeige(self, _gs)
+	elif id == "goo_und_bye":
 		GoobyeOffer.zeige(self, _gs)
 	else:
 		RanchOffer.zeige(self, _gs)

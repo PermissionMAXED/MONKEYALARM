@@ -3,7 +3,17 @@
 		"titel": "McGooby",
 		"zurueck": "‹ Back",
 		"knopf": {
-			"schicht": "Start the trial shift!"
+			"schicht": "Start a shift!",
+			"angebot": "See the corner lot"
+		},
+		"angebot": {
+			"titel": "The corner lot",
+			"text": "An empty corner lot, a construction sign, a dream: two golden arches that, on closer inspection, look like spoons with ears. The realtor Gooby waves the contract: “Prime location. Already smells like fries.”",
+			"preis": "{preis} coins",
+			"frage": "Will you buy the lot for a place of your own?",
+			"kaufen": "Buy the lot!",
+			"spaeter": "Later",
+			"zu_wenig": "Not enough coins yet — the dream costs {preis}. The construction sign stays up."
 		},
 		"intro": {
 			"titel": "The Grand Opening",
@@ -15,24 +25,42 @@
 		"schicht": {
 			"bestellung": "Order {nr}/{gesamt}",
 			"patty": "Patty {nr}/{gesamt}",
+			"lage": "Layer {nr}/{gesamt}",
 			"roh": "Sizzle … still raw!",
 			"goldbraun": "Flip it NOW!",
 			"kohle": "Oops — charcoal style!",
 			"perfekt": "Perfect!",
 			"roestaroma": "Roast Aroma Special!",
+			"drauf": "Stacked!",
+			"daneben": "Oops — {zutat} comes later!",
 			"punkte": "Points: {punkte}",
 			"pause": "Pause",
-			"hilfe": "Tap the patty as soon as it glows golden brown — inside the golden window you get a “Perfect!”. Too late is never a loss: it simply becomes a Roast Aroma Special worth half the points."
+			"hilfe": "Grill: Tap the patty as soon as it glows golden brown — inside the golden window you get a “Perfect!”. Too late is never a loss: it simply becomes a Roast Aroma Special worth half the points. Assembly station: stack the ingredients onto the bun in ticket order — a fumble only costs a smile (and never the base points of your streak)."
+		},
+		"station": {
+			"grill": "Station: Grill",
+			"belegen": "Station: Assembly"
 		},
 		"ende": {
 			"titel": "Closing time!",
 			"untertitel": "Gooby flips the sign to CLOSED — the spoon arches light up.",
 			"punkte": "Points",
 			"perfekt": "Perfect flips",
+			"lagen": "Clean layers",
 			"trinkgeld": "Tips",
 			"muenzen": "Coins",
 			"nochmal": "One more shift",
 			"feierabend": "Call it a day"
+		},
+		"zutat": {
+			"broetchen": "Bun",
+			"patty": "Patty",
+			"gold_sosse": "Gold sauce",
+			"salat": "Lettuce",
+			"kaese": "Cheese",
+			"gurke": "Pickle",
+			"kuerbis_patty": "Pumpkin patty",
+			"tomate": "Tomato"
 		}
 	}
 }
