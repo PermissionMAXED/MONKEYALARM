@@ -25,12 +25,19 @@ const GOOBY_STICKER_PX := 72.0
 
 var _panel: PanelContainer
 var _center: CenterContainer
+## G7-P50: Scroll-Hülle um die Zeilen — der HARTE Höhen-Deckel der Karte
+## (Muster ScreenShell.card_max_height: „Inhalt darüber scrollt“). Schriften
+## schrumpfen ZUERST (Fit-Pass); der Deckel greift nur, wenn Fix-Höhen
+## (Sticker, Sterne, Touch-Floor-Knöpfe) die Safe-Area trotzdem sprengen.
+var _scroll: ScrollContainer
 var _rows: VBoxContainer
 var _juice: JuiceKit
 var _again: Button
 var _back: Button
 var _home: Button
 var _gooby: LoadingVeilSticker
+## Läufer-Generation des nachgezogenen Fit-Passes (stale Loops abbrechen).
+var _fit_gen := 0
 
 
 func _ready() -> void:
@@ -49,9 +56,15 @@ func _ready() -> void:
 	_panel.theme_type_variation = &"AcCardLg"
 	_panel.custom_minimum_size = Vector2(PANEL_BASE_WIDTH, 0)
 	_center.add_child(_panel)
+	_scroll = ScrollContainer.new()
+	_scroll.name = "RowsScroll"
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_panel.add_child(_scroll)
 	_rows = VBoxContainer.new()
+	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_rows.add_theme_constant_override("separation", 10)
-	_panel.add_child(_rows)
+	_scroll.add_child(_rows)
 	get_viewport().size_changed.connect(_apply_metrics)
 
 
@@ -82,11 +95,60 @@ func _apply_metrics() -> void:
 	var safe_h := (canvas.y - float(insets["top"]) - float(insets["bottom"])) * 0.96
 	var f_fit: float = m["f"]
 	for _pass in 4:
-		var need := _panel.get_combined_minimum_size().y
+		var need := _inhalt_bedarf()
 		if f_fit <= 1.0 or need <= safe_h:
 			break
 		f_fit = maxf(f_fit * safe_h / need, 1.0)
 		ScreenShell.scale_fonts(_panel, f_fit)
+	_deckel_anwenden(safe_h)
+	# G7-P50 (Audit-Rest 3× mg_results): Font-Overrides propagieren DEFERRED
+	# (THEME_CHANGED) — die Schleife oben misst im selben Frame noch ALTE
+	# Minima und ließ die Knopfzeile in quer 2556×1179 ~7 px unter die
+	# Safe-Kante laufen. Nach dem Settle nachmessen und weiterschrumpfen.
+	_fit_gen += 1
+	_fit_nachziehen(_fit_gen, f_fit, safe_h)
+
+
+## Nachgezogener Fit-Pass über Folge-Frames (Muster onboarding_guide
+## _relayout_settled): pro Frame einmal messen und ggf. schrumpfen; ein
+## neuer _apply_metrics-Lauf (Resize) macht ältere Läufer ungültig. Der
+## Höhen-Deckel wird JEDEN Pass nachgeführt — die multiplikative Schrift-
+## Annäherung konvergiert langsam (Fix-Höhen: Sticker/Sterne/Touch-Floor),
+## der Deckel garantiert die Safe-Area sofort und in jedem Zwischenstand.
+func _fit_nachziehen(gen: int, f_start: float, safe_h: float) -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	var f_fit := f_start
+	for _pass in 10:
+		await tree.process_frame
+		if not is_instance_valid(self) or gen != _fit_gen or _panel == null:
+			return
+		var need := _inhalt_bedarf()
+		_deckel_anwenden(safe_h)
+		if f_fit <= 1.0 or need <= safe_h:
+			return
+		f_fit = maxf(f_fit * safe_h / need, 1.0)
+		ScreenShell.scale_fonts(_panel, f_fit)
+
+
+## Echter Höhen-Bedarf des Inhalts (Zeilen + Karten-Polster) — bewusst an
+## den ZEILEN gemessen statt am Panel, weil der Scroll-Deckel das Panel-
+## Minimum kappt und der Schrift-Fit sonst nie wieder anspringen würde.
+func _inhalt_bedarf() -> float:
+	return _rows.get_combined_minimum_size().y + _panel_polster()
+
+
+## Harter Safe-Area-Deckel (Muster ScreenShell.card_max_height): passt der
+## Inhalt, bleibt die Karte auf natürlicher Höhe; sonst kappt der Scroll.
+func _deckel_anwenden(safe_h: float) -> void:
+	_scroll.custom_minimum_size.y = minf(
+		_rows.get_combined_minimum_size().y, maxf(safe_h - _panel_polster(), 0.0)
+	)
+
+
+func _panel_polster() -> float:
+	return _panel.get_theme_stylebox("panel").get_minimum_size().y
 
 
 ## breakdown = MinigameAward.award()-Ergebnis; meta = Registry-Zeile.
