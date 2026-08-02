@@ -90,6 +90,10 @@ const FOODS := {
 	# Deltas verbatim aus GOOBY/src/data/constants.js FOOD_TABLE. ──
 	"radish": {"hunger": 8, "fun": 1},
 	"eggplant": {"hunger": 16, "fun": 1},
+	# ── W19/POLISH: corn-dog — die LETZTE der 39 Web-Speisen (EVAL A-7-Rest
+	# "ohne 3D-Asset"); GLB frisch aus dem Kenney Food Kit 2.0 nachgeladen.
+	# Deltas verbatim aus GOOBY/src/data/constants.js FOOD_TABLE. ──
+	"corn-dog": {"hunger": 18, "fun": 6, "junk": true},
 }
 
 ## Fallback für unbekannte Inventar-Ids: generischer kleiner Snack.
@@ -148,6 +152,7 @@ const FOOD_KATEGORIE := {
 	"hot-dog": "warm",
 	"pancakes": "warm",
 	"waffle": "warm",
+	"corn-dog": "warm",
 }
 
 

@@ -1,5 +1,5 @@
 {
-  "kommentar": "REHWEI-Lebensmittel-Sortiment (Doc E §2.3). IDs + Preise + Stat-Deltas 1:1 aus der Web-Referenz FOOD_TABLE (GOOBY/src/data/constants.js + foods.js V4-Bakery-Override für croissant; W13/FOOD: +cupcakePink/cinnamonRoll/ice-cream/sundae/pumpkin/cake/nutella). glb zeigt auf assets/city/essen/. gooberando=true markiert die Gerichte der GOOBERANDO-App (Doc E §5). Hinweis: energy-Deltas führt nur scripts/logic/food_catalog.gd (dieses Format kennt kein energie-Feld). W15/CROPS: Saatgut steht in der EIGENEN Liste `saatgut` weiter unten (s. kommentar_saatgut) — bewusst nicht in `waren`.",
+  "kommentar": "REHWEI-Lebensmittel-Sortiment (Doc E §2.3). IDs + Preise + Stat-Deltas 1:1 aus der Web-Referenz FOOD_TABLE (GOOBY/src/data/constants.js + foods.js V4-Bakery-Override für croissant; W13/FOOD: +cupcakePink/cinnamonRoll/ice-cream/sundae/pumpkin/cake/nutella; W19/POLISH: +corn-dog — die letzte der 39 Web-Speisen, GLB aus dem Kenney Food Kit 2.0 nachgeladen). glb zeigt auf assets/city/essen/. gooberando=true markiert die Gerichte der GOOBERANDO-App (Doc E §5). Hinweis: energy-Deltas führt nur scripts/logic/food_catalog.gd (dieses Format kennt kein energie-Feld). W15/CROPS: Saatgut steht in der EIGENEN Liste `saatgut` weiter unten (s. kommentar_saatgut) — bewusst nicht in `waren`.",
   "waren": [
     {"id": "carrot", "name_de": "Möhre", "preis": 5, "glb": "carrot.glb", "hunger": 10, "spass": 2, "favorit": true},
     {"id": "apple", "name_de": "Apfel", "preis": 6, "glb": "apple.glb", "hunger": 10, "spass": 1},
@@ -21,6 +21,7 @@
     {"id": "salad", "name_de": "Salat", "preis": 14, "glb": "salad.glb", "hunger": 20, "spass": 0, "hygiene": 2},
     {"id": "cupcakePink", "name_de": "Rosa Törtchen", "preis": 14, "glb": "cupcake-pink.glb", "hunger": 10, "spass": 10, "hygiene": -2, "junk": true},
     {"id": "fries", "name_de": "Pommes", "preis": 14, "glb": "fries.glb", "hunger": 12, "spass": 9, "hygiene": -1, "junk": true},
+    {"id": "corn-dog", "name_de": "Corn Dog", "preis": 15, "glb": "corn-dog.glb", "hunger": 18, "spass": 6, "junk": true},
     {"id": "cinnamonRoll", "name_de": "Zimtschnecke", "preis": 16, "glb": "cinnamon-roll.glb", "hunger": 16, "spass": 8, "hygiene": -2, "junk": true},
     {"id": "ice-cream", "name_de": "Eistüte", "preis": 16, "glb": "ice-cream.glb", "hunger": 6, "spass": 15, "junk": true},
     {"id": "sandwich", "name_de": "Sandwich", "preis": 16, "glb": "sandwich.glb", "hunger": 24, "spass": 3, "gooberando": true},

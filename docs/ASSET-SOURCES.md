@@ -1,6 +1,6 @@
 # ASSET-SOURCES.md — zentrale Herkunfts- & Lizenz-Übersicht (3D-Modelle)
 
-Stand: W18 (Agent ASSETS-MORE, 2026-08-02). Diese Datei ist der zentrale
+Stand: W19 (Polish-Runde, 2026-08-02). Diese Datei ist der zentrale
 Index über ALLE 3D-Modell-Quellen unter `GOOBY-GODOT/assets/` — die
 Detail-Inventare bleiben in den Ordner-Dokumenten (verlinkt). Das
 Style-Gate `tools/assets/style_gate.py` prüft gegen diese Datei
@@ -78,3 +78,9 @@ bereits lizenziert). Die W17-Entscheidung »Funkelpark-Stände sind
 Eigenbau« ist damit bewusst revidiert: das Fantasy Town Kit liefert
 Marktstände im exakt passenden Stil; die Label3D-Schilder bleiben.
 Wache: `tests/unit/test_rest4_park.gd::test_funkelpark_deko_und_marktstaende`.
+
+## Kurations-Protokoll W19 (Polish-Runde)
+
+| Modell | Pack / Quelle | Eingebaut in |
+|---|---|---|
+| `corn-dog.glb` | [Kenney Food Kit 2.0](https://kenney.nl/assets/food-kit) (frischer kenney.nl-Download, CC0 1.0) | `assets/city/essen/` — schließt den EVAL-A-7-Rest: die letzte der 39 Web-Speisen hat jetzt ein eigenes 3D-Asset (Katalog `food_catalog.gd`, REHWEI-Sortiment, Kühlschrank/Mampf-Sequenz über die `assets/city/essen/<id>.glb`-Konvention). Lizenz + `Textures/colormap.png` lagen dort bereits (identisches Kit wie der Bestand). |

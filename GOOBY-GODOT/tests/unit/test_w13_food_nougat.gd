@@ -87,6 +87,24 @@ func test_jede_rehwei_ware_hat_existierendes_glb() -> void:
 		assert_true(FoodCatalog.FOODS.has(id), "REHWEI-Ware fehlt im FoodCatalog: %s" % id)
 
 
+## W19/POLISH: corn-dog schliesst den EVAL-A-7-Rest ("einzige Web-Speise
+## ohne 3D-Asset") — Web-Deltas/Preis verbatim (constants.js FOOD_TABLE:
+## price 15, hunger 18, fun 6, junk), eigenes GLB, REHWEI fuehrt ihn.
+func test_corn_dog_letzte_web_speise_komplett() -> void:
+	assert_true(FoodCatalog.FOODS.has("corn-dog"), "Katalog-Eintrag fehlt")
+	var d := FoodCatalog.deltas("corn-dog")
+	assert_almost(float(d["hunger"]), 18.0, 1e-6, "Web-Delta hunger")
+	assert_almost(float(d["fun"]), 6.0, 1e-6, "Web-Delta fun")
+	assert_almost(float(d["energy"]), 0.0, 1e-6, "Web-Delta energy")
+	assert_almost(float(d["hygiene"]), 0.0, 1e-6, "Web-Delta hygiene")
+	assert_true(FoodCatalog.is_junk("corn-dog"), "corn-dog ist Junk (Web)")
+	assert_eq(FoodCatalog.kategorie("corn-dog"), "warm", "Regal-Kategorie wie hot-dog")
+	var eintrag := CitySortiment.ware(CitySortiment.laden(CitySortiment.REHWEI_PFAD), "corn-dog")
+	assert_false(eintrag.is_empty(), "REHWEI fuehrt corn-dog")
+	assert_eq(int(eintrag.get("preis", -1)), 15, "Web-Preis 15")
+	assert_true(FileAccess.file_exists("%s/corn-dog.glb" % ESSEN_DIR), "eigenes GLB liegt im Repo")
+
+
 func test_neue_speisen_haben_de_und_en_namen() -> void:
 	var de: Dictionary = I18nService.table("de")
 	var en: Dictionary = I18nService.table("en")
