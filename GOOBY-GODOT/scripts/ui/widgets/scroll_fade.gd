@@ -28,6 +28,9 @@ var _oben: TextureRect
 var _unten: TextureRect
 var _links: TextureRect
 var _rechts: TextureRect
+## Farbe, in die sich der Inhalt Richtung Rand auflöst (Default Wallpaper-
+## Creme; Listen IN Karten setzen die Kartenfarbe via `farbe()`).
+var _fade_farbe: Color = AcTokens.BG_CREAM
 
 
 ## Wrapper um einen (noch elternlosen) ScrollContainer bauen. Übernimmt
@@ -70,9 +73,73 @@ func kanten_hoehe(px: float) -> void:
 	_aktualisieren()
 
 
+## Auflöse-Farbe der Kanten setzen (P54R: die Options-Zeile im Gestalten-
+## Screen liegt IN einer AcCard — dort löst sich der Inhalt in die
+## Kartenfarbe auf, nicht ins Wallpaper-Creme).
+func farbe(neu: Color) -> void:
+	_fade_farbe = neu
+	for kante: TextureRect in [_oben, _unten, _links, _rechts]:
+		if kante == null or not (kante.texture is GradientTexture2D):
+			continue
+		var verlauf := (kante.texture as GradientTexture2D).gradient
+		verlauf.set_color(0, Color(neu, 0.0))
+		verlauf.set_color(1, neu)
+
+
+## P54R: Ziel-Control (z. B. die aktive Kachel) in den Ausschnitt rollen.
+## `hole_ziel` wird je Versuch NEU aufgelöst (Listen werden oft neu gebaut).
+## Frisch gebaute Kinder sind ggf. noch 0 px groß (Sort ausstehend), und
+## spätere Layout-Nachzieh-Pässe können den Ausschnitt NACH dem Scroll noch
+## verschieben (Sonde: 132 px Rest) — deshalb begrenzt nachprüfen, bis das
+## Ziel wirklich im Ausschnitt steht.
+func zeige(hole_ziel: Callable, versuche := 5) -> void:
+	var ziel := _ziel(hole_ziel)
+	if ziel == null:
+		return
+	if ziel.size.x <= 1.0 and ziel.size.y <= 1.0:
+		if versuche > 0:
+			call_deferred("zeige", hole_ziel, versuche - 1)
+		return
+	_scroll.ensure_control_visible(ziel)
+	if versuche > 0:
+		call_deferred("_zeige_pruefen", hole_ziel, versuche - 1)
+
+
+## Nachkontrolle des Scroll-Ziels — Scroll/Sort greifen erst im nächsten
+## Flush; ensure_control_visible ist idempotent (konvergiert, versuche-Kappe).
+func _zeige_pruefen(hole_ziel: Callable, versuche: int) -> void:
+	var ziel := _ziel(hole_ziel)
+	if ziel == null:
+		return
+	var rect := ziel.get_global_rect()
+	var sicht := _scroll.get_global_rect()
+	var drin := true
+	if _scroll.horizontal_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+		drin = rect.position.x >= sicht.position.x - 0.5 and rect.end.x <= sicht.end.x + 0.5
+	if _scroll.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+		drin = drin and rect.position.y >= sicht.position.y - 0.5
+		drin = drin and rect.end.y <= sicht.end.y + 0.5
+	if not drin:
+		zeige(hole_ziel, versuche)
+
+
+func _ziel(hole_ziel: Callable) -> Control:
+	if _scroll == null or not is_inside_tree() or not hole_ziel.is_valid():
+		return null
+	var ziel: Variant = hole_ziel.call()
+	if ziel is Control and (ziel as Control).is_inside_tree():
+		return ziel as Control
+	return null
+
+
 ## Test-Introspektion: lädt die Unten-Kante gerade zum Weiterscrollen ein?
 func unten_aktiv() -> bool:
 	return _unten != null and _unten.visible
+
+
+## Test-Introspektion: lädt die Rechts-Kante (h-Scroll) gerade ein?
+func rechts_aktiv() -> bool:
+	return _rechts != null and _rechts.visible
 
 
 func _on_scroll_bewegt(_wert: float) -> void:
@@ -118,8 +185,8 @@ func _kante_bauen(kanten_name: String, von: Vector2, nach: Vector2) -> TextureRe
 	kante.stretch_mode = TextureRect.STRETCH_SCALE
 	kante.visible = false
 	var verlauf := Gradient.new()
-	verlauf.set_color(0, Color(AcTokens.BG_CREAM, 0.0))
-	verlauf.set_color(1, AcTokens.BG_CREAM)
+	verlauf.set_color(0, Color(_fade_farbe, 0.0))
+	verlauf.set_color(1, _fade_farbe)
 	var textur := GradientTexture2D.new()
 	textur.gradient = verlauf
 	textur.fill_from = von

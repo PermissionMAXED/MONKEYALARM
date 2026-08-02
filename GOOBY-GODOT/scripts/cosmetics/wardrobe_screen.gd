@@ -51,6 +51,8 @@ var _tab := "hut"
 var _grid: GridContainer
 var _tab_box: HBoxContainer
 var _muenz_label: Label
+## P54R: Münz-Kapsel reagiert sichtbar auf den Kauf (Bounce).
+var _muenz_chip: PanelContainer
 var _titel: Label
 var _hinweis: Label
 var _preview: CosmeticPreview
@@ -180,6 +182,7 @@ func _apply_metrics() -> void:
 		if karte is Control:
 			(karte as Control).custom_minimum_size = _tile
 	ScreenShell.scale_fonts(self, f)
+	_texte_einpassen()
 
 
 ## Kategorie-Tab anwählen (auch für Screenshots/Tests).
@@ -285,6 +288,7 @@ func _build_header() -> Control:
 	_muenz_label.theme_type_variation = &"SoftLabel"
 	chip.add_child(_muenz_label)
 	header.add_child(chip)
+	_muenz_chip = chip
 	_muenzen_aktualisieren()
 	return header
 
@@ -454,6 +458,7 @@ func _grid_neu_bauen() -> void:
 		karten.append(karte)
 	if is_inside_tree():
 		ScreenShell.scale_fonts(_grid, UiScale.for_viewport(get_viewport()))
+		_texte_einpassen()
 	# FB3-Polish: Kacheln blenden gestaffelt ein (Web-Stagger).
 	UiMotion.stagger_in(karten, 0.02)
 
@@ -539,6 +544,8 @@ func _build_band(def: Dictionary, besitzt: bool, angelegt: bool, gesperrt: bool)
 	name_label.clip_text = true
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(name_label)
+	if _karten_ui.get(str(def["id"])) is Dictionary:
+		_karten_ui[str(def["id"])]["name"] = name_label
 	var status := Label.new()
 	status.theme_type_variation = &"SoftLabel"
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -572,6 +579,47 @@ func _karte_aktualisieren(id: String) -> void:
 	var status: Variant = (eintrag as Dictionary).get("status")
 	if status is Label:
 		(status as Label).text = _status_text(def, besitzt, angelegt, gesperrt)
+		_label_einpassen(status as Label)
+
+
+## P54R Text-Cut-Fix: lange Namen/Status („Katzenaugenbrille“,
+## „Schildkrötenpanzer“) wurden vom clip_text HART mitten im Wort
+## abgeschnitten (Leitformat hoch, 31 Karten betroffen). Die Schrift
+## schrumpft jetzt proportional, bis der Text in die Kachel passt —
+## clip_text bleibt nur als letzte Reserve stehen.
+func _texte_einpassen() -> void:
+	for eintrag: Variant in _karten_ui.values():
+		if not (eintrag is Dictionary):
+			continue
+		for key: String in ["name", "status"]:
+			var lbl: Variant = (eintrag as Dictionary).get(key)
+			if lbl is Label:
+				_label_einpassen(lbl as Label)
+
+
+## EIN Label in die Kachelbreite einpassen. Gemessen wird ab der frischen
+## Skalier-Basis (META_FONT_BASE × f) — so wächst die Schrift auch wieder,
+## wenn ein kürzerer Text (Status-Wechsel) oder eine breitere Kachel kommt.
+func _label_einpassen(lbl: Label) -> void:
+	var avail := _tile.x - 20.0
+	if lbl == null or avail <= 0.0 or lbl.text.is_empty() or not is_inside_tree():
+		return
+	var basis := lbl.get_theme_font_size("font_size")
+	if lbl.has_meta(ScreenShell.META_FONT_BASE):
+		var f := UiScale.for_viewport(get_viewport())
+		basis = int(maxf(roundf(float(lbl.get_meta(ScreenShell.META_FONT_BASE)) * f), 10.0))
+	var font := lbl.get_theme_font("font")
+	var breite := font.get_string_size(lbl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, basis).x
+	var passend := basis
+	if breite > avail:
+		passend = int(maxf(floorf(float(basis) * avail / breite), 10.0))
+		# Hinting rundet nicht exakt proportional (Sonde: 1-px-Reste) —
+		# nachmessen und in Ganzpixel-Schritten nachziehen.
+		breite = font.get_string_size(lbl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, passend).x
+		while breite > avail and passend > 10:
+			passend -= 1
+			breite = font.get_string_size(lbl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, passend).x
+	lbl.add_theme_font_size_override("font_size", passend)
 
 
 # ── Reaktionen ───────────────────────────────────────────────────────────────
@@ -589,6 +637,9 @@ func _on_karte_gedrueckt(id: String) -> void:
 		Haptics.success(self)
 		if karte != null:
 			UiMotion.sparkle(karte)
+		# P54R: der Münzstand reagiert sichtbar mit — Geld ist geflossen.
+		if _muenz_chip != null:
+			UiMotion.bounce(_muenz_chip)
 	elif bool(ergebnis.get("ok", false)) or str(ergebnis.get("grund", "")) == "unveraendert":
 		AudioDirector.try_play(self, "ui_click")
 	else:
@@ -604,21 +655,12 @@ func _karte_von(id: String) -> Control:
 	return null
 
 
-## Sanftes Nein-Schütteln der Karte (zu teuer). RM = ohne Bewegung; ein
-## laufendes Schütteln stapelt nicht (die Ruhelage bliebe sonst schief).
+## Sanftes Nein-Schütteln der Karte (zu teuer) — P54R: Bewegung lebt jetzt
+## zentral in `UiMotion.schuetteln` (RM-Gate + Anti-Stapeln inklusive),
+## damit Gestalten dieselbe Fehler-Grammatik spricht.
 func _kopfschuetteln(karte: Control) -> void:
-	if karte == null or not karte.is_inside_tree() or UiMotion.reduced(karte):
-		return
-	if karte.has_meta(&"g7_schuettel"):
-		var alt: Variant = karte.get_meta(&"g7_schuettel")
-		if alt is Tween and (alt as Tween).is_valid():
-			return
-	var rast := karte.position.x
-	var tween := karte.create_tween()
-	karte.set_meta(&"g7_schuettel", tween)
-	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	for versatz: float in [-7.0, 6.0, -4.0, 0.0]:
-		tween.tween_property(karte, "position:x", rast + versatz, 0.055)
+	if karte != null:
+		UiMotion.schuetteln(karte)
 
 
 func _on_tab_gedrueckt(kategorie: String) -> void:

@@ -108,6 +108,25 @@ static func bounce(ctl: Control, peak := BOUNCE_SCALE) -> Tween:
 	return tween
 
 
+## Sanftes Nein-Schütteln (Kauf zu teuer, Eingabe abgelehnt): kurzer
+## horizontaler Impuls zurück in die Ruhelage. Läuft bereits ein Schütteln,
+## passiert nichts (die Ruhelage bliebe sonst schief). RM: keine Bewegung.
+static func schuetteln(ctl: Control) -> Tween:
+	if ctl == null or not ctl.is_inside_tree() or reduced(ctl):
+		return null
+	if ctl.has_meta(&"_uim_schuettel"):
+		var alt: Variant = ctl.get_meta(&"_uim_schuettel")
+		if alt is Tween and (alt as Tween).is_valid():
+			return null
+	var rast := ctl.position.x
+	var tween := ctl.create_tween()
+	ctl.set_meta(&"_uim_schuettel", tween)
+	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	for versatz: float in [-7.0, 6.0, -4.0, 0.0]:
+		tween.tween_property(ctl, "position:x", rast + versatz, 0.055)
+	return tween
+
+
 ## Münz-Wackler: kleiner Dreh-Impuls ±maxdeg mit federndem Ausklang.
 static func wiggle(ctl: Control, max_deg := 6.0) -> Tween:
 	if not ctl.is_inside_tree() or reduced(ctl):

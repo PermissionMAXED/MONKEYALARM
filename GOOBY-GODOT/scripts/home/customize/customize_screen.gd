@@ -21,6 +21,10 @@ const ROUTE := &"gestalten"
 const ROUTES := {ROUTE: "res://scripts/home/customize/customize_screen.tscn"}
 const HUD_ACTION := &"gestalten"
 
+## P54R/CI-Split: purer Fabrik-Code der Options-Kacheln + Farb-Swatches
+## (preload statt class_name — s. Kopfdoku der Datei zum Import-Gotcha).
+const CustomizeKacheln := preload("res://scripts/home/customize/customize_kacheln.gd")
+
 const LIST_WIDTH := 250
 const TILE_SIZE := Vector2(104, 132)
 const SWATCH_SIZE := 36
@@ -84,6 +88,9 @@ var _rechts_fade: ScrollFade
 var _raum_chips: HFlowContainer
 var _optionen: HBoxContainer
 var _optionen_scroll: ScrollContainer
+## P54R: Fade-Affordance der Options-Zeile — sie versteckte bis zu ~2800 px
+## Kacheln hinter einer harten Schnittkante ohne jeden Scroll-Hinweis.
+var _opt_fade: ScrollFade
 var _farben: HFlowContainer
 var _farben_row: HBoxContainer
 var _zahl_row: HBoxContainer
@@ -183,6 +190,8 @@ func _apply_metrics() -> void:
 		_kat_polster.add_theme_constant_override("margin_bottom", roundi(ScrollFade.KANTE * _f))
 	if _rechts_fade != null:
 		_rechts_fade.kanten_hoehe(ScrollFade.KANTE * _f)
+	if _opt_fade != null:
+		_opt_fade.kanten_hoehe(ScrollFade.KANTE * _f)
 	_optionen_scroll.custom_minimum_size = Vector2(0.0, TILE_SIZE.y * _tile_f + 18.0)
 	_kauf_button.custom_minimum_size = Vector2(150.0 * _f, _floor)
 	ScreenShell.scale_fonts(self, _f)
@@ -317,7 +326,23 @@ func buy_selected() -> String:
 		_wende_option_an(id, _pending_farbe)
 		_pending_id = ""
 	_refresh_alles()
+	_kauf_feedback(id, result)
 	return result
+
+
+## P54R Kauf-Feedback (dieselbe Grammatik wie die Garderobe): Kauf =
+## Gold-Sparkle auf der Kachel + Münz-Bounce (Geld ist sichtbar geflossen);
+## „zu teuer“ = Kopfschütteln des Kaufen-Knopfs. Läuft NACH _refresh_alles
+## — die alte Kachel ist da schon ersetzt, gefeiert wird die frische.
+func _kauf_feedback(id: String, result: String) -> void:
+	if result == HouseStyleState.RESULT_OK:
+		var kachel := _optionen.get_node_or_null("Option_%s" % id)
+		if kachel is Control:
+			UiMotion.sparkle(kachel as Control)
+		if _coins_label != null:
+			UiMotion.bounce(_coins_label)
+	elif result == HouseStyleState.RESULT_BROKE and _kauf_button != null:
+		UiMotion.schuetteln(_kauf_button)
 
 
 ## „Zufällig" für den aktuellen Bereich — nur aus gekauften Optionen.
@@ -597,7 +622,13 @@ func _build_options_panel() -> Control:
 	_optionen_scroll.name = "OptionenScroll"
 	_optionen_scroll.custom_minimum_size = Vector2(0, TILE_SIZE.y * _f + 18)
 	_optionen_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	rows.add_child(_optionen_scroll)
+	# P54R: Seiten-Fades zeigen, DASS rechts/links weitere Kacheln warten
+	# („wand“ versteckte quer 329 px, hoch ~2800 px ohne Hinweis). Die Zeile
+	# liegt in einer AcCard — Auflöse-Farbe ist deshalb die Kartenfarbe.
+	_opt_fade = ScrollFade.um(_optionen_scroll)
+	_opt_fade.name = "OptionenFade"
+	_opt_fade.farbe(AcTokens.PAPER)
+	rows.add_child(_opt_fade)
 	_optionen = HBoxContainer.new()
 	_optionen.name = "OptionenListe"
 	_optionen.add_theme_constant_override("separation", 8)
@@ -710,6 +741,11 @@ func _refresh_alles() -> void:
 	if _optionen != null and stagger_key != _stagger_key:
 		_stagger_key = stagger_key
 		UiMotion.stagger_in(_optionen.get_children(), 0.02)
+		# P54R: die AKTIVE Kachel in den sichtbaren Bereich rollen — die
+		# gewählte Option konnte sonst unsichtbar weit rechts hinter der
+		# Schnittkante liegen. NUR beim Kategorie-/Raum-Wechsel, sonst
+		# spränge die Zeile bei jedem Antippen.
+		call_deferred("_aktive_kachel_zeigen")
 	# Panel-Inhalt hat sich geändert (Farben/Zahl-Zeile) → Vorschau-Budget
 	# neu — sofort UND deferred (s. _fit_preview_nachziehen).
 	if is_inside_tree():
@@ -738,6 +774,21 @@ func _refresh_kategorien() -> void:
 		_kategorie_liste.add_child(btn)
 
 
+## Deferred (Layout-Flush): erst dann kennt der HBox die Kachel-Positionen;
+## das Nachprüf-Handwerk (0-px-Kacheln, Nachzieh-Pässe) lebt in ScrollFade.
+func _aktive_kachel_zeigen() -> void:
+	if _opt_fade != null:
+		_opt_fade.zeige(_aktive_kachel)
+
+
+func _aktive_kachel() -> Control:
+	if _optionen == null or not is_inside_tree():
+		return null
+	var ziel_id := _pending_id if _pending_id != "" else _aktuelle_id()
+	var kachel := _optionen.get_node_or_null("Option_%s" % ziel_id)
+	return kachel as Control if kachel is Control else null
+
+
 func _refresh_raum_chips() -> void:
 	_leeren(_raum_chips)
 	var innen := str(_kategorie["bereich"]) == "innen"
@@ -761,14 +812,23 @@ func _refresh_optionen() -> void:
 	_leeren(_optionen)
 	var art := str(_kategorie.get("art", ""))
 	_optionen_scroll.visible = art != ""
+	# P54R: der Fade-Wrapper folgt der Sichtbarkeit der Zeile — sonst
+	# blieben seine Kanten über der leeren Stelle stehen.
+	if _opt_fade != null:
+		_opt_fade.visible = _optionen_scroll.visible
 	if art == "":
 		return
 	var gs := _game_state()
 	var aktuelle := _aktuelle_id()
+	var schrift := int(maxf(roundf(13.0 * _tile_f), 10.0))
 	for option: Dictionary in CustomizeCatalog.optionen(art):
 		var id := str(option["id"])
 		var farbe := _kachel_farbe(art, id, aktuelle)
-		_optionen.add_child(_make_kachel(gs, art, option, id == aktuelle, farbe))
+		var kachel: Button = CustomizeKacheln.kachel(
+			gs, art, option, id == aktuelle, id == _pending_id, farbe, TILE_SIZE * _tile_f, schrift
+		)
+		kachel.pressed.connect(_on_option_pressed.bind(id))
+		_optionen.add_child(kachel)
 
 
 ## Kachel-Vorschaufarbe: aktive Option in ihrer echten Farbe, Rest neutral;
@@ -784,58 +844,16 @@ func _kachel_farbe(art: String, id: String, aktuelle: String) -> String:
 	return str(erlaubt[0])
 
 
-func _make_kachel(
-	gs: Object, art: String, option: Dictionary, aktiv: bool, farb_id: String
-) -> Button:
-	var id := str(option["id"])
-	var kachel := SquishButton.new()
-	kachel.name = "Option_%s" % id
-	kachel.custom_minimum_size = TILE_SIZE * _tile_f
-	kachel.icon = CustomizeIcons.option_preview(art, id, farb_id)
-	kachel.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	kachel.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-	# G7-Leitformat-Fix: expand_icon=true — das fixe 96-px-Icon sprengte
-	# sonst den _tile_f-Deckel (Options-Zeile fraß im flachen Querformat
-	# 221 statt ~150 px Höhe und drückte die Aktionen unter den Canvas).
-	kachel.expand_icon = true
-	# Das Theme tönt Button-Icons dunkelbraun (INK) — die Muster-Vorschau
-	# muss aber in Originalfarben erscheinen.
-	for zustand: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
-		kachel.add_theme_color_override(zustand, Color.WHITE)
-	kachel.add_theme_color_override("icon_focus_color", Color.WHITE)
-	var gekauft := HouseStyleState.ist_gekauft(gs, art, id)
-	var status := I18nService.t("customize.im_besitz")
-	if not gekauft:
-		status = I18nService.t("customize.preis", {"n": int(option.get("preis", 0))})
-	var titel := CustomizeCatalog.display_name(option, I18nService.get_locale())
-	kachel.text = "%s\n%s" % [titel, status]
-	# Kachel-Schrift folgt dem KACHEL-Deckel (_tile_f), nicht dem globalen
-	# f — sonst hebelt der Text den gedeckelten Platz wieder aus (s. o.).
-	kachel.set_meta(ScreenShell.META_FONT_SKIP, true)
-	kachel.add_theme_font_size_override("font_size", int(maxf(roundf(13.0 * _tile_f), 10.0)))
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color.WHITE if gekauft else Color("#F3EDE3")
-	box.set_corner_radius_all(AcTokens.RADIUS_ROW)
-	box.set_border_width_all(3 if aktiv or id == _pending_id else 1)
-	box.border_color = AcTokens.PINK if aktiv else AcTokens.OUTLINE_SOFT
-	if id == _pending_id:
-		box.border_color = AcTokens.GOLD
-	box.set_content_margin_all(8)
-	kachel.add_theme_stylebox_override("normal", box)
-	kachel.add_theme_stylebox_override("hover", box)
-	kachel.add_theme_stylebox_override("pressed", box)
-	kachel.add_theme_stylebox_override("focus", box)
-	kachel.pressed.connect(_on_option_pressed.bind(id))
-	return kachel
-
-
 func _refresh_farben() -> void:
 	_leeren(_farben)
 	var farben := _erlaubte_farben()
 	_farben_row.visible = not farben.is_empty()
 	var aktiv := _pending_farbe if _pending_id != "" else _aktuelle_farbe()
+	var mindest := maxf(SWATCH_SIZE * _f, _floor)
 	for farb_id: Variant in farben:
-		_farben.add_child(_make_swatch(str(farb_id), str(farb_id) == aktiv))
+		var swatch: Button = CustomizeKacheln.swatch(str(farb_id), str(farb_id) == aktiv, mindest)
+		swatch.pressed.connect(_on_farbe_pressed.bind(str(farb_id)))
+		_farben.add_child(swatch)
 
 
 func _erlaubte_farben() -> Array:
@@ -846,28 +864,6 @@ func _erlaubte_farben() -> Array:
 		return []
 	var id := _pending_id if _pending_id != "" else _aktuelle_id()
 	return CustomizeCatalog.farben(art, id)
-
-
-func _make_swatch(farb_id: String, aktiv: bool) -> Button:
-	var swatch := SquishButton.new()
-	swatch.name = "Farbe_%s" % farb_id
-	# FB3: Swatches halten den PHYSISCHEN Touch-Floor (waren 36 Design-px).
-	swatch.custom_minimum_size = Vector2.ONE * maxf(SWATCH_SIZE * _f, _floor)
-	swatch.tooltip_text = I18nService.t("customize.farbe.%s" % farb_id)
-	var box := StyleBoxFlat.new()
-	box.bg_color = CustomizeMaterials.farbe(farb_id)
-	box.set_corner_radius_all(AcTokens.RADIUS_ROW)
-	# G7: gewählter Swatch deutlich — dicker Rahmen + weicher Pink-Schein.
-	box.set_border_width_all(4 if aktiv else 1)
-	box.border_color = AcTokens.PINK if aktiv else AcTokens.OUTLINE_SOFT
-	if aktiv:
-		box.shadow_color = Color(AcTokens.PINK, 0.35)
-		box.shadow_size = 4
-	swatch.add_theme_stylebox_override("normal", box)
-	swatch.add_theme_stylebox_override("hover", box)
-	swatch.add_theme_stylebox_override("pressed", box)
-	swatch.pressed.connect(_on_farbe_pressed.bind(farb_id))
-	return swatch
 
 
 func _refresh_aktionen() -> void:

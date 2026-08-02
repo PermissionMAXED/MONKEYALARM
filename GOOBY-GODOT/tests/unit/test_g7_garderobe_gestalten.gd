@@ -246,9 +246,131 @@ func test_garderobe_kauf_flow_smoke_mit_feedback() -> void:
 	assert_true(quelle.contains("UiMotion.sparkle("), "Kauf feiert mit Sparkle (RM-Gate intern)")
 	assert_true(quelle.contains('try_play(self, "ui_error")'), "Fehl-Outcome = ui_error")
 	assert_true(quelle.contains("_kopfschuetteln("), "zu teuer schüttelt die Karte")
+	# P54R: der Münzstand reagiert sichtbar auf den Kauf mit.
+	assert_true(quelle.contains("UiMotion.bounce(_muenz_chip)"), "Garderobe: Münz-Kapsel bounct")
 	var gestalten := _source(CUSTOMIZE_SRC)
 	assert_true(gestalten.contains("UiMotion.bounce("), "Gestalten: Swatch-Mini-Pop verdrahtet")
 	assert_true(gestalten.contains("wackeln()"), "Gestalten: Zufalls-Wackler verdrahtet")
+	# P54R: Gestalten spricht dieselbe Kauf-Grammatik wie die Garderobe.
+	assert_true(gestalten.contains("UiMotion.sparkle("), "Gestalten: Kauf feiert mit Sparkle")
+	assert_true(gestalten.contains("UiMotion.schuetteln("), "Gestalten: zu teuer schüttelt")
+	assert_true(gestalten.contains("UiMotion.bounce(_coins_label)"), "Gestalten: Münz-Bounce")
+
+
+## P54R: Gestalten kauft mit vollem Feedback-Pfad (RESULT_OK) und lehnt
+## pleite sauber ab (RESULT_BROKE, kein Abzug, Vormerkung bleibt).
+func test_gestalten_kauf_flow_smoke() -> void:
+	var teuer := ""
+	for option: Dictionary in CustomizeCatalog.optionen("wand"):
+		if int(option.get("preis", 0)) > 0:
+			teuer = str(option["id"])
+			break
+	assert_false(teuer.is_empty(), "es gibt eine kaufbare Tapete zum Testen")
+	var preis := CustomizeCatalog.preis("wand", teuer)
+	var gs := _frisches_gs(preis + 50)
+	var screen := _customize(gs)
+	await wait_frames(3)
+	screen.set_kategorie("wand")
+	screen.select_option(teuer)
+	await wait_frames(1)
+	assert_eq(screen.pending_id(), teuer, "nicht gekaufte Option ist vorgemerkt")
+	assert_eq(screen.buy_selected(), HouseStyleState.RESULT_OK, "Kauf klappt")
+	assert_eq(int(gs.get_value("economy.coins", 0)), 50, "Preis exakt abgebucht")
+	await _drop(screen, gs)
+
+	var gs_pleite := _frisches_gs(0)
+	var screen_pleite := _customize(gs_pleite)
+	await wait_frames(3)
+	screen_pleite.set_kategorie("wand")
+	screen_pleite.select_option(teuer)
+	await wait_frames(1)
+	assert_eq(screen_pleite.buy_selected(), HouseStyleState.RESULT_BROKE, "pleite: kein Kauf")
+	assert_eq(int(gs_pleite.get_value("economy.coins", 0)), 0, "kein Münz-Abzug")
+	assert_eq(screen_pleite.pending_id(), teuer, "Vormerkung bleibt (nochmal sparen)")
+	await _drop(screen_pleite, gs_pleite)
+
+
+## P54R: die Options-Zeile im Gestalten-Screen trägt die Fade-Affordance —
+## sie versteckte bis zu ~2800 px Kacheln hinter einer harten Schnittkante
+## ohne jeden Scroll-Hinweis (Sonden-Befund, beide Leitformate).
+func test_gestalten_optionen_zeile_hat_scroll_affordance() -> void:
+	await _pin(HOCH_FENSTER, IPHONE_SCALE, HOCH_INSETS_PT)
+	var gs := _frisches_gs()
+	var screen := _customize(gs)
+	await wait_frames(3)
+	screen.set_kategorie("wand")
+	await wait_frames(3)
+	var fade := screen.find_child("OptionenFade", true, false) as ScrollFade
+	assert_true(fade != null, "Options-Zeile hat den ScrollFade-Affordance-Knoten")
+	var scroll := screen.find_child("OptionenScroll", true, false) as ScrollContainer
+	var hbar := scroll.get_h_scroll_bar()
+	assert_true(
+		hbar.max_value - hbar.page > 1.0,
+		"Tapeten laufen im Leitformat hoch über (sonst prüft der Test nichts)"
+	)
+	assert_true(fade.rechts_aktiv(), "am Zeilenanfang lädt die Rechts-Kante zum Scrollen ein")
+	scroll.scroll_horizontal = int(hbar.max_value)
+	await wait_frames(2)
+	assert_false(fade.rechts_aktiv(), "am Zeilenende verschwindet die Rechts-Kante")
+	await _drop(screen, gs)
+	_unpin()
+
+
+## P54R: beim Kategorie-Wechsel rollt die Zeile zur AKTIVEN Kachel — die
+## gewählte Tapete konnte sonst unsichtbar hinter der Schnittkante liegen.
+func test_gestalten_aktive_kachel_rollt_in_sicht() -> void:
+	await _pin(HOCH_FENSTER, IPHONE_SCALE, HOCH_INSETS_PT)
+	var gs := _frisches_gs(100000)
+	var optionen := CustomizeCatalog.optionen("wand")
+	var letzte := str((optionen[optionen.size() - 1] as Dictionary)["id"])
+	HouseStyleState.kaufen(gs, "wand", letzte)
+	var farbe := str(CustomizeCatalog.farben("wand", letzte)[0])
+	HouseStyleState.set_raum_flaeche(gs, "living", "wand", letzte, farbe)
+	var screen := _customize(gs)
+	await wait_frames(8)
+	var scroll := screen.find_child("OptionenScroll", true, false) as ScrollContainer
+	var kachel := screen.find_child("Option_%s" % letzte, true, false) as Control
+	assert_true(kachel != null, "aktive Kachel existiert")
+	var rect := kachel.get_global_rect()
+	var sicht := scroll.get_global_rect()
+	assert_true(
+		rect.position.x >= sicht.position.x - 0.6 and rect.end.x <= sicht.end.x + 0.6,
+		"aktive (letzte) Kachel steht voll im sichtbaren Zeilen-Ausschnitt"
+	)
+	await _drop(screen, gs)
+	_unpin()
+
+
+## P54R Text-Cut-Wache: KEIN Karten-Text der Garderobe wird mehr hart
+## abgeschnitten — der Sonden-Lauf fand 31 Karten („Katzenaugenbrille“,
+## „Schildkrötenpanzer“, …), deren Name breiter war als das clip_text-Label
+## (Leitformat hoch). Die Schrift passt sich jetzt ein.
+func test_garderobe_kartentexte_passen_in_die_kachel() -> void:
+	await _pin(HOCH_FENSTER, IPHONE_SCALE, HOCH_INSETS_PT)
+	var gs := _frisches_gs()
+	var screen := _wardrobe(gs)
+	await wait_frames(3)
+	for kategorie: String in CosmeticsCatalog.KATEGORIEN:
+		screen.call("tab_waehlen", kategorie)
+		await wait_frames(2)
+		var karten_ui: Dictionary = screen.get("_karten_ui")
+		for eintrag: Variant in karten_ui.values():
+			for key: String in ["name", "status"]:
+				var lbl := (eintrag as Dictionary).get(key) as Label
+				if lbl == null or lbl.size.x <= 1.0:
+					continue
+				var font := lbl.get_theme_font("font")
+				var groesse := lbl.get_theme_font_size("font_size")
+				var breite := font.get_string_size(lbl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, groesse)
+				assert_true(
+					breite.x <= lbl.size.x + 0.6,
+					(
+						"'%s' (%s) passt ins Label (Text %.0f px <= Label %.0f px)"
+						% [lbl.text, kategorie, breite.x, lbl.size.x]
+					)
+				)
+	await _drop(screen, gs)
+	_unpin()
 
 
 ## ---------------------------------------------------------- Leitformate
