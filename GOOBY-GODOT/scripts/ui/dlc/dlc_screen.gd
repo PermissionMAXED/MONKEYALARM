@@ -90,6 +90,13 @@ func oeffne_detail(id: String) -> PanelSheet:
 	var sheet: PanelSheet = PanelSheetScene.instantiate()
 	sheet.theme = ThemeService.theme()
 	add_child(sheet)
+	# PT-meta F6: Dim-Tap/Wisch-Schließen ließ das Detail-Sheet nur
+	# UNSICHTBAR im Baum zurück (allein die Knopf-Pfade _starte_dlc/
+	# _zum_angebot räumten auf) — jeder weitere „Ansehen“-Tap stapelte ein
+	# verstecktes Sheet obendrauf. queue_free ans closed-Signal hängen ist
+	# das Bestandsmuster (radio_geraet, rmp_hub — s. Vertragskommentar an
+	# PanelSheet.close(); doppeltes queue_free der Knopf-Pfade ist harmlos).
+	sheet.closed.connect(sheet.queue_free)
 	sheet.set_title(str(dlc.get("name", id)))
 	sheet.add_content(_detail_inhalt(sheet, dlc))
 	sheet.open()

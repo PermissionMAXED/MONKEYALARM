@@ -10,6 +10,9 @@ extends RefCounted
 ## Von der Harness gesetzt (SceneTree des laufenden Spiels).
 var harness: SceneTree
 
+## Vom Baustein `merke_knopf` gemerktes Ziel für tipp_pos-Schritte.
+var merk_knopf: Control
+
 
 ## Überschreiben: die Schrittliste des Flows.
 func schritte() -> Array[Dictionary]:
@@ -81,7 +84,51 @@ func onboarding_schritte() -> Array[Dictionary]:
 			"timeout_s": 8.0,
 			"pflicht": false,
 		},
+		# PT-META-Befund: die Random-Events (RandomEventEngine.roll_on_start)
+		# würfeln beim Boot mit — das „Karton"-Event (Gooby sitzt im Paket,
+		# EventChoice „Raus da!"/„Ok, du bist ein Möbel") ist eine modale
+		# Wahl, die Möbel-Taps im Raum blockiert (Beleg PT-meta F2, flow_radio
+		# 013_radio_antippen_FAIL.png). Wie ein Spieler: Gooby rauslassen.
+		# pflicht=false — in den meisten Läufen rollt gar kein Event.
+		{
+			"name": "stoerevent_wegtippen",
+			"aktion": "tipp_falls_da",
+			"text": "Raus da!",
+			"timeout_s": 6.0,
+			"pflicht": false,
+		},
 	]
+
+
+## Control per Node-Name suchen, über alle ScrollContainer-Vorfahren ins
+## Bild holen und für tipp_pos merken (PT-meta: Sheets scrollen — Knöpfe
+## unter der Falz liegen zwar sichtbar im Baum, ihr Mittelpunkt aber
+## außerhalb des Canvas; tipp_name würde ins Leere tippen).
+## Einsatz:  {"aktion": "tue", "funktion": merke_knopf.bind("Schliessen")}
+##           {"aktion": "tipp_pos", "pos_funktion": merk_knopf_mitte, ...}
+func merke_knopf(node_name: String) -> bool:
+	var treffer := harness.root.find_child(node_name, true, false)
+	if not (treffer is Control):
+		return false
+	return scrolle_und_merke(treffer as Control)
+
+
+func scrolle_und_merke(knopf: Control) -> bool:
+	if knopf == null:
+		return false
+	var eltern := knopf.get_parent()
+	while eltern != null:
+		if eltern is ScrollContainer:
+			(eltern as ScrollContainer).ensure_control_visible(knopf)
+		eltern = eltern.get_parent()
+	merk_knopf = knopf
+	return true
+
+
+func merk_knopf_mitte() -> Vector2:
+	if merk_knopf == null or not is_instance_valid(merk_knopf):
+		return Vector2.ZERO
+	return harness.canvas_punkt(merk_knopf)
 
 
 ## GameState-Autoload (bequemer Zugriff für merke/pruefe-Bausteine).

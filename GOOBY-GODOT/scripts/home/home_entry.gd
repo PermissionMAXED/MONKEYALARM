@@ -97,6 +97,16 @@ func _on_travel_started(_target: StringName = &"", _travel_type: int = 0) -> voi
 	if _hud != null:
 		_hud.visible = false
 	_spotlight_aus()
+	# Settings ist ein Overlay auf _ui_layer (CanvasLayer), NICHT im Router.
+	# Navigiert der Spieler AUS Settings heraus (Route `dlc` via „Alle DLCs
+	# ansehen", `transfer`, `codes`), tauscht der Router nur die Szene UNTER
+	# dem Overlay — ohne dies bliebe Settings als Deckel über der Ziel-Szene
+	# liegen und verschluckte alle Taps (PT-meta F1, flow_dlc_hub). Direkt
+	# freigeben (nicht _close_settings), damit der eben ausgeblendete HUD
+	# nicht kurz zurückblitzt — travel_finished stellt ihn korrekt her.
+	if _settings != null and is_instance_valid(_settings):
+		_settings.queue_free()
+		_settings = null
 
 
 func _on_travel_finished(target: Variant = null) -> void:

@@ -65,7 +65,14 @@ func _on_viewport_resized() -> void:
 
 
 func _baue_ui() -> void:
+	# PT-meta F4: erst remove_child, DANN queue_free (Muster
+	# _refresh_titel_liste) — sonst kollidieren die Namen der neuen
+	# Direktkinder ("Schliessen", "SenderChips", …) mit den noch einen
+	# Frame lang anwesenden Alt-Geschwistern und Godot vergibt
+	# "@SquishButton@N"-Namen: nach jedem Senderwechsel wären die Knöpfe
+	# per Name (Tests, Automation) nicht mehr auffindbar.
 	for kind in get_children():
+		remove_child(kind)
 		kind.queue_free()
 	# G4/P17 (Leitidee FB3): EINMAL Metriken ziehen — Touch-Floor +
 	# UiScale statt fester 44/48-px-Werte (physisch sonst nur ~24–26 pt).
