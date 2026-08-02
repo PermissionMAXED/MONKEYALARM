@@ -23,6 +23,13 @@ extends VBoxContainer
 ## 420er-Sheet-Fallback, der breiter als das 380er-Gerät war (gleiche
 ## Breiten-Kollision wie InstantGooby vor G4/P18, G1 ui-post §4).
 ##
+## GOOBY LOOP (Küchen-Ambience): in der KÜCHEN-Phase zeigt die App den
+## lebendigen „Blick in die Küche“ (GooberandoKueche: Koch + Dampf-Topf +
+## Marken-Tresen) mit rotierender Küchen-Zeile statt der parkenden
+## Live-Karte; der 1-s-Tick aktualisiert Countdown/Fahrer-Punkt/Zeile IN
+## PLACE (kein Voll-Rebuild — Dampf, Anims und Karte leben durch), erst
+## der Phasen-Wechsel Küche → unterwegs baut die Ansicht neu.
+##
 ## HUD-Anbindung (Orchestrator): `hud.action_pressed` mit &"igohbie" →
 ## `GooberandoApp.oeffne(szene, game_state)`.
 
@@ -45,6 +52,10 @@ const MIN_BREITE := 220.0
 const KARTE_ANTEIL := 0.7
 const KARTE_MIN := 220.0
 const KARTE_MAX := 420.0
+## „Blick in die Küche“ (Ambience-Polish): Porträt-Höhe in Design-px und
+## Rotations-Takt der Küchen-Zeile (s; der App-Tick läuft im 1-s-Takt).
+const KUECHE_HOEHE := 200.0
+const KUECHE_SPRUCH_ALLE_S := 12.0
 
 var gs: Object
 var sheet: PanelSheet
@@ -57,6 +68,13 @@ var _karte: CityMap
 var _graph: CityRoadGraph
 var _route := PackedVector3Array()
 var _route_fuer := "?"
+## Countdown-Ansicht lebt zwischen den Ticks WEITER (Ambience-Polish):
+## der 1-s-Takt aktualisiert nur diese Referenzen statt alles neu zu bauen.
+var _countdown_label: Label
+var _fahrer_overlay: FahrerKarteOverlay
+var _kuechen_spruch: Label
+var _kuechen_spruch_cd := 0.0
+var _countdown_phase := ""
 
 
 ## GOOBERANDO-Sheet öffnen (Host = beliebige Szene; eigener CanvasLayer).
@@ -144,7 +162,7 @@ func _tick() -> void:
 	var events: Array = res["events"]
 	if events.is_empty():
 		if GooberandoLogic.liefer_rest_s(res["slice"], now_ms()) > 0:
-			_render()
+			_countdown_tick(res["slice"])
 		return
 	CityState.save_gooberando_slice(gs, res["slice"])
 	for ereignis: Dictionary in events:
@@ -173,6 +191,10 @@ func _on_viewport_resized() -> void:
 
 
 func _render() -> void:
+	# Tick-Referenzen der alten Ansicht kappen (die Nodes sterben gleich).
+	_countdown_label = null
+	_fahrer_overlay = null
+	_kuechen_spruch = null
 	for kind in _box.get_children():
 		kind.queue_free()
 	if gs == null:
@@ -359,25 +381,26 @@ func _render_menue() -> void:
 	_box.add_child(zurueck)
 
 
-## Countdown + Live-Karte (W13B, Doc E §5.2): der orange Fahrer-Punkt
-## wandert deterministisch die road_graph-Route entlang. G4/P16: die Karte
-## skaliert mit der Inhaltsbreite statt Briefmarken-fix 148 px.
+## Countdown-Ansicht (W13B, Doc E §5.2 + Ambience-Polish): in der KÜCHEN-
+## Phase zeigt die App den lebendigen „Blick in die Küche“ (der Fahrer-
+## Punkt stünde eh nur parkend am Restaurant); erst ab der Abfahrt
+## übernimmt die Live-Karte mit dem wandernden orangen Fahrer-Punkt.
+## G4/P16: die Karte skaliert mit der Inhaltsbreite statt fix 148 px.
 func _render_countdown(slice: Dictionary) -> void:
 	var rest := GooberandoLogic.liefer_rest_s(slice, now_ms())
 	var route := _route_zu(str(slice["restaurantId"]))
 	var stat := GooberandoFahrerSim.status(
 		route, int(slice["bestelltAt"]), int(slice["fertigAt"]), now_ms()
 	)
-	if str(stat["phase"]) == GooberandoFahrerSim.PHASE_KUECHE:
+	_countdown_phase = str(stat["phase"])
+	if _countdown_phase == GooberandoFahrerSim.PHASE_KUECHE:
 		_label(I18nService.t("phone.gooberando.fahrer_kueche"))
 	else:
 		_label(I18nService.t("phone.gooberando.fahrer_unterwegs"))
-	_label(
-		I18nService.t("travel.gooberando.countdown").format(
-			{"min": rest / 60, "s": "%02d" % (rest % 60)}
-		)
-	)
-	if not route.is_empty():
+	_countdown_label = _label(_countdown_text(rest))
+	if _countdown_phase == GooberandoFahrerSim.PHASE_KUECHE:
+		_kuechen_blick()
+	elif not route.is_empty():
 		var kante := karten_kante()
 		var center := CenterContainer.new()
 		_box.add_child(center)
@@ -392,7 +415,77 @@ func _render_countdown(slice: Dictionary) -> void:
 		overlay.fahrer = stat["punkt"]
 		overlay.farbe = ORANGE
 		center.add_child(overlay)
+		_fahrer_overlay = overlay
 		_caption(I18nService.t("phone.gooberando.karte_hinweis"))
+
+
+## „Blick in die Küche“: GooberandoKueche-Interieur im SubViewport-Porträt
+## (Muster _liefer_gooby) + rotierende Küchen-Zeile (OrtLeben-Rotation,
+## Domain city_leben.gooberando_kueche).
+func _kuechen_blick() -> void:
+	var container := SubViewportContainer.new()
+	container.name = "KuechenBlick"
+	container.stretch = true
+	container.custom_minimum_size = Vector2(
+		0.0, roundf(KUECHE_HOEHE * UiScale.for_viewport(get_viewport()))
+	)
+	_box.add_child(container)
+	var viewport := SubViewport.new()
+	viewport.transparent_bg = true
+	container.add_child(viewport)
+	var licht := DirectionalLight3D.new()
+	licht.rotation_degrees = Vector3(-38.0, -24.0, 0.0)
+	viewport.add_child(licht)
+	viewport.add_child(GooberandoKueche.new())
+	var kamera := Camera3D.new()
+	kamera.position = Vector3(0.0, 0.85, 1.7)
+	kamera.rotation_degrees = Vector3(-8.0, 0.0, 0.0)
+	viewport.add_child(kamera)
+	var zeile := OrtLeben.naechster_spruch("gooberando_kueche")
+	if not zeile.is_empty():
+		_kuechen_spruch = _caption("„%s“" % zeile)
+		_kuechen_spruch_cd = KUECHE_SPRUCH_ALLE_S
+
+
+func _countdown_text(rest: int) -> String:
+	return I18nService.t("travel.gooberando.countdown").format(
+		{"min": rest / 60, "s": "%02d" % (rest % 60)}
+	)
+
+
+## Sekunden-Takt im Countdown OHNE Voll-Rebuild (Ambience-Polish): nur
+## Countdown-Text, Fahrer-Punkt und Küchen-Zeile ändern sich — Dampf,
+## Koch-Animation und Karte leben durch (der alte 1-s-Rebuild riss
+## Partikel und Anims jede Sekunde ab). Erst der PHASEN-Wechsel
+## (Küche → unterwegs) baut die Ansicht neu.
+func _countdown_tick(slice: Dictionary) -> void:
+	var route := _route_zu(str(slice["restaurantId"]))
+	var stat := GooberandoFahrerSim.status(
+		route, int(slice["bestelltAt"]), int(slice["fertigAt"]), now_ms()
+	)
+	var lebt := _countdown_label != null and is_instance_valid(_countdown_label)
+	if not lebt or str(stat["phase"]) != _countdown_phase:
+		_render()
+		return
+	_countdown_label.text = _countdown_text(GooberandoLogic.liefer_rest_s(slice, now_ms()))
+	if _fahrer_overlay != null and is_instance_valid(_fahrer_overlay):
+		_fahrer_overlay.fahrer = stat["punkt"]
+		_fahrer_overlay.queue_redraw()
+	_rotiere_kuechen_spruch()
+
+
+## Küchen-Zeile alle KUECHE_SPRUCH_ALLE_S weiterdrehen — die Küche „lebt“
+## auch textlich, ohne dass das Porträt neu gebaut wird.
+func _rotiere_kuechen_spruch() -> void:
+	if _kuechen_spruch == null or not is_instance_valid(_kuechen_spruch):
+		return
+	_kuechen_spruch_cd -= 1.0
+	if _kuechen_spruch_cd > 0.0:
+		return
+	_kuechen_spruch_cd = KUECHE_SPRUCH_ALLE_S
+	var zeile := OrtLeben.naechster_spruch("gooberando_kueche")
+	if not zeile.is_empty():
+		_kuechen_spruch.text = "„%s“" % zeile
 
 
 ## Kantenlänge der Live-Karte (ui-reisen MITTEL 7, pure Klemme).
@@ -463,42 +556,13 @@ func _liefer_gooby(clip := "wave") -> void:
 				mi.set_surface_override_material(i, kopie)
 	rig.add_child(OrtLeben.baue_kaeppi(ORANGE))
 	rig.play_clip(clip)
-	viewport.add_child(_papier_tuete())
+	# Geteilter Marken-Baustein: dieselbe Tüte steht auch in der Küche.
+	viewport.add_child(GooberandoKueche.baue_papier_tuete())
 	var kamera := Camera3D.new()
 	# Nah ran: Porträt-Framing — bei 2,6 m wirkt der Liefer-Gooby verloren.
 	kamera.position = Vector3(0.0, 0.75, 1.5)
 	kamera.rotation_degrees = Vector3(-6.0, 0.0, 0.0)
 	viewport.add_child(kamera)
-
-
-## Die GOOBERANDO-Papiertüte (Doc E §5-Kleinteil, Bordmittel statt Asset):
-## brauner Korpus + oranges Marken-Band, steht neben dem Fahrer.
-func _papier_tuete() -> Node3D:
-	var tuete := Node3D.new()
-	tuete.name = "PapierTuete"
-	tuete.position = Vector3(0.42, 0.0, 0.28)
-	tuete.rotation_degrees = Vector3(0.0, -18.0, 0.0)
-	var korpus := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(0.26, 0.32, 0.18)
-	var papier := StandardMaterial3D.new()
-	papier.albedo_color = Color("#D9B48A")
-	papier.roughness = 0.9
-	box.material = papier
-	korpus.mesh = box
-	korpus.position = Vector3(0.0, 0.16, 0.0)
-	tuete.add_child(korpus)
-	var band := MeshInstance3D.new()
-	var streifen := BoxMesh.new()
-	streifen.size = Vector3(0.262, 0.07, 0.182)
-	var marke := StandardMaterial3D.new()
-	marke.albedo_color = ORANGE
-	marke.roughness = 0.7
-	streifen.material = marke
-	band.mesh = streifen
-	band.position = Vector3(0.0, 0.18, 0.0)
-	tuete.add_child(band)
-	return tuete
 
 
 ## --------------------------------------------------------------- Actions
@@ -670,12 +734,13 @@ func _knopf(text: String, variation: String) -> SquishButton:
 
 ## G5/P34: Fließtexte über den PhoneShell-Baustein — der setzt die
 ## Autowrap-Startbreite (Geräte-Textbreite) VOR add_child (W3a-GOTCHA).
-func _label(text: String) -> void:
-	PhoneShell.app_label(_box, text)
+## Rückgabe = das Label (der Countdown-Tick aktualisiert Texte in place).
+func _label(text: String) -> Label:
+	return PhoneShell.app_label(_box, text)
 
 
-func _caption(text: String) -> void:
-	PhoneShell.app_label(_box, text, "CaptionLabel")
+func _caption(text: String) -> Label:
+	return PhoneShell.app_label(_box, text, "CaptionLabel")
 
 
 ## Theme-Schriften des frischen Inhalts ×f heben (PhoneShell-Baustein).

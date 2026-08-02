@@ -223,3 +223,9 @@ Parodie-Rezeptnamen bleiben im Content-Pack
 den Welle-A-`nachschub`-Block) + `dlc_goobye.alwin.*`-Block
 (Onkel-Alwin-Tagesroutine + 12 Antipp-Gags, Gag-Vertrag §6.3) — alles in
 `dlc_goobye.json`, Ownership unverändert | G5 P24 DLC-GOOBYE-B | G5
+
+>> NEUE `city_leben.sprueche.gooberando_kueche`-Liste (additiv in
+`city_leben.json` — rotierende Küchen-Zeilen unter dem „Blick in die
+Küche“-Porträt der GOOBERANDO-App in der Küchen-Phase; die übrigen
+`city_leben`-Listen bleiben bei ihren Ownern) | GOOBY LOOP
+GOOBERANDO-KUECHE | W19

@@ -276,6 +276,8 @@ func test_gooberando_restaurant_karten_und_livekarte() -> void:
 		assert_ne(karte.find_child("KartenName", true, false), null, "Name in der Karte")
 	assert_eq(karten, 3, "3 Lieferküchen als Karten")
 	# Live-Karte: Kante = clamp(Breite·0,7, 220, 420) statt Briefmarke 148.
+	# Küchen-Phase zeigt seit dem Küchen-Ambience-Polish den „Blick in die
+	# Küche“ — die Karte prüfen wir deshalb UNTERWEGS (kurz vor Ankunft).
 	(
 		gs
 		. set_value(
@@ -288,7 +290,7 @@ func test_gooberando_restaurant_karten_und_livekarte() -> void:
 			}
 		)
 	)
-	gs.clock.ms = NOW + 10000
+	gs.clock.ms = NOW + 299000
 	app._render()
 	await wait_frames(2)
 	var mini: CityMinimap = null
