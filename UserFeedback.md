@@ -245,7 +245,8 @@ _(gerade nichts offen — alle bisherigen Punkte stehen unten unter „Erledigt"
 
 Welle G7 „SPIELGEFÜHL" ist komplett gelandet (alle Pakete unten abgehakt,
 dein 1.8.-Feedback damit umgesetzt). W18 macht weiter mit den Spieler-
-Playtests, den Planner-Ideen und den restlichen G6-Paketen:
+Playtests, den Planner-Ideen und den restlichen G6-Paketen — Improve-Loop-
+Welle 5 ist gelandet (Pakete unten), der Loop läuft weiter:
 
 - [~] **Welle H: PLAYTEST ×10** — läuft: die Spieler-Agents haben ihre
       Bereiche KOMPLETT durchgespielt — Haus (Füttern/Bau/Schlaf, flow_schlaf
@@ -271,6 +272,40 @@ Playtests, den Planner-Ideen und den restlichen G6-Paketen:
 
 **Schon in W18 gelandet** (vorgezogene Warteschlangen-Pakete + Playtest-Funde):
 
+- [x] **Funkelpark-Dressing „mehr Modelle, nur stilpassend"** — die kahle
+      Park-Wiese ist jetzt ein Ort: 13 frisch kuratierte CC0-Modelle von
+      Kenney (Fantasy-Town- + Food-Kit, account-frei, Lizenz-Dateien liegen
+      im Asset-Ordner) machen aus der Naschgasse ECHTE Marktstände mit
+      Markisen und Leckereien auf den Theken, dazu Plaza-Brunnen mit
+      Bänken, 4 Laternen, Verkaufskarren, Hecken am Eingangstor und ein
+      Baumring um die Wiese; fehlt ein Kit, fällt die Szene sauber auf den
+      alten Stand zurück, und eine Dauer-Wache prüft alle Modell-Pfade UND
+      die gebaute Szene (style_gate: 699 Modelle / 0 Fehler).
+- [x] **Onboarding-Karten endlich MITTIG (PT-home F3 + F1-Rest)** — die
+      Karten hingen links der Mitte; Wurzel war NICHT das Layout, sondern
+      eine „Safe-Area", die den GANZEN Bildschirm umschließt und trotzdem
+      als Notch zählte — daraus wurden Fake-Ränder, die JEDE safe-
+      zentrierte UI nach links oben schoben (Zentrum 42,5 % statt 50 %).
+      Jetzt zählt eine Voll-Bildschirm-Safe-Area nicht mehr als Notch
+      (echte Notches bleiben unangetastet), die Welcome-Karte steht
+      pixelvermessen bei 50,0 %; dazu lässt die „Was nun?"-Karte Taps zu
+      Welt-Zielen dahinter (z. B. der Küchentür) DURCH statt sie zu
+      schlucken — ihr x bleibt immer tippbar.
+- [x] **F5b: Runner-Bäume fast schwarz** — die Nature-Kit-Modelle waren
+      metallisch gesetzt und schluckten das Licht; entmetallisiert, die
+      Bäume leuchten wieder (Playtest-Fund PT-MG-B).
+- [x] **Sprechblasen-Katalog-Sweep (P51-Verify)** — neue Dauer-Wache prüft
+      ALLE ~4290 Strings je Sprache gegen die echten Blasen-Messkontexte
+      (kein Wort ist je breiter als die Blasen-Zeile, nie wieder Abriss
+      mitten im Wort); dabei das letzte Nachruckeln mittellanger Sprüche
+      gefunden und an der Wurzel gefixt (Godot lieferte die Label-Breite
+      nach einem Font-Wechsel einen Frame zu spät); Voll-Lauf danach
+      3538 Tests / 0 rot. Details oben im P51-Verify-Nachtrag.
+- [x] **F4: Sprechblasen über der Bau-Leiste** — das Bau-Dock meldet sich
+      jetzt im Anker-Vertrag als Unten-Belegung an, Goobys Blasen (und
+      alle anderen Unten-Ausweicher) rutschen ÜBER die Dock-Oberkante
+      statt die Werkzeuge zu verdecken; bei geschlossenem Baumodus ist die
+      Reservierung wirkungslos; eigene Dauer-Wache mit Mutations-Probe.
 - [x] **DLC-Ladebildschirme (letztes G6-Paket)** — Reisen in die eigenen
       Läden tragen jetzt dedizierte Ladekarten: „Goo und Bye" und McGooby
       zeigen ihr Katalog-Coverart samt eigener Ready-Zeile und eigenem
@@ -551,7 +586,7 @@ gewandert — Welle H läuft bereits, Ball-Wurf und Warn-Sweep sind gelandet.)_
 
 | | |
 |---|---|
-| **Qualität (Stand 2.8., W18)** | Hauptsuite **3529 Tests / 0 rot** (letzter sauberer Voll-Lauf; der jüngste 3530er-Lauf hatte nur ein bekanntes fremdes In-Flight-Rot), Server-Tests **157 / 0**, UI-Audit **204 Screens / 0 Befunde** — Leitformat iPhone 17 Pro Max quer (2868×1320) |
+| **Qualität (Stand 2.8., W18)** | Hauptsuite **3538 Tests / 0 rot** (voller Preflight nach dem Sprechblasen-Sweep), Server-Tests **157 / 0**, UI-Audit **204 Screens / 0 Befunde** — Leitformat iPhone 17 Pro Max quer (2868×1320) |
 | **Playtests** | Subagents SPIELEN das Spiel wirklich (eigene Instanz, echte Taps/Wische, Screenshots): Reports unter `docs/playtests/` (PT-home, PT-ui-loops, PT-stadt, PT-minigames-a/b, PT-meta), Start per `tools/ci/run_playtest.sh alle` |
 | **Testen** | GitHub → Actions → Lauf „GOOBY Godot" → Artefakt `GOOBY-godot-unsigned-ipa` herunterladen, mit AltStore/Sideloadly installieren. Anleitung: `docs/godot-rewrite/IOS-BUILD.md` — Release-Notes werden jetzt automatisch aus den Commits generiert |
 | **Spielstand von früher** | Einstellungen → Spielstand → „Alten Spielstand übertragen"; Anleitung: `docs/godot-rewrite/SAVE-TRANSFER.md` |
