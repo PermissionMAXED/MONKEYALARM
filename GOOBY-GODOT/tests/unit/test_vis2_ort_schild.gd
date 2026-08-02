@@ -50,6 +50,64 @@ func test_alpha_blendet_ferne_schilder_aus() -> void:
 		d += 10.0
 
 
+## PT-stadt F4: fast gleiche Blickrichtung + deutlich näheres anderes
+## Schild → das fernere dämpft weich weg; das nähere gewinnt IMMER.
+func test_verdeck_daempfung_pur() -> void:
+	var voll := deg_to_rad(OrtSchild.VERDECK_WINKEL_VOLL_GRAD)
+	var frei := deg_to_rad(OrtSchild.VERDECK_WINKEL_FREI_GRAD)
+	var mitte := (voll + frei) / 2.0
+	# Direkt dahinter (Winkel 0, klar ferner): voll verdeckt.
+	assert_almost(OrtSchild.verdeck_daempfung(80.0, 30.0, 0.0), 0.0, EPS, "dahinter = weg")
+	# Winkel-Rampe: unter VOLL weg, Mitte halb, ab FREI ungestört.
+	assert_almost(OrtSchild.verdeck_daempfung(80.0, 30.0, mitte), 0.5, EPS, "Mitte = halb")
+	assert_almost(OrtSchild.verdeck_daempfung(80.0, 30.0, frei), 1.0, EPS, "ab FREI frei")
+	assert_almost(
+		OrtSchild.verdeck_daempfung(80.0, 30.0, deg_to_rad(45.0)), 1.0, EPS, "seitlich frei"
+	)
+	# Das NÄHERE Schild wird nie gedämpft — auch nicht bei Winkel 0.
+	assert_almost(OrtSchild.verdeck_daempfung(30.0, 80.0, 0.0), 1.0, EPS, "vorderstes bleibt")
+	# Etwa gleich weit (innerhalb der Nähe-Toleranz): keiner dimmt den anderen.
+	assert_almost(
+		OrtSchild.verdeck_daempfung(50.0, 50.0 - OrtSchild.VERDECK_NAEHE_M + 1.0, 0.0),
+		1.0,
+		EPS,
+		"gleich weite Nachbarn flackern nicht"
+	)
+
+
+func test_naeheres_schild_blendet_fernes_in_gleicher_sichtlinie_aus() -> void:
+	var kamera := Camera3D.new()
+	tree.root.add_child(kamera)
+	kamera.current = true
+	var nah := OrtSchild.new()
+	nah.text = "REHWEI"
+	nah.font_size = 150
+	nah.pixel_size = 0.013
+	tree.root.add_child(nah)
+	var fern := OrtSchild.new()
+	fern.text = "GOOBYTHEKE"
+	fern.font_size = 150
+	fern.pixel_size = 0.013
+	tree.root.add_child(fern)
+	await wait_frames(1)
+	# Flacher Fahr-Winkel: beide fast in einer Sichtlinie (F4-Repro).
+	nah.position = Vector3(0.0, 0.0, -40.0)
+	fern.position = Vector3(0.5, 0.0, -90.0)
+	await wait_frames(2)
+	assert_almost(nah.modulate.a, 1.0, 1e-3, "vorderstes Schild bleibt voll lesbar")
+	assert_true(fern.modulate.a < 0.05, "fernes Schild in der Sichtlinie blendet aus")
+	assert_false(fern.visible, "praktisch unsichtbar statt Buchstabensalat")
+	# Seitlich versetzt (klarer Winkel): beide wieder ungestört sichtbar.
+	fern.position = Vector3(-30.0, 0.0, -80.0)
+	await wait_frames(2)
+	assert_almost(fern.modulate.a, 1.0, 1e-3, "frei stehendes Schild kommt zurück")
+	assert_true(fern.visible)
+	nah.queue_free()
+	fern.queue_free()
+	kamera.queue_free()
+	await wait_frames(1)
+
+
 func test_schild_waechst_im_baum_mit_der_kamera_distanz() -> void:
 	var kamera := Camera3D.new()
 	tree.root.add_child(kamera)

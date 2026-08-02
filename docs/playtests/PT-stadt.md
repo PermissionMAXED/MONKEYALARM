@@ -74,12 +74,21 @@ Buchen-Knopf der Bestätigungsseite heißt jetzt `BuchenKnopf`
 oberen Scroll-Rand angeschnitten (Beleg: `pt_city_lauf3/038_ziel_glitzermeer.png`).
 Rein optisch, alles bleibt lesbar/bedienbar — an die UI-Welle.
 
-### F4 — Laden-Schilder überlappen sich in flachen Kamerawinkeln (Optik, klein)
+### F4 — Laden-Schilder überlappen sich in flachen Kamerawinkeln (Optik, klein) — GEFIXT (W19)
 
 Bei der Fahrt schieben sich die 3D-Ortsschilder benachbarter Läden
 perspektivisch übereinander (REHWEI/GOOBYTHEKE/IKEA-Schriftzüge stapeln sich,
 Beleg: `pt_city_lauf3/016_fahrt_pruefen.png`). Aus Fahrersicht kurzzeitig
-unleserlich, sortiert sich beim Näherkommen — beobachten, kein Fix nötig.
+unleserlich, sortiert sich beim Näherkommen — ursprünglich »beobachten«.
+
+**Fix (W19, `scripts/city/ui/ort_schild.gd`):** Verdeck-Dämpfung — liegt ein
+deutlich näheres Schild aus Kamerasicht fast in derselben Richtung
+(Winkel < 4° voll, bis 10° Rampe; das andere mindestens 6 m näher), blendet
+das FERNERE weich aus. Das vorderste Schild bleibt immer voll lesbar, die
+hinteren tauchen beim Näherkommen/seitlichen Versatz von selbst wieder auf
+(rein geometrisch, deterministisch — kein Flackern zweier gleich weiter
+Nachbarn). Wachen: `test_vis2_ort_schild.gd::test_verdeck_daempfung_pur` +
+`::test_naeheres_schild_blendet_fernes_in_gleicher_sichtlinie_aus`.
 
 ## Ausdrücklich KEINE Bugs (geprüft)
 

@@ -19,6 +19,21 @@ const SKALA_MAX := 4.5
 ## sehr ferne Schilder verschwinden, statt sich gegenseitig zu überlagern.
 const FADE_START := 190.0
 const FADE_ENDE := 260.0
+## PT-stadt F4: bei flachen Fahr-Winkeln schieben sich die Schilder
+## benachbarter Läden perspektivisch übereinander (REHWEI/GOOBYTHEKE/IKEA
+## stapeln zu Buchstabensalat). Liegt ein deutlich NÄHERES Schild aus
+## Kamerasicht fast in derselben Richtung, blendet das fernere weich aus —
+## das vorderste bleibt immer voll lesbar und die hinteren tauchen beim
+## Näherkommen von selbst wieder auf. Winkel zwischen den Blickrichtungen:
+## darunter voll verdeckt, darüber frei; dazwischen linear.
+const VERDECK_WINKEL_VOLL_GRAD := 4.0
+const VERDECK_WINKEL_FREI_GRAD := 10.0
+## Nur ein um mehr als diese Distanz näheres Schild dämpft — zwei etwa
+## gleich weite Nachbarn dimmen sich sonst gegenseitig (Flackern).
+const VERDECK_NAEHE_M := 6.0
+
+## Alle lebenden Schilder (für den paarweisen Verdeck-Check; ~1/Laden).
+static var _alle: Array = []
 
 ## Weiche Karten-Textur (Alpha innen voll, aussen sanft auslaufend) für die
 ## Tages-Tafel — der radiale Nacht-Glow ist tagsüber praktisch unsichtbar.
@@ -43,9 +58,31 @@ static func alpha_fuer_distanz(distanz: float) -> float:
 	return 1.0 - clampf((distanz - FADE_START) / (FADE_ENDE - FADE_START), 0.0, 1.0)
 
 
+## Verdeck-Dämpfung (PT-stadt F4) — PURE. 1 = frei, 0 = voll verdeckt.
+## `winkel_rad` = Winkel zwischen den Kamera-Blickrichtungen auf DIESES
+## und das ANDERE Schild; nur ein deutlich näheres anderes Schild dämpft
+## (das nähere gewinnt, nie umgekehrt — deterministisch, kein Flackern).
+static func verdeck_daempfung(
+	eigene_distanz: float, andere_distanz: float, winkel_rad: float
+) -> float:
+	if andere_distanz >= eigene_distanz - VERDECK_NAEHE_M:
+		return 1.0
+	var voll := deg_to_rad(VERDECK_WINKEL_VOLL_GRAD)
+	var frei := deg_to_rad(VERDECK_WINKEL_FREI_GRAD)
+	return clampf((winkel_rad - voll) / (frei - voll), 0.0, 1.0)
+
+
 func _ready() -> void:
 	_basis_pixel_size = pixel_size
 	_basis_alpha = modulate.a
+
+
+func _enter_tree() -> void:
+	_alle.append(self)
+
+
+func _exit_tree() -> void:
+	_alle.erase(self)
 
 
 ## Weiche Kontrast-Tafel hinter der Schrift (ersetzt eine vorhandene).
@@ -100,7 +137,7 @@ func _process(_delta: float) -> void:
 		return
 	var distanz := global_position.distance_to(kamera.global_position)
 	var skala := skala_fuer_distanz(distanz)
-	var alpha := alpha_fuer_distanz(distanz)
+	var alpha := alpha_fuer_distanz(distanz) * _verdeck_faktor(kamera, distanz)
 	pixel_size = _basis_pixel_size * skala
 	modulate.a = _basis_alpha * alpha
 	outline_modulate.a = alpha
@@ -109,3 +146,30 @@ func _process(_delta: float) -> void:
 		# Tafel-Material billboardet selbst (keep_scale) — Node-Scale reicht.
 		_tafel.scale = Vector3.ONE * skala
 		_tafel_material.albedo_color.a = _tafel_basis_alpha * alpha
+
+
+## Kleinster Verdeck-Faktor gegen alle näheren Schilder derselben Sicht
+## (rein geometrisch — unabhängig von deren aktuellem Fade-Zustand, damit
+## das Ergebnis nicht von der _process-Reihenfolge abhängt). ~1 Schild pro
+## Laden → der paarweise Check bleibt weit unter dem Frame-Budget.
+func _verdeck_faktor(kamera: Camera3D, eigene_distanz: float) -> float:
+	if eigene_distanz < 0.01:
+		return 1.0
+	var eigene_richtung := global_position - kamera.global_position
+	var faktor := 1.0
+	for anderes: Variant in _alle:
+		if anderes == self or not is_instance_valid(anderes):
+			continue
+		var schild := anderes as OrtSchild
+		if schild == null or not schild.is_inside_tree():
+			continue
+		if schild.get_viewport() != get_viewport():
+			continue
+		var richtung := schild.global_position - kamera.global_position
+		if richtung.length() < 0.01:
+			continue
+		var daempfung := verdeck_daempfung(
+			eigene_distanz, richtung.length(), eigene_richtung.angle_to(richtung)
+		)
+		faktor = minf(faktor, daempfung)
+	return faktor
