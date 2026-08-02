@@ -226,6 +226,40 @@ func test_funkelpark_nacht_latcht() -> void:
 	await wait_frames(1)
 
 
+func test_funkelpark_deko_und_marktstaende() -> void:
+	# W18 ASSETS-MORE: die CC0-Requisiten (Kenney Fantasy Town/Food Kit)
+	# sind eingecheckt und die Szene hängt Brunnen + echte Marktstände
+	# unter die bekannten Namen. Fehlt ein Kit, greift zwar der Primitiv-
+	# Fallback (Node »Theke«) — aber dieser Test wird ROT, damit das
+	# Asset-Loch auffällt statt still grau zu bleiben.
+	for pfad: String in Funkelpark.STALL_MODELLE.values():
+		assert_true(ResourceLoader.exists(pfad), "Stall-Modell fehlt: %s" % pfad)
+	for stall_waren: Array in Funkelpark.STALL_WAREN.values():
+		for ware: String in stall_waren:
+			assert_true(ResourceLoader.exists(ware), "Theken-Ware fehlt: %s" % ware)
+	var gs := FakeGameState.new()
+	var park: Funkelpark = Funkelpark.new()
+	park.game_state_override = gs
+	park.stunde_override = 12.0
+	tree.root.add_child(park)
+	await wait_frames(2)
+	assert_true(park.get_node_or_null("Deko/Fontaene") != null, "Plaza-Brunnen steht")
+	var gasse := park.get_node("Naschgasse")
+	for stall: Dictionary in ParkState.STALLS:
+		var stand := gasse.get_node_or_null("Stand_%s" % stall["id"])
+		assert_true(stand != null, "Stand fehlt: %s" % stall["id"])
+		assert_true(
+			stand.get_node_or_null("Stand") != null, "Marktstand-Modell fehlt: %s" % stall["id"]
+		)
+		assert_true(stand.get_node_or_null("Ware0") != null, "Theke leer: %s" % stall["id"])
+	assert_true(
+		park.get_node("Naschgasse/Stand_waffle").get_node_or_null("Markise") != null,
+		"Waffel-Stand behält seine getönte Stoff-Markise"
+	)
+	park.queue_free()
+	await wait_frames(1)
+
+
 func test_naschgasse_kauf_bucht_candy() -> void:
 	var gs := FakeGameState.new()
 	gs.state["economy"]["coins"] = 30

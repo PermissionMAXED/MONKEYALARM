@@ -36,6 +36,47 @@ const BESUCHER_FARBEN: Array[Color] = [
 	Color("#9BD7E8"), Color("#F2C14E"), Color("#B58CE4"), Color("#8FD06C")
 ]
 
+## Park-Dressing (W18 ASSETS-MORE, alles CC0 — Herkunft/Lizenzen in
+## assets/park/LIZENZ.md bzw. assets/city/LIZENZ.md). Fehlt ein Kit,
+## bleibt die Szene schlichter (Primitiv-Fallback der Stände bleibt).
+const FANTASY := "res://assets/park/fantasy-town-kit"
+const PARK_ESSEN := "res://assets/park/food-kit"
+const NATUR := "res://assets/city/natur"
+const ESSEN := "res://assets/city/essen"
+## Kenney-Fantasy-Stände sind ~1 m breit — auf Gooby-Jahrmarkt skaliert.
+const STALL_SCALE := 2.2
+## Theken-Oberkante des Stall-Modells (0,37 m im Kit) nach Skalierung.
+const STALL_THEKE_Y := 0.37 * STALL_SCALE + 0.02
+## Echte Marktstände je Naschgassen-Stand: Zuckerwolke = rote Markise,
+## Softeis = grüne Markise, Waffel = offene Theke (die gelbe Stoff-
+## Markise bleibt prozedural — so behält jeder Stand seinen Tint).
+const STALL_MODELLE := {
+	"cottonCandy": FANTASY + "/stall-red.glb",
+	"softServe": FANTASY + "/stall-green.glb",
+	"waffle": FANTASY + "/stall.glb",
+}
+## Theken-Leckereien je Stand (Kenney Food Kit, Rest aus assets/city).
+const STALL_WAREN := {
+	"cottonCandy":
+	[
+		ESSEN + "/lollypop.glb",
+		ESSEN + "/candy-bar.glb",
+		ESSEN + "/cupcake-pink.glb",
+	],
+	"softServe":
+	[
+		PARK_ESSEN + "/ice-cream-cne.glb",
+		PARK_ESSEN + "/ice-cream-cup.glb",
+		PARK_ESSEN + "/popsicle.glb",
+	],
+	"waffle":
+	[
+		PARK_ESSEN + "/waffle.glb",
+		ESSEN + "/pancakes.glb",
+		ESSEN + "/sundae.glb",
+	],
+}
+
 @export var ort_id := "funkelpark"
 ## Tests/Screenshots: feste Stunde statt Systemuhr (-1 = echte Uhr).
 @export var stunde_override := -1.0
@@ -69,6 +110,7 @@ func _ready() -> void:
 	_baue_eingang()
 	_baue_fahrgeschaefte()
 	_baue_naschgasse()
+	_baue_deko()
 	_baue_gooby()
 	_baue_besucher()
 	_baue_lichter()
@@ -366,7 +408,9 @@ func _baue_fahrgeschaefte() -> void:
 	add_child(scooter)
 
 
-## Naschgasse: drei Jahrmarkt-Stände (Theke + Markise + Schild) westlich.
+## Naschgasse: drei Jahrmarkt-Stände westlich — echte Marktstand-Modelle
+## (Kenney Fantasy Town Kit, W18) mit Leckereien auf der Theke; ohne Kit
+## bleiben die alten Primitive (Theke + Markise + Mast) als Fallback.
 func _baue_naschgasse() -> void:
 	var gasse := Node3D.new()
 	gasse.name = "Naschgasse"
@@ -375,45 +419,203 @@ func _baue_naschgasse() -> void:
 	for i in ParkState.STALLS.size():
 		var stall: Dictionary = ParkState.STALLS[i]
 		var stand := Node3D.new()
+		stand.name = "Stand_%s" % stall["id"]
 		stand.position = Vector3(float(i) * 3.4, 0.0, 0.0)
 		stand.rotation_degrees.y = 12.0
 		gasse.add_child(stand)
-		var theke := MeshInstance3D.new()
-		var theke_mesh := BoxMesh.new()
-		theke_mesh.size = Vector3(2.4, 1.1, 1.4)
-		var theke_mat := StandardMaterial3D.new()
-		theke_mat.albedo_color = FARBE_CREME
-		theke_mesh.material = theke_mat
-		theke.mesh = theke_mesh
-		theke.position = Vector3(0.0, 0.55, 0.0)
-		stand.add_child(theke)
-		var markise := MeshInstance3D.new()
-		var markise_mesh := CylinderMesh.new()
-		markise_mesh.top_radius = 0.12
-		markise_mesh.bottom_radius = 1.7
-		markise_mesh.height = 0.8
-		var markise_mat := StandardMaterial3D.new()
-		markise_mat.albedo_color = stall["tint"]
-		markise_mesh.material = markise_mat
-		markise.mesh = markise_mesh
-		markise.position = Vector3(0.0, 2.4, 0.0)
-		stand.add_child(markise)
-		var mast := MeshInstance3D.new()
-		var mast_mesh := CylinderMesh.new()
-		mast_mesh.top_radius = 0.06
-		mast_mesh.bottom_radius = 0.06
-		mast_mesh.height = 1.0
-		mast_mesh.material = theke_mat
-		mast.mesh = mast_mesh
-		mast.position = Vector3(0.0, 1.6, 0.0)
-		stand.add_child(mast)
+		var aufbau := _stand_aufbau(stand, stall)
+		_stand_waren(stand, stall, float(aufbau["theke_y"]))
 		var schild := Label3D.new()
 		schild.text = I18nService.t("park.stall.%s.name" % stall["id"])
 		schild.font_size = 96
 		schild.pixel_size = 0.01
 		schild.modulate = Color("#5B4636")
-		schild.position = Vector3(0.0, 1.25, 0.75)
+		schild.position = Vector3(0.0, 1.25, float(aufbau["schild_z"]))
 		stand.add_child(schild)
+
+
+## Stand-Korpus: Marktstand-Modell (Node »Stand«) oder Primitiv-Fallback
+## (Node »Theke«). Liefert Theken-Höhe + Schild-Abstand für den Aufrufer.
+func _stand_aufbau(stand: Node3D, stall: Dictionary) -> Dictionary:
+	var modell := _prop(
+		str(STALL_MODELLE.get(str(stall["id"]), "")), Vector3.ZERO, 0.0, STALL_SCALE, stand
+	)
+	if modell != null:
+		modell.name = "Stand"
+		if str(stall["id"]) == "waffle":
+			_stand_markise(stand, stall, STALL_THEKE_Y)
+		return {"theke_y": STALL_THEKE_Y, "schild_z": 1.35}
+	_stand_primitive(stand, stall)
+	return {"theke_y": 1.12, "schild_z": 0.75}
+
+
+## Der alte Primitiv-Stand (Theke + getönte Markise + Mast) — bleibt als
+## Fallback für fehlende Kits stehen.
+func _stand_primitive(stand: Node3D, stall: Dictionary) -> void:
+	var theke := MeshInstance3D.new()
+	theke.name = "Theke"
+	var theke_mesh := BoxMesh.new()
+	theke_mesh.size = Vector3(2.4, 1.1, 1.4)
+	var theke_mat := StandardMaterial3D.new()
+	theke_mat.albedo_color = FARBE_CREME
+	theke_mesh.material = theke_mat
+	theke.mesh = theke_mesh
+	theke.position = Vector3(0.0, 0.55, 0.0)
+	stand.add_child(theke)
+	_stand_markise(stand, stall, 1.1)
+
+
+## Getönte Stoff-Markise (Kegel) + Stützmast über Theken-Oberkante `ab_y`.
+func _stand_markise(stand: Node3D, stall: Dictionary, ab_y: float) -> void:
+	var markise := MeshInstance3D.new()
+	markise.name = "Markise"
+	var markise_mesh := CylinderMesh.new()
+	markise_mesh.top_radius = 0.12
+	markise_mesh.bottom_radius = 1.7
+	markise_mesh.height = 0.8
+	var markise_mat := StandardMaterial3D.new()
+	markise_mat.albedo_color = stall["tint"]
+	markise_mesh.material = markise_mat
+	markise.mesh = markise_mesh
+	markise.position = Vector3(0.0, ab_y + 1.3, 0.0)
+	stand.add_child(markise)
+	var mast := MeshInstance3D.new()
+	var mast_mesh := CylinderMesh.new()
+	mast_mesh.top_radius = 0.06
+	mast_mesh.bottom_radius = 0.06
+	mast_mesh.height = 1.0
+	var mast_mat := StandardMaterial3D.new()
+	mast_mat.albedo_color = FARBE_CREME
+	mast_mesh.material = mast_mat
+	mast.mesh = mast_mesh
+	mast.position = Vector3(0.0, ab_y + 0.5, 0.0)
+	stand.add_child(mast)
+
+
+## Leckereien auf die Theke stellen (deterministisch gedreht/verteilt).
+func _stand_waren(stand: Node3D, stall: Dictionary, theke_y: float) -> void:
+	var plaetze: Array[Vector3] = [
+		Vector3(-0.55, theke_y, 0.25),
+		Vector3(0.05, theke_y, -0.05),
+		Vector3(0.6, theke_y, 0.2),
+	]
+	var pfade: Array = STALL_WAREN.get(str(stall["id"]), [] as Array)
+	for i in pfade.size():
+		var ware := _prop(str(pfade[i]), plaetze[i % plaetze.size()], 40.0 * i - 25.0, 2.2, stand)
+		if ware != null:
+			ware.name = "Ware%d" % i
+
+
+## Park-Dressing (W18 ASSETS-MORE): Plaza-Brunnen, Laternen, Bänke,
+## Hecken am Eingang, ein Verkaufskarren und der Baumring um die Wiese —
+## CC0-Requisiten statt kahler Flächen. Alle Positionen liegen abseits
+## der Besucher-Wanderpunkte (_besucher_punkt: z >= 5, Brunnen bei z=2).
+func _baue_deko() -> void:
+	var deko := Node3D.new()
+	deko.name = "Deko"
+	add_child(deko)
+	var brunnen := _prop(
+		FANTASY + "/fountain-round-detail.glb", Vector3(0.0, 0.0, 2.0), 0.0, 2.4, deko
+	)
+	if brunnen != null:
+		brunnen.name = "Fontaene"
+	var laternen: Array[Vector3] = [
+		Vector3(-11.5, 0.0, 14.5),
+		Vector3(11.5, 0.0, 13.0),
+		Vector3(-11.5, 0.0, -8.0),
+		Vector3(11.5, 0.0, -8.0),
+	]
+	for punkt in laternen:
+		_prop(FANTASY + "/lantern.glb", punkt, 0.0, 1.8, deko)
+	_prop(FANTASY + "/stall-bench.glb", Vector3(-3.6, 0.0, 1.2), 115.0, 2.2, deko)
+	_prop(FANTASY + "/stall-bench.glb", Vector3(3.6, 0.0, 2.8), -65.0, 2.2, deko)
+	_prop(FANTASY + "/cart-high.glb", Vector3(13.4, 0.0, 5.6), -125.0, 2.0, deko)
+	# Hecken flankieren das Eingangstor (Front z≈17,4; Tor-Lücke x±4,7).
+	for seite: float in [-1.0, 1.0]:
+		for k in 3:
+			var hecke := _prop(
+				FANTASY + "/hedge.glb",
+				Vector3(seite * (6.2 + 2.6 * float(k)), 0.0, 17.4),
+				90.0,
+				2.6,
+				deko
+			)
+			if hecke != null:
+				hecke.name = "Hecke_%s%d" % ["W" if seite < 0.0 else "O", k]
+		_prop(
+			FANTASY + "/hedge-curved.glb",
+			Vector3(seite * 14.6, 0.0, 16.2),
+			90.0 + 90.0 * seite,
+			2.6,
+			deko
+		)
+	_baue_baumring(deko)
+
+
+## Baumring + Büsche + Blumen (Wiederverwendung assets/city/natur) —
+## rahmt die kahle Wiese, bleibt außerhalb von Weg und Fahrgeschäften.
+func _baue_baumring(deko: Node3D) -> void:
+	var baeume: Array = [
+		["tree_fat.glb", Vector3(-20.0, 0.0, -21.0), 2.4],
+		["tree_default.glb", Vector3(20.0, 0.0, -24.0), 2.2],
+		["tree_oak.glb", Vector3(-26.0, 0.0, -8.0), 2.0],
+		["tree_detailed.glb", Vector3(26.0, 0.0, -5.0), 2.2],
+		["tree_default.glb", Vector3(-24.0, 0.0, 7.0), 1.8],
+		["tree_fat.glb", Vector3(24.5, 0.0, 12.0), 2.0],
+		["tree_oak.glb", Vector3(-14.0, 0.0, -28.0), 2.2],
+		["tree_detailed.glb", Vector3(14.0, 0.0, -30.0), 2.0],
+		["tree_default.glb", Vector3(29.0, 0.0, -16.0), 2.4],
+		["tree_oak.glb", Vector3(-29.0, 0.0, -16.0), 2.1],
+	]
+	for i in baeume.size():
+		var eintrag: Array = baeume[i]
+		_prop("%s/%s" % [NATUR, eintrag[0]], eintrag[1], 36.0 * float(i), float(eintrag[2]), deko)
+	var bueschel: Array = [
+		["plant_bushLarge.glb", Vector3(-14.5, 0.0, 13.0), 1.8],
+		["plant_bush.glb", Vector3(14.5, 0.0, 11.0), 1.6],
+		["plant_bushLarge.glb", Vector3(-14.5, 0.0, -9.5), 1.6],
+		["plant_bush.glb", Vector3(14.5, 0.0, -9.5), 1.8],
+	]
+	for i in bueschel.size():
+		var busch: Array = bueschel[i]
+		_prop("%s/%s" % [NATUR, busch[0]], busch[1], 60.0 * float(i), float(busch[2]), deko)
+	var blumen: Array[String] = ["flower_purpleA.glb", "flower_redA.glb", "flower_yellowA.glb"]
+	var blumen_punkte: Array[Vector3] = [
+		Vector3(-5.4, 0.0, 16.6),
+		Vector3(5.4, 0.0, 16.6),
+		Vector3(-2.8, 0.0, 4.6),
+		Vector3(2.8, 0.0, -0.4),
+		Vector3(-13.8, 0.0, 2.0),
+		Vector3(13.8, 0.0, 0.0),
+	]
+	for i in blumen_punkte.size():
+		_prop(
+			"%s/%s" % [NATUR, blumen[i % blumen.size()]],
+			blumen_punkte[i],
+			30.0 * float(i),
+			2.4,
+			deko
+		)
+
+
+## GLB-Requisit laden (ort_scene-Muster): fehlt das Kit, kommt null
+## zurück und der Aufrufer behält seinen Primitiv-Fallback.
+func _prop(
+	pfad: String, pos: Vector3, rot_grad: float, groesse: float, eltern: Node3D = null
+) -> Node3D:
+	if pfad.is_empty() or not ResourceLoader.exists(pfad):
+		return null
+	var szene: PackedScene = load(pfad)
+	if szene == null:
+		return null
+	var node: Node3D = szene.instantiate()
+	node.position = pos
+	node.rotation_degrees.y = rot_grad
+	node.scale = Vector3.ONE * groesse
+	if eltern == null:
+		eltern = self
+	eltern.add_child(node)
+	return node
 
 
 func _baue_gooby() -> void:

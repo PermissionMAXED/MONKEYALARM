@@ -1,6 +1,6 @@
 # ASSET-SOURCES.md — zentrale Herkunfts- & Lizenz-Übersicht (3D-Modelle)
 
-Stand: W17 (Agent ASSETS-CC0, 2026-08-02). Diese Datei ist der zentrale
+Stand: W18 (Agent ASSETS-MORE, 2026-08-02). Diese Datei ist der zentrale
 Index über ALLE 3D-Modell-Quellen unter `GOOBY-GODOT/assets/` — die
 Detail-Inventare bleiben in den Ordner-Dokumenten (verlinkt). Das
 Style-Gate `tools/assets/style_gate.py` prüft gegen diese Datei
@@ -33,6 +33,7 @@ Style-Gate `tools/assets/style_gate.py` prüft gegen diese Datei
 | `assets/city/urlaub/` | Kenney **Watercraft Kit** (Web-Referenz) + **Survival Kit** + **Nature Kit** (frische kenney.nl-Downloads W17: Zelt, Feuerstelle, Wegweiser, Palmen, Boote, Bojen) | dito |
 | `assets/furniture/` | Kenney Furniture/Nature/Food/Suburb, KayKit Furniture/City/Halloween/Restaurant, itch-CC0-Packs (Aline, Tiny Treats, gfree) | [`GOOBY-GODOT/assets/furniture/LIZENZ.md`](../GOOBY-GODOT/assets/furniture/LIZENZ.md) |
 | `assets/minigames/` | Kenney Space/Food/Nature/Minigolf/Sports/Watercraft Kit, Tiny Treats, **Quaternius Ultimate Space Kit** (W17: Planet + gestrandetes Raumschiff für rocket_rescue) | [`GOOBY-GODOT/assets/minigames/LIZENZ.md`](../GOOBY-GODOT/assets/minigames/LIZENZ.md) |
+| `assets/park/` | Kenney **Fantasy Town Kit 2.0** (Marktstände, Brunnen, Hecken, Laterne, Karren) + **Food Kit 2.0** (Waffel, Softeis, Eis am Stiel) — frische kenney.nl-Downloads W18 | [`GOOBY-GODOT/assets/park/LIZENZ.md`](../GOOBY-GODOT/assets/park/LIZENZ.md) |
 | `assets/props/` | **Eigenbau** (deterministische Blender-Pipeline `GOOBY-GODOT/tools/blender/props/`) | [`GOOBY-GODOT/assets/props/LICENSE-NOTE.md`](../GOOBY-GODOT/assets/props/LICENSE-NOTE.md) |
 | `assets/ranch/` | Quaternius **Farm Animals** (CC0), Kenney-Kits, Rest Eigenbau | [`docs/godot-rewrite/RANCH-ASSETS.md`](godot-rewrite/RANCH-ASSETS.md) |
 
@@ -59,3 +60,21 @@ Bewusst NICHT ersetzt (Stil-Entscheidung, kein Versäumnis): Gooby-Hase der
 Ranch-Wildtiere, Funkelpark-Stände, Liegestuhl/Sonnenschirm/Sandburg und
 Raumstations-Erdblick — das sind absichtliche Gooby-Eigenbauten mit
 Label3D-Beschriftung bzw. Design-Doc-Vorgaben.
+
+## Kurations-Protokoll W18 (Agent ASSETS-MORE)
+
+Frisch heruntergeladen und integriert (alle CC0 1.0, account-frei über
+kenney.nl; Poly Pizza war aus dieser Umgebung nicht erreichbar — HTTP 403):
+
+| Modell | Pack / Quelle | Eingebaut in |
+|---|---|---|
+| `stall-red.glb`, `stall-green.glb`, `stall.glb`, `stall-bench.glb` | [Kenney Fantasy Town Kit 2.0](https://kenney.nl/assets/fantasy-town-kit) | Funkelpark-Naschgasse (`funkelpark.gd`) — echte Marktstände ersetzen die Box-Theken (Primitiv-Fallback bleibt); Bänke am Brunnen |
+| `fountain-round-detail.glb`, `lantern.glb`, `hedge.glb`, `hedge-curved.glb`, `cart-high.glb` | dito | Funkelpark-Plaza: Brunnen als Mittelpunkt, 4 Laternen, Hecken flankieren das Tor, Verkaufskarren an der Ostkante |
+| `waffle.glb`, `ice-cream-cne.glb`, `ice-cream-cup.glb`, `popsicle.glb` | [Kenney Food Kit 2.0](https://kenney.nl/assets/food-kit) | Naschgassen-Theken (Softeis-/Waffel-Stand); Zuckerwolken-Stand nutzt Bestands-Süßes aus `assets/city/essen` |
+
+Dazu Wiederverwendung ohne Neu-Download: Baumring/Büsche/Blumen der
+Funkelpark-Wiese kommen aus `assets/city/natur` (Kenney Nature Kit,
+bereits lizenziert). Die W17-Entscheidung »Funkelpark-Stände sind
+Eigenbau« ist damit bewusst revidiert: das Fantasy Town Kit liefert
+Marktstände im exakt passenden Stil; die Label3D-Schilder bleiben.
+Wache: `tests/unit/test_rest4_park.gd::test_funkelpark_deko_und_marktstaende`.
