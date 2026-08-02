@@ -1,0 +1,26 @@
+# Gradle
+.gradle/
+build/
+
+# Run directories (client/server/gameTestServer/data)
+runs/
+run/
+
+# Datagen cache
+src/generated/resources/.cache/
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+eclipse/
+out/
+
+# OS
+.DS_Store
