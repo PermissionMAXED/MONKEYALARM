@@ -42,17 +42,38 @@ static func track_farbe() -> Color:
 ## `spanne` = Rechteck, über das sich der Verlauf spannt (fürs Sweep-Band
 ## auch außerhalb des sichtbaren Ausschnitts `rect`).
 static func zeichne_gradient_pill(ziel: CanvasItem, rect: Rect2, spanne: Rect2) -> void:
-	var r := minf(rect.size.y / 2.0, rect.size.x / 2.0)
-	var mitte_y := rect.position.y + rect.size.y / 2.0
-	var punkte := PackedVector2Array()
-	for i in KAPPEN_SEGMENTE + 1:
-		var winkel := -PI / 2.0 + PI * float(i) / float(KAPPEN_SEGMENTE)
-		punkte.append(Vector2(rect.end.x - r + cos(winkel) * r, mitte_y + sin(winkel) * r))
-	for i in KAPPEN_SEGMENTE + 1:
-		var winkel := PI / 2.0 + PI * float(i) / float(KAPPEN_SEGMENTE)
-		punkte.append(Vector2(rect.position.x + r + cos(winkel) * r, mitte_y + sin(winkel) * r))
+	var punkte := pill_punkte(rect)
+	if punkte.size() < 3:
+		return
 	var farben := PackedColorArray()
 	for punkt in punkte:
 		var k := clampf((punkt.x - spanne.position.x) / maxf(spanne.size.x, 1.0), 0.0, 1.0)
 		farben.append(AcTokens.TEAL.lerp(HIMMEL, k))
 	ziel.draw_polygon(punkte, farben)
+
+
+## Pill-Kontur OHNE Doppelpunkte (PT-MG F3): ist der sichtbare Ausschnitt
+## SCHMALER als hoch (Sweep-Band tritt am Track-Rand ein/aus), kollabieren
+## beide Kappen auf EIN Zentrum — an der Naht entstehen dann doppelte
+## Punkte, und das Duplikat-Polygon ließ die Ear-Clipping-Triangulation in
+## canvas_item_add_polygon sporadisch scheitern („Invalid polygon data,
+## triangulation failed", je nach float32-Rundung der x-Verschiebung).
+## Konsekutive und schließende Duplikate fliegen deshalb raus; unter
+## 3 Punkten zeichnet der Aufrufer nichts.
+static func pill_punkte(rect: Rect2) -> PackedVector2Array:
+	var r := minf(rect.size.y / 2.0, rect.size.x / 2.0)
+	var mitte_y := rect.position.y + rect.size.y / 2.0
+	var roh := PackedVector2Array()
+	for i in KAPPEN_SEGMENTE + 1:
+		var winkel := -PI / 2.0 + PI * float(i) / float(KAPPEN_SEGMENTE)
+		roh.append(Vector2(rect.end.x - r + cos(winkel) * r, mitte_y + sin(winkel) * r))
+	for i in KAPPEN_SEGMENTE + 1:
+		var winkel := PI / 2.0 + PI * float(i) / float(KAPPEN_SEGMENTE)
+		roh.append(Vector2(rect.position.x + r + cos(winkel) * r, mitte_y + sin(winkel) * r))
+	var punkte := PackedVector2Array()
+	for punkt in roh:
+		if punkte.is_empty() or not punkte[punkte.size() - 1].is_equal_approx(punkt):
+			punkte.append(punkt)
+	while punkte.size() > 1 and punkte[punkte.size() - 1].is_equal_approx(punkte[0]):
+		punkte.remove_at(punkte.size() - 1)
+	return punkte

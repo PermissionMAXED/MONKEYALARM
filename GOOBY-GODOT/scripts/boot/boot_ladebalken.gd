@@ -108,13 +108,18 @@ func _moehrenkopf(spitze: Vector2, track_h: float) -> void:
 
 ## Pill (halbrunde Kappen) einfarbig — Track-Bett des Balkens.
 func _pill(rect: Rect2, farbe: Color) -> void:
-	draw_colored_polygon(_pill_punkte(rect), farbe)
+	var punkte := _pill_punkte(rect)
+	if punkte.size() < 3:
+		return
+	draw_colored_polygon(punkte, farbe)
 
 
 ## Füllung mit horizontalem MOEHRE→MOEHRE_HELL-Verlauf über die Füllbreite
 ## (Web linear-gradient(90deg, …) — Rezept wie loading_veil_balken.gd).
 func _gradient_pill(rect: Rect2) -> void:
 	var punkte := _pill_punkte(rect)
+	if punkte.size() < 3:
+		return
 	var farben := PackedColorArray()
 	for punkt in punkte:
 		var k := clampf((punkt.x - rect.position.x) / maxf(rect.size.x, 1.0), 0.0, 1.0)
@@ -122,14 +127,8 @@ func _gradient_pill(rect: Rect2) -> void:
 	draw_polygon(punkte, farben)
 
 
+## Punkt-Rezept teilt sich der Balken mit der Veil-Karte — inklusive der
+## PT-MG-F3-Härtung (keine Naht-Doppelpunkte, wenn die Kappen kollabieren;
+## Doku an LoadingVeilBalken.pill_punkte).
 static func _pill_punkte(rect: Rect2) -> PackedVector2Array:
-	var r := minf(rect.size.y / 2.0, rect.size.x / 2.0)
-	var mitte_y := rect.position.y + rect.size.y / 2.0
-	var punkte := PackedVector2Array()
-	for i in KAPPEN_SEGMENTE + 1:
-		var winkel := -PI / 2.0 + PI * float(i) / float(KAPPEN_SEGMENTE)
-		punkte.append(Vector2(rect.end.x - r + cos(winkel) * r, mitte_y + sin(winkel) * r))
-	for i in KAPPEN_SEGMENTE + 1:
-		var winkel := PI / 2.0 + PI * float(i) / float(KAPPEN_SEGMENTE)
-		punkte.append(Vector2(rect.position.x + r + cos(winkel) * r, mitte_y + sin(winkel) * r))
-	return punkte
+	return LoadingVeilBalken.pill_punkte(rect)

@@ -112,13 +112,19 @@ klar lesbar, Lauf 34 ok / 1 (nur Score-Probe).
 
 ## Befunde (Übergaben)
 
-### F3 (Fortschreibung) — „Invalid polygon data“ jetzt in 10 von 23 Läufen
+### F3 (Fortschreibung) — „Invalid polygon data“ jetzt in 10 von 23 Läufen (GEFIXT, Nachtrag)
 
 Je 1–2× pro Lauf (lanternFloat, memoryMatch ×2, pancakeTower,
 ranchParcours, ranchTonnen, rocketRescue, runner, shoppingSurf,
 veggieChop ×2, ranchZeit-Nachlauf) — häufiger als in PT-MG-A (3/19),
 wieder ohne sichtbaren Defekt in den Screenshots. Der Frame-Dump im
 Wipe-Moment (PT-MG-A-Vorschlag) lohnt sich jetzt wirklich.
+
+**GEFIXT (Nachtrag, Bugfix-Sweep):** Wurzel gefunden und behoben — der
+Indeterminate-Sweep der Veil-Karte erzeugte am Track-Rand Sliver-Pills mit
+Naht-Doppelpunkten, die die Triangulation je nach float32-Rundung der
+x-Verschiebung sprengten. Details, Fix (`LoadingVeilBalken.pill_punkte`
+dedupliziert) und Wache: PT-minigames-a.md, F3-Nachtrag.
 
 ### F4 (Fortschreibung) — Mini-Untertitel unter den HUD-Timern
 

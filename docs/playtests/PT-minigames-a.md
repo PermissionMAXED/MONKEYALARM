@@ -82,7 +82,7 @@ Nachläufe spielen alle drei Spiele wirklich.
 
 ## Befunde (Übergaben)
 
-### F2 — deliveryRush: Verfolgerkamera clippt bei Wandkontakt ins Gebäude
+### F2 — deliveryRush: Verfolgerkamera clippt bei Wandkontakt ins Gebäude (GEFIXT, Nachtrag)
 
 Lenkt man den Lieferwagen in eine Hausecke, steht die Chase-Kamera für
 ~2–4 s IN der Geometrie — Vollbild dunkelbraun/schwarz, nur HUD sichtbar,
@@ -92,7 +92,14 @@ Spieler ist kurz komplett orientierungslos. Übergabe an die
 Minigame-Welle: Kamera-Kollision/Naheclip fürs deliveryRush/cityDrive-
 Kameramuster (cityDrive im Lauf ohne Wand-Moment, dasselbe Rig).
 
-### F3 — „Invalid polygon data, triangulation failed“ in Wipe-Momenten
+**GEFIXT (Nachtrag, Bugfix-Sweep):** `chase_cam.gd` (`_3db_stage`) kürzt
+den Kamera-Boom per 2D-Slab-Test gegen dieselben Wand-Kollider, gegen die
+auch der Wagen fährt — verdrahtet in BEIDEN Rigs
+(`delivery_rush._sync_camera` + `city_drive._sync_camera`), Wache
+`tests/unit/test_3db_chase_cam.gd` (10 Tests, inkl. nachgestelltem
+F2-Moment: Kamera nie mehr in der Wand).
+
+### F3 — „Invalid polygon data, triangulation failed“ in Wipe-Momenten (GEFIXT, Nachtrag)
 
 Je 1× in 3 von 19 Erstpass-Läufen (bubblePop, cityDrive, gobnom), immer im
 Übergangs-Moment (Beenden→Arcade bzw. Force-Reveal nach Router-Timeout),
@@ -102,6 +109,24 @@ u=0…1 in drei Fenstergrößen sowie Blüten-/Blatt-Stempel ohne Befund. In
 den 5 Nachläufen trat der Fehler nicht auf. Kosmetisch (kein sichtbarer
 Defekt in den Screenshots) — beobachten; nächster Schritt wäre ein
 Frame-Dump im Wipe-Moment.
+
+**GEFIXT (Nachtrag, Bugfix-Sweep) — Wurzel per Instrumentierung gefangen:**
+alle Tap-Verdächtigen (Wipe-Clip, Stempel, Sweep-/Balken-Pill, Blasen-
+Schwanz, Stern-Reihe) bekamen eine Triangulations-Vorprobe, dann 6
+parallele Playtest-Lanes — beide Treffer zeigten auf den
+**Indeterminate-Sweep der Veil-Karte**: tritt das Sweep-Band am Track-Rand
+ein/aus, ist der sichtbare Ausschnitt SCHMALER als hoch (Repro-Rect
+13,19 × 17,78 px bei x≈482,8), beide Pill-Kappen von
+`LoadingVeilBalken.zeichne_gradient_pill` kollabieren auf EIN Zentrum, die
+Naht dupliziert Punkte, und das Duplikat-Polygon fällt je nach
+float32-Rundung der x-Verschiebung in der Ear-Clipping-Triangulation durch
+(Raster-Probe: 543 von 2352 Sliver-Pills rot — deshalb war die alte Probe
+bei Position 0,0 blind). Fix: `pill_punkte` wirft konsekutive/schließende
+Doppelpunkte raus (unter 3 Punkten wird nichts gezeichnet); der
+Boot-Möhrenbalken teilt das Rezept jetzt statt es zu kopieren. Wache:
+`test_w14_loading.gd::test_pill_punkte_sliver_ohne_doppelpunkte_trianguliert`
+(Repro-Rect + volles Sliver-Raster). Nachweis end-zu-end: dieselben 6
+Repro-Lanes nach dem Fix ohne eine einzige Fehlerzeile.
 
 ### F4 — HUD-/Hinweis-Typografie driftet zwischen den Spielen
 
@@ -113,11 +138,16 @@ beide OHNE Plate (Timer blass auf Himmel, Hinweis klein und blau,
 sehr kleiner Schrift (`…/mg_gardenRush/022_spiel_halte.png`). Kandidat für
 den P56-„Ein-Spiel-Gefühl“-Rahmen: Timer/Hinweis einmal zentral stylen.
 
-### F5 — goalieGooby: „Tor kassiert…“-Meldung fast unlesbar
+### F5 — goalieGooby: „Tor kassiert…“-Meldung fast unlesbar (GEFIXT, Nachtrag)
 
 Blassgelbe Schrift direkt auf hellem Rasen in der Feldmitte
 (`PLAYTEST/mg_goalieGooby/024_spiel_wisch.png`). Plate oder dunkler
 Kontrast-Layer würde reichen.
+
+**GEFIXT (Nachtrag, Bugfix-Sweep):** das dunkle Band unter dem Trefferflash
+deckt kräftiger (0,68 statt 0,5) und die Schrift trägt dieselbe dunkle
+Kontur wie das Jubelband (gemeinsamer Bandtext-Maler `_draw_band_text` in
+`goalie_gooby.gd`, M7-Muster).
 
 ### F6 — SceneRouter-Hard-Timeout unter Parallellast
 

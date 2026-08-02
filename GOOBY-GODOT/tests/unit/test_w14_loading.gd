@@ -213,6 +213,42 @@ func test_veil_sweep_weicht_dem_echten_balken() -> void:
 	await wait_frames(1)
 
 
+## PT-MG F3 („Invalid polygon data, triangulation failed", 10/23 Läufe):
+## tritt das Sweep-Band am Track-Rand ein/aus, ist der sichtbare Ausschnitt
+## SCHMALER als hoch — beide Pill-Kappen kollabieren auf EIN Zentrum, die
+## Naht dupliziert Punkte, und das Duplikat-Polygon fiel je nach
+## float32-Rundung der x-Verschiebung in der Ear-Clipping-Triangulation von
+## canvas_item_add_polygon durch (Repro: Sweep-Rect 13,19×17,78 bei
+## x≈482,8). Die Wache pinnt: keine Doppelpunkte, und JEDES Sliver-Pill
+## über den kritischen Breiten-/Versatz-Raster trianguliert.
+func test_pill_punkte_sliver_ohne_doppelpunkte_trianguliert() -> void:
+	# Der dokumentierte Fehler-Moment aus dem Playtest-Repro.
+	var repro := LoadingVeilBalken.pill_punkte(Rect2(482.8087, 0.0, 13.19126, 17.77778))
+	assert_true(repro.size() >= 3, "Repro-Sliver liefert ein echtes Polygon.")
+	assert_false(Geometry2D.triangulate_polygon(repro).is_empty(), "Repro-Sliver trianguliert.")
+	# Raster: Breiten unter/über der Höhe × x-Versätze (float32-Rundung).
+	var fehler := 0
+	var doppel := 0
+	var x0 := 0.0
+	while x0 <= 3000.0:
+		var breite := 0.6
+		while breite < 36.0:
+			var punkte := LoadingVeilBalken.pill_punkte(Rect2(x0, 0.0, breite, 17.77778))
+			if punkte.size() >= 3 and Geometry2D.triangulate_polygon(punkte).is_empty():
+				fehler += 1
+			for i in punkte.size():
+				if punkte[i].is_equal_approx(punkte[(i + 1) % punkte.size()]):
+					doppel += 1
+			breite += 0.37
+		x0 += 61.7
+	assert_eq(doppel, 0, "Keine konsekutiven/schließenden Doppelpunkte im Raster.")
+	assert_eq(fehler, 0, "Jedes Raster-Pill trianguliert (kein F3-Rückfall).")
+	# Boot-Balken teilt das Rezept (w == h ist dort der einzige Kappen-Kollaps).
+	var boot := BootLadebalken._pill_punkte(Rect2(0.0, 0.0, 8.0, 8.0))
+	assert_true(boot.size() >= 3, "Boot-Pill w==h bleibt ein Polygon.")
+	assert_false(Geometry2D.triangulate_polygon(boot).is_empty(), "Boot-Pill trianguliert.")
+
+
 func _tabelle_pfad(tabelle: Dictionary) -> Array:
 	var wert: Variant = tabelle.get(BootCoverScreen.SPRUECHE_KEY, [])
 	return wert if wert is Array else []

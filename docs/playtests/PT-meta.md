@@ -131,8 +131,11 @@ ist McGooby auf dem frischen Save GESPERRT — genau wie die Ranch,
 fail-closed. `flow_dlc_hub` sät darum `mcgooby.besitz.gekauft=true` in den
 Save, um zusätzlich den INSTALLIERT-Zweig samt echtem DLC-Start zu prüfen.
 
-### B3 — „Invalid polygon data, triangulation failed“
+### B3 — „Invalid polygon data, triangulation failed“ (GEFIXT, Nachtrag)
 
 Der aus PT-MG-A/B bekannte Log-Fehler tauchte auch hier vereinzelt auf
 (w3_flow_dlc_hub, Schritt `dlc_bibliothek_oeffnen`) — ohne sichtbaren
 Schaden. Übergabe an die bestehende PT-MG-A-F3-Spur (Frame-Dump lohnt).
+**Nachtrag:** Wurzel gefunden (Sliver-Pill des Veil-Sweeps mit
+Naht-Doppelpunkten) und gefixt — Details im F3-Nachtrag von
+PT-minigames-a.md.
