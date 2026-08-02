@@ -163,6 +163,43 @@ func test_codes_screen_fehlerfaelle() -> void:
 	await wait_frames(1)
 
 
+## LOOP-CODES Feedback-Politur: Erfolg färbt die Feier-Zeile über das
+## LEAF_DARK-Token und zeigt den Buff-Chip, Fehler färben DANGER (Token
+## statt Hex-Insel). Die zeitkritischen Impulse (Schütteln der Eingabe-
+## zeile, Sparkle, Pop, Chip-Hüpfer) sichert die Quellen-Wache
+## (Muster test_g4_flow: Scale-Peaks sind headless nicht abgreifbar).
+func test_codes_screen_feedback_politur() -> void:
+	var gs := FakeGameState.new()
+	var screen: CodesScreen = CodesScreen.new()
+	screen.gs_override = gs
+	screen.now_override = NOW
+	screen.auto_navigate = false
+	tree.root.add_child(screen)
+	await wait_frames(2)
+	var feedback := screen.find_child("Feedback", true, false) as Label
+	assert_true(feedback != null, "Feedback-Label existiert")
+	screen.set_input_text("gibtsnicht")
+	screen.redeem_now()
+	assert_eq(feedback.get_theme_color("font_color"), AcTokens.DANGER, "Fehler färbt DANGER-Token")
+	screen.set_input_text("update liebe")
+	assert_true(bool(screen.redeem_now()["ok"]), "Buff-Code löst ein")
+	assert_eq(
+		feedback.get_theme_color("font_color"), AcTokens.LEAF_DARK, "Erfolg färbt LEAF_DARK-Token"
+	)
+	var chip := screen.find_child("BuffChip", true, false) as Label
+	assert_true(chip != null and chip.visible, "Buff-Chip erscheint nach dem Buff-Code")
+	var src := FileAccess.get_file_as_string("res://scripts/ui/codes/codes_screen.gd")
+	assert_true(
+		src.contains("UiMotion.schuetteln(_eingabe_zeile)"), "Fehler schüttelt die Eingabezeile"
+	)
+	assert_true(src.contains("UiMotion.sparkle(_redeem_btn"), "Erfolg glitzert am Einlösen-Knopf")
+	assert_true(src.contains("UiMotion.pop_in(_feedback)"), "Erfolgszeile federt auf")
+	assert_true(src.contains("UiMotion.bounce(_buff_label)"), "frischer Buff-Chip hüpft")
+	assert_false(src.contains("#C0392B"), "keine Hex-Farbinsel mehr — nur AcTokens")
+	screen.queue_free()
+	await wait_frames(1)
+
+
 func test_codes_screen_sperre_zeigt_countdown() -> void:
 	var gs := FakeGameState.new()
 	var screen: CodesScreen = CodesScreen.new()

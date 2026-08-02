@@ -6,6 +6,12 @@ extends Control
 ## (Konfetti + Stinger + Toast), Verlauf bereits eingelöster Codes und
 ## klare deutsche Fehlermeldungen (leer/unbekannt/schon/gesperrt).
 ##
+## LOOP-CODES Feedback-Politur: Erfolg färbt die Feier-Zeile LEAF_DARK und
+## federt sie auf (pop_in) + Gold-Sparkle am Einlösen-Knopf, ein frisch
+## erscheinender Buff-Chip hüpft (bounce); Fehler schütteln die Eingabe-
+## zeile (Kopfschütteln-Grammatik wie SquishButton.nope) und färben über
+## das DANGER-Token statt einer Hex-Farbinsel. Alles Reduced-Motion-gated.
+##
 ## Effekte wendet DIESER Aufrufer im selben gs.update an (§B6):
 ## Münzen über Economy.award(reason "code"), Buff über
 ## codes.buffs.doubleCoinsUntil, Sticker über den RewardHub (Cond-Typ
@@ -33,6 +39,7 @@ var attempts: Array = []
 
 var _gs: Object = null
 var _input: LineEdit
+var _eingabe_zeile: HBoxContainer
 var _redeem_btn: Button
 var _back: Button
 var _feedback: Label
@@ -131,16 +138,16 @@ func _build_ui() -> void:
 	hinweis.text = I18nService.t("codes.hinweis")
 	hinweis.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	eingabe_karte.add_child(hinweis)
-	var eingabe_zeile := HBoxContainer.new()
-	eingabe_zeile.add_theme_constant_override("separation", 10)
-	eingabe_karte.add_child(eingabe_zeile)
+	_eingabe_zeile = HBoxContainer.new()
+	_eingabe_zeile.add_theme_constant_override("separation", 10)
+	eingabe_karte.add_child(_eingabe_zeile)
 	_input = LineEdit.new()
 	_input.name = "CodeEingabe"
 	_input.placeholder_text = I18nService.t("codes.platzhalter")
 	_input.custom_minimum_size = Vector2(0.0, 48.0)
 	_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_input.text_submitted.connect(func(_text: String) -> void: _on_redeem_pressed())
-	eingabe_zeile.add_child(_input)
+	_eingabe_zeile.add_child(_input)
 	_redeem_btn = SquishButton.new()
 	_redeem_btn.name = "Einloesen"
 	_redeem_btn.theme_type_variation = &"BtnYellow"
@@ -148,7 +155,7 @@ func _build_ui() -> void:
 	_redeem_btn.custom_minimum_size = Vector2(140.0, 48.0)
 	_redeem_btn.focus_mode = Control.FOCUS_NONE
 	_redeem_btn.pressed.connect(_on_redeem_pressed)
-	eingabe_zeile.add_child(_redeem_btn)
+	_eingabe_zeile.add_child(_redeem_btn)
 	_feedback = Label.new()
 	_feedback.name = "Feedback"
 	_feedback.theme_type_variation = &"CaptionLabel"
@@ -309,7 +316,11 @@ func _feiere(code: Dictionary) -> void:
 		if I18nService.has_key(flag_key):
 			zeilen.append(I18nService.t(flag_key))
 	_feedback.text = "  ".join(zeilen)
-	_feedback.remove_theme_color_override("font_color")
+	# LOOP-CODES: Erfolg liest sich GRÜN (Token, kein neutrales Grau) und
+	# federt auf; der Einlösen-Knopf glitzert wie der Quest-Claim.
+	_feedback.add_theme_color_override("font_color", AcTokens.LEAF_DARK)
+	UiMotion.pop_in(_feedback)
+	UiMotion.sparkle(_redeem_btn, AcTokens.GOLD)
 	_toasts.show_toast(I18nService.t("codes.erfolg.titel"))
 	# W14 (UIKERN-Vertrag): Code eingelöst = Belohnung → Doppelimpuls.
 	Haptics.success(self)
@@ -336,10 +347,12 @@ func _zeige_reason(reason: String) -> void:
 
 func _zeige_fehler(text: String) -> void:
 	_feedback.text = text
-	_feedback.add_theme_color_override("font_color", Color("#C0392B"))
+	_feedback.add_theme_color_override("font_color", AcTokens.DANGER)
 	AudioDirector.try_play(self, "ui_error")
-	# W14 (UIKERN-Vertrag): ungültiger/gesperrter Code → Warn-Impuls.
+	# W14 (UIKERN-Vertrag): ungültiger/gesperrter Code → Warn-Impuls +
+	# Kopfschütteln der Eingabezeile (Nö-Grammatik wie SquishButton.nope).
 	Haptics.warn(self)
+	UiMotion.schuetteln(_eingabe_zeile)
 
 
 ## Sperr-Countdown live anzeigen (Prozess läuft nur während der Sperre).
@@ -388,9 +401,13 @@ func _refresh_buff() -> void:
 	if _buff_label == null:
 		return
 	var rest := CodesEngine.remaining_ms(_state(), _now_ms())
+	var war_sichtbar := _buff_label.visible
 	_buff_label.visible = rest > 0
 	if rest > 0:
 		_buff_label.text = I18nService.t("codes.buff_aktiv", {"rest": _mmss(rest)})
+		if not war_sichtbar:
+			# Frisch eingelöster Buff: der Chip hüpft kurz (RM-gated).
+			UiMotion.bounce(_buff_label)
 
 
 func _code_name(id: String) -> String:
