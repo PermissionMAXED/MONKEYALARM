@@ -150,6 +150,18 @@ static func safe_insets_canvas(viewport: Viewport, override := Rect2()) -> Dicti
 	var win_size := Vector2(DisplayServer.window_get_size())
 	var win_pos := Vector2(DisplayServer.window_get_position())
 	var safe := Rect2(DisplayServer.get_display_safe_area())
+	# PT-HOME F3 („Karten links der Mitte“): deckt die Safe-Area den KOMPLETTEN
+	# Screen ab, gibt es keinen Cutout (Notch/Home-Indicator) — dann darf auch
+	# ein Fenster, das größer als der (virtuelle xvfb-)Screen ist, keine
+	# Fake-Insets rechts/unten erzeugen. Der 15-%-Deckel milderte das nur;
+	# jede safe-zentrierte UI stand damit bei ~42,5 % statt 50 %.
+	var screen := Rect2(
+		Vector2(DisplayServer.screen_get_position()), Vector2(DisplayServer.screen_get_size())
+	)
+	if not safe_area_hat_cutout(safe, screen):
+		return clamp_insets(
+			_plus_extra(HudLayoutLogic.safe_insets(canvas, Rect2(Vector2.ZERO, canvas))), canvas
+		)
 	var local := Rect2(safe.position - win_pos, safe.size).intersection(
 		Rect2(Vector2.ZERO, win_size)
 	)
@@ -165,6 +177,17 @@ static func safe_insets_canvas(viewport: Viewport, override := Rect2()) -> Dicti
 		"bottom": float(raw["bottom"]) * fy,
 	}
 	return clamp_insets(_plus_extra(scaled), canvas)
+
+
+## Hat diese Safe-Area einen ECHTEN Cutout? (pure) Eine Safe-Area, die den
+## ganzen Screen umschließt, ist notch-frei — ihre Differenz zum Fenster
+## stammt dann nur aus „Fenster größer als Screen“ (xvfb) und ist KEIN
+## Rand, den die UI meiden müsste. Unbekannte Screen-Größe (0) → im
+## Zweifel Cutout annehmen (bisheriger Pfad bleibt zuständig).
+static func safe_area_hat_cutout(safe: Rect2, screen: Rect2) -> bool:
+	if screen.size.x <= 0.0 or screen.size.y <= 0.0:
+		return true
+	return not safe.encloses(screen)
 
 
 ## Benutzer-Feinjustierung auf alle Seiten addieren (pure).

@@ -67,6 +67,29 @@ func test_clamp_insets_deckelt_kaputte_safe_area() -> void:
 	)
 
 
+func test_safe_area_ohne_cutout_zaehlt_nicht_als_notch() -> void:
+	# PT-HOME F3 („Onboarding-Karten links der Mitte“): unter xvfb ist das
+	# Fenster größer als der virtuelle Screen, get_display_safe_area()
+	# liefert den GANZEN Screen — daraus wurde ein Fake-Inset rechts/unten
+	# (15-%-Deckel → Safe-Zentrum bei ~42,5 %). Eine Safe-Area, die den
+	# kompletten Screen umschließt, ist KEIN Cutout.
+	var xvfb_screen := Rect2(0, 0, 1280, 1024)
+	assert_false(
+		UiScale.safe_area_hat_cutout(Rect2(0, 0, 1280, 1024), xvfb_screen),
+		"Safe-Area = ganzer Screen → kein Cutout"
+	)
+	# Echte Notch (iPhone quer): Safe-Area ist KLEINER als der Screen.
+	assert_true(
+		UiScale.safe_area_hat_cutout(Rect2(177, 0, 2202, 1116), Rect2(0, 0, 2556, 1179)),
+		"echte Notch bleibt Cutout"
+	)
+	# Screen-Größe unbekannt (0): im Zweifel Cutout → bisheriger Pfad.
+	assert_true(
+		UiScale.safe_area_hat_cutout(Rect2(0, 0, 1280, 1024), Rect2()),
+		"unbekannter Screen → Cutout annehmen"
+	)
+
+
 func test_safe_insets_canvas_mit_override_am_echten_viewport() -> void:
 	var host := Control.new()
 	tree.root.add_child(host)
