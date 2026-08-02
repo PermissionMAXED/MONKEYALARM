@@ -165,6 +165,51 @@ func test_baumodus_animiert_ohne_reduced_motion() -> void:
 	await wait_frames(1)
 
 
+## G7-P50-Folgefix (Audit-Rest 10_bau_dock): die Action-Bar ist in der
+## RUHELAGE (kein Ghost) unsichtbar, und die Kamera-Leiste weicht dem nach
+## oben wachsenden Dock — vorher ragten „Fertig“/Lager-Chips in die
+## 90°-Dreh-Chips (quer) bzw. „Einlagern“ in den untersten Kamera-Chip.
+func test_bau_dock_ruhelage_und_kamera_weicht() -> void:
+	var fenster_vorher: Vector2i = tree.root.size
+	UiScale.screen_scale_override = 3.0
+	await _pin(Vector2i(2556, 1179))
+	var layer := CanvasLayer.new()
+	tree.root.add_child(layer)
+	var dock := BuildUiDock.new()
+	dock.build(layer, BuildMode.EBENEN_KEYS)
+	dock.ui.visible = true
+	await wait_frames(3)
+	assert_false(dock.action_bar.visible, "Ruhelage ohne Ghost: Action-Bar unsichtbar")
+	var dock_top := dock.dock.get_global_rect().position.y
+	var kamera_ende := dock.kamera_leiste.get_global_rect().end.y
+	assert_true(
+		kamera_ende <= dock_top + OVERLAP_TOLERANZ,
+		(
+			"Kamera-Leiste endet über dem Dock (Ende %.1f vs. Dock-Oberkante %.1f)"
+			% [kamera_ende, dock_top]
+		)
+	)
+	# Ghost aufgenommen → Action-Bar sichtbar, Dock wächst nach oben — die
+	# Kamera-Leiste muss nach dem Nachziehen wieder frei sein.
+	dock.action_bar.visible = true
+	dock.kamera_nachziehen()
+	await wait_frames(3)
+	dock_top = dock.dock.get_global_rect().position.y
+	kamera_ende = dock.kamera_leiste.get_global_rect().end.y
+	assert_true(
+		kamera_ende <= dock_top + OVERLAP_TOLERANZ,
+		(
+			"Kamera-Leiste weicht auch dem gewachsenen Dock (Ende %.1f vs. %.1f)"
+			% [kamera_ende, dock_top]
+		)
+	)
+	layer.free()
+	UiScale.screen_scale_override = 0.0
+	tree.root.size = fenster_vorher
+	tree.root.size_changed.emit()
+	await wait_frames(1)
+
+
 # ── (b) Blätter/Modals ───────────────────────────────────────────────────────
 
 

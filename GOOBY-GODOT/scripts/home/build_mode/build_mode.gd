@@ -129,6 +129,10 @@ func open() -> void:
 	_build_camera.activate(_camera_rig, _room_world_size())
 	set_ebene(Ebene.BODEN)
 	set_process_unhandled_input(true)
+	# G7-P50: Ruhelage der Action-Bar erzwingen (kein Ghost → keine Bar) —
+	# beim ERSTEN Öffnen lief _update_action_bar sonst nie und alle 4
+	# Knöpfe standen sichtbar überm Lager (Audit-Befund „Knopf-Salat“).
+	_update_action_bar()
 	_refresh_drawer()
 	opened.emit()
 	_maybe_start_bed_quest()
@@ -897,7 +901,12 @@ func _platziere_save_eintrag(def: Dictionary, entry: Dictionary) -> void:
 func _update_action_bar(ok := false) -> void:
 	var has_ghost := not _ghost_state.is_empty()
 	var girlande := _girlanden != null and _girlanden.aktiv()
+	var vorher := _action_bar.visible
 	_action_bar.visible = has_ghost or girlande
+	# G7-P50: die Bar ändert die Dock-Höhe (grow BEGIN) — die Kamera-Leiste
+	# muss dem gewachsenen/geschrumpften Dock ausweichen.
+	if _action_bar.visible != vorher and _dock_ui != null:
+		_dock_ui.kamera_nachziehen()
 	# Modus-Anzeige folgt jedem Flow-Wechsel (Girlande gestartet/gespannt/
 	# abgebrochen) — der Hook sitzt hier, weil ALLE Übergänge hier landen.
 	_update_status()

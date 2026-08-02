@@ -29,7 +29,9 @@ var drawer_items: HBoxContainer
 var capacity_label: Label
 var action_bar: HFlowContainer
 var action_buttons: Array[Button] = []
-var kamera_leiste: VBoxContainer
+## G7-P50: Grid statt VBox — auf kurzen Quer-Canvases passt die 4er-Säule
+## nicht über das Dock und bricht dann auf 2×2 um (platziere_kamera).
+var kamera_leiste: GridContainer
 var kamera_buttons: Array[Button] = []
 var ebenen_leiste: HFlowContainer
 var ebenen_chips: Array[Button] = []
@@ -101,10 +103,10 @@ func apply_metrics() -> void:
 	kamera_leiste.grow_vertical = Control.GROW_DIRECTION_BOTH
 	kamera_leiste.offset_left = -rand_rechts
 	kamera_leiste.offset_right = -rand_rechts
-	kamera_leiste.offset_top = 0.0
-	kamera_leiste.offset_bottom = 0.0
-	kamera_leiste.add_theme_constant_override("separation", int(8.0 * f))
+	kamera_leiste.add_theme_constant_override("h_separation", int(8.0 * f))
+	kamera_leiste.add_theme_constant_override("v_separation", int(8.0 * f))
 	floors_und_schrift()
+	kamera_nachziehen()
 
 
 ## Touch-Floor (44 pt physisch) auf ALLE Bau-Knöpfe + Theme-Schriften ×f.
@@ -116,6 +118,54 @@ func floors_und_schrift() -> void:
 	for node in ui.find_children("*", "Button", true, false):
 		(node as Control).custom_minimum_size = Vector2(floor_px, floor_px)
 	ScreenShell.scale_fonts(ui, float(m["f"]))
+
+
+## G7-P50 (Audit-Rest „Fertig/Lager × 90°-Chips“): die Kamera-Leiste WEICHT
+## dem nach oben wachsenden Dock. Sie nimmt die KLEINSTE Spaltenzahl, deren
+## Zeilenstapel in den freien Streifen zwischen Safe-Top und Dock-Oberkante
+## passt (4er-Säule → 2×2 → 1×4-Zeile auf extrem kurzen Quer-Canvases, wo
+## das gewachsene Dock fast alles frisst). Anker sind 0.5/0.5 (grow BOTH):
+## gleiche Offsets verschieben das Zentrum; die Untergrenze bleibt über der
+## Dock-Oberkante, die Obergrenze in der Safe-Area (Safe-Area gewinnt, wenn
+## beides nicht geht).
+func platziere_kamera() -> void:
+	if m.is_empty() or ui == null or not ui.is_inside_tree():
+		return
+	var f: float = m["f"]
+	var insets: Dictionary = m["insets"]
+	var canvas: Vector2 = m["canvas"]
+	var luft := 12.0 * f
+	var dock_top: float = (
+		canvas.y - float(insets["bottom"]) - DRAWER_RAND_Y * f - dock.get_combined_minimum_size().y
+	)
+	var frei := dock_top - float(insets["top"]) - 2.0 * luft
+	var chip_h := 0.0
+	for btn in kamera_buttons:
+		chip_h = maxf(chip_h, btn.get_combined_minimum_size().y)
+	var sep := 8.0 * f
+	var anzahl := kamera_buttons.size()
+	var spalten := anzahl
+	for probe in range(1, anzahl + 1):
+		var probe_zeilen := ceili(float(anzahl) / float(probe))
+		if float(probe_zeilen) * chip_h + float(probe_zeilen - 1) * sep <= frei:
+			spalten = probe
+			break
+	kamera_leiste.columns = spalten
+	var zeilen := ceili(float(anzahl) / float(spalten))
+	var kamera_h := float(zeilen) * chip_h + float(zeilen - 1) * sep
+	var mitte_max := dock_top - luft - kamera_h / 2.0
+	var mitte_min := float(insets["top"]) + luft + kamera_h / 2.0
+	var ziel := maxf(minf(canvas.y / 2.0, mitte_max), mitte_min)
+	kamera_leiste.offset_top = ziel - canvas.y / 2.0
+	kamera_leiste.offset_bottom = ziel - canvas.y / 2.0
+
+
+## Kamera-Platzierung sofort UND im Folge-Frame: frische Font-Overrides
+## (scale_fonts) propagieren DEFERRED — die Minima des Docks settlen erst
+## einen Frame später (Muster ikea_screen._layout_header_nachziehen).
+func kamera_nachziehen() -> void:
+	platziere_kamera()
+	platziere_kamera.call_deferred()
 
 
 ## Aktiver Ebenen-Chip trägt die ChipLeaf-Variation (disabled-Grau las sich
@@ -148,6 +198,10 @@ func _build_action_bar() -> void:
 	action_bar.name = "ActionBar"
 	action_bar.alignment = FlowContainer.ALIGNMENT_CENTER
 	action_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# G7-P50 (Audit-Rest „Einlagern × 90°-Chip“): Ruhelage OHNE Ghost — die
+	# Bar wurde sonst beim ERSTEN Öffnen mit allen 4 Knöpfen sichtbar
+	# (BuildMode._update_action_bar lief erst ab dem ersten Ghost-Ereignis).
+	action_bar.visible = false
 	action_bar.add_theme_constant_override("h_separation", 10)
 	action_bar.add_theme_constant_override("v_separation", 8)
 	dock.add_child(action_bar)
@@ -198,13 +252,15 @@ func _build_ebenen_leiste(ebenen_keys: Array[String]) -> void:
 ## Kamera-Knöpfe (FIX-3): Draufsicht/Schrägsicht + 2×90°-Drehung, rechts am
 ## Rand — weit weg von Dock und Action-Bar. Offsets setzt der Metrik-Pass.
 func _build_kamera_leiste() -> void:
-	kamera_leiste = VBoxContainer.new()
+	kamera_leiste = GridContainer.new()
 	kamera_leiste.name = "KameraLeiste"
+	kamera_leiste.columns = 1
 	kamera_leiste.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
 	kamera_leiste.grow_vertical = Control.GROW_DIRECTION_BOTH
 	kamera_leiste.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	kamera_leiste.position.x -= DRAWER_RAND_X
-	kamera_leiste.add_theme_constant_override("separation", 8)
+	kamera_leiste.add_theme_constant_override("h_separation", 8)
+	kamera_leiste.add_theme_constant_override("v_separation", 8)
 	ui.add_child(kamera_leiste)
 	kamera_buttons = []
 	for key: String in [
