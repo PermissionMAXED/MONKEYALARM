@@ -1,7 +1,9 @@
 extends TestCase
 ## FIX-5 „Leben" — Verkehr: Ampel-Phasen (N/S vs. O/W mit Alles-Rot-Puffer),
 ## Autos halten an roten Ampeln und hinter dem Vordermann, biegen an den
-## Loop-Ecken ab, nachts fährt weniger und die Ampeln blinken gelb.
+## Loop-Ecken ab (und bremsen davor auf Kurventempo, Nase dreht weich ein),
+## nachts fährt weniger und die Ampeln blinken gelb. Dazu die Fußgänger-
+## Varianz: Tempo-Mix Trödler/Schlenderer/Eilige + zehn Fell-Töne.
 
 
 func _test_wagen(karte: CityMap) -> Dictionary:
@@ -79,6 +81,56 @@ func test_auto_haelt_hinter_dem_vordermann() -> void:
 	for _i in 240:
 		CityVerkehr.schritt(wagen, 1.0 / 60.0, 0.0, karte, {}, INF)
 	assert_true(float(wagen["tempo"]) > 5.0, "freie Bahn ⇒ Reisetempo")
+
+
+func test_auto_bremst_vor_der_kurve_und_zieht_danach_wieder_an() -> void:
+	# Synthetischer Quadrat-Loop (Kanten 40 m): erste Ecke bei s=40
+	# (Richtungswechsel Ost→Süd) — Geometrie wie die Karten-Loops.
+	var punkte := PackedVector3Array(
+		[Vector3(0, 0, 0), Vector3(40, 0, 0), Vector3(40, 0, 40), Vector3(0, 0, 40)]
+	)
+	var wagen := {"punkte": punkte, "s": 10.0, "tempo": CityCarFeel.TRAFFIC_SPEED, "laenge": 160.0}
+	assert_false(CityVerkehr.kurve_voraus(wagen), "mitten auf der Geraden: keine Kurve in Sicht")
+	var vor_ecke := 40.0 - CityVerkehr.KURVEN_BLICK_M + 1.0
+	wagen["s"] = vor_ecke
+	assert_true(CityVerkehr.kurve_voraus(wagen), "kurz vor der Ecke: Kurve in Sicht")
+	var karte := CityMap.laden()
+	# Vor der Ecke festgehalten simulieren: das Zieltempo ist Kurventempo.
+	for _i in 90:
+		CityVerkehr.schritt(wagen, 1.0 / 60.0, 0.0, karte, {}, INF)
+		wagen["s"] = vor_ecke
+	assert_almost(
+		float(wagen["tempo"]), CityVerkehr.KURVEN_TEMPO, 0.05, "rollt im Kurventempo an die Ecke"
+	)
+	assert_true(
+		CityVerkehr.KURVEN_TEMPO < CityCarFeel.TRAFFIC_SPEED, "Kurventempo liegt unter Reisetempo"
+	)
+	# Hinter der Ecke ist die Bahn wieder gerade → er zieht auf Reisetempo an.
+	wagen["s"] = 45.0
+	assert_false(CityVerkehr.kurve_voraus(wagen), "hinter der Ecke ist frei")
+	for _i in 120:
+		CityVerkehr.schritt(wagen, 1.0 / 60.0, 0.0, karte, {}, INF)
+	assert_almost(
+		float(wagen["tempo"]), CityCarFeel.TRAFFIC_SPEED, 0.05, "nach der Ecke wieder Reisetempo"
+	)
+	# Stopp schlägt Kurve: Zieltempo 0 (Vordermann/Rot) gewinnt gegen Kurventempo.
+	wagen["s"] = vor_ecke
+	for _i in 120:
+		CityVerkehr.schritt(wagen, 1.0 / 60.0, 0.0, karte, {}, CityVerkehr.MIN_ABSTAND_M - 2.0)
+		wagen["s"] = vor_ecke
+	assert_almost(float(wagen["tempo"]), 0.0, 0.01, "dichter Vordermann gewinnt gegen die Kurve")
+
+
+func test_heading_glaettet_ecken_und_nimmt_den_kurzen_weg() -> void:
+	var ein_frame := CityVerkehr.heading_glaetten(0.0, PI / 2.0, 1.0 / 60.0)
+	assert_true(ein_frame > 0.0 and ein_frame < PI / 2.0, "ein Frame dreht nur ein Stück ein")
+	var heading := 0.0
+	for _i in 120:
+		heading = CityVerkehr.heading_glaetten(heading, PI / 2.0, 1.0 / 60.0)
+	assert_almost(heading, PI / 2.0, 0.01, "nach 2 s ist die Nase eingedreht")
+	# Über die ±PI-Naht wird der kurze Weg genommen (kein 350°-Schlenker).
+	var wrap := CityVerkehr.heading_glaetten(PI - 0.1, -PI + 0.1, 1.0 / 60.0)
+	assert_true(wrap > PI - 0.1, "über die Naht dreht er vorwärts weiter statt zurück")
 
 
 func test_loops_biegen_ab() -> void:

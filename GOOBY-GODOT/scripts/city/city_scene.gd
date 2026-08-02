@@ -172,13 +172,20 @@ func _baue_verkehr() -> void:
 			_bau.faerbe(wagen, Color(VERKEHR_TINTS[(i / 2) % VERKEHR_TINTS.size()]), 0.45)
 		if _licht_profil["lichter_an"]:
 			_bau.haenge_autolichter(wagen)
+		var start_s := float(i) * 47.0 + float(i % loop_punkte.size()) * 23.0
+		# Start-Pose sofort setzen: das weiche Eindrehen (heading_glaetten)
+		# soll nur Ecken glätten, nicht den Spawn sichtbar einschwenken.
+		var start := CityRoadGraph.punkt_bei_laenge(punkte, start_s, true)
+		wagen.position = start["punkt"]
+		var start_richtung: Vector3 = start["richtung"]
+		wagen.rotation.y = atan2(start_richtung.x, start_richtung.z)
 		(
 			_verkehr
 			. append(
 				{
 					"node": wagen,
 					"punkte": punkte,
-					"s": float(i) * 47.0 + float(i % loop_punkte.size()) * 23.0,
+					"s": start_s,
 					"tempo": CityCarFeel.TRAFFIC_SPEED,
 					"laenge": CityRoadGraph.polyline_laenge(punkte, true),
 				}
@@ -325,7 +332,10 @@ func _update_verkehr(delta: float) -> void:
 		var node: Node3D = eintrag["node"]
 		node.position = bei["punkt"]
 		var richtung: Vector3 = bei["richtung"]
-		node.rotation.y = atan2(richtung.x, richtung.z)
+		# Nase weich eindrehen statt an der Loop-Ecke um 90° zu springen.
+		node.rotation.y = CityVerkehr.heading_glaetten(
+			node.rotation.y, atan2(richtung.x, richtung.z), delta
+		)
 	_pruefe_near_miss(delta)
 
 

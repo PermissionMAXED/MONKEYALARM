@@ -2,9 +2,11 @@ class_name CityVerkehr
 extends RefCounted
 ## Ambient-Verkehr der Stadt (FIX-5 „Leben"): PURE + headless-testbar —
 ## Ampel-Phasen an den Kreuzungen, das Anfahren/Bremsen der Loop-Autos
-## (halten bei Rot UND hinter dem Vordermann) und die Tageszeit-Menge
-## (nachts deutlich weniger Verkehr; nachts blinken die Ampeln gelb und
-## regeln nicht). CityScene hängt nur die Meshes ein und ruft `schritt()`.
+## (halten bei Rot UND hinter dem Vordermann, rollen im Kurventempo in die
+## 90°-Ecken und ziehen danach wieder an) und die Tageszeit-Menge (nachts
+## deutlich weniger Verkehr; nachts blinken die Ampeln gelb und regeln
+## nicht). CityScene hängt nur die Meshes ein, ruft `schritt()` und dreht
+## die Nase über `heading_glaetten()` weich ein (kein 90°-Sprung).
 
 ## Ampel-Umlauf: erste Hälfte Nord/Süd grün, zweite Ost/West — mit
 ## Alles-Rot-Puffer am Ende jeder Phase (niemand fährt in die Räumzeit).
@@ -18,6 +20,16 @@ const ACCEL := 4.0
 const DECEL := 10.0
 ## Mindest-Bogenabstand zum Vordermann auf derselben Schleife (m).
 const MIN_ABSTAND_M := 8.0
+
+## Kurven-Blick: so weit voraus prüft ein Auto, ob die Schleife abknickt (m) …
+const KURVEN_BLICK_M := 6.0
+## … so langsam rollt es dann durch die Ecke (m/s, deutlich unter Reisetempo) …
+const KURVEN_TEMPO := 3.2
+## … und ab diesem Richtungs-Dot gilt „voraus ist eine Kurve" (die Loops
+## haben nur 90°-Knicke, Dot 0 — die Schwelle lässt Mess-Rauschen zu).
+const KURVEN_DOT := 0.7
+## Eindreh-Rate der Fahrzeug-Nase (1/s) für `heading_glaetten`.
+const DREH_RATE := 6.0
 
 ## Verkehrsmenge nach Tageszeit (Autos gesamt, über die Loops verteilt).
 const TAG_AUTOS := 9
@@ -102,9 +114,30 @@ static func rot_voraus(wagen: Dictionary, zeit: float, karte: CityMap, ampeln: D
 	return not bool(zustand["ew_gruen"] if ew else zustand["ns_gruen"])
 
 
-## Ein Fahr-Schritt eines Loop-Autos: Zieltempo aus Ampel + Vordermann,
-## sanft integriert. `vordermann_m` = Bogenabstand zum nächsten Auto voraus
-## (INF, wenn frei). Mutiert `wagen` ({s, tempo}), PURE sonst.
+## Knickt die Schleife kurz vor dem Wagen ab (90°-Ecke)? Dann bremst er
+## rechtzeitig auf Kurventempo statt mit Reisetempo hineinzuspringen —
+## hinter der Ecke zeigt der Blick wieder geradeaus und er zieht an.
+static func kurve_voraus(wagen: Dictionary) -> bool:
+	var punkte: PackedVector3Array = wagen["punkte"]
+	var s := float(wagen["s"])
+	var hier: Vector3 = CityRoadGraph.punkt_bei_laenge(punkte, s, true)["richtung"]
+	var voraus: Vector3 = (
+		CityRoadGraph.punkt_bei_laenge(punkte, s + KURVEN_BLICK_M, true)["richtung"]
+	)
+	return hier.dot(voraus) < KURVEN_DOT
+
+
+## Weiches Eindrehen der Fahrzeug-Nase (rad): exponentiell Richtung Ziel,
+## über die ±PI-Naht immer den kurzen Weg — an den Loop-Ecken dreht der
+## Wagen sichtbar ein, statt um 90° zu springen. PURE.
+static func heading_glaetten(aktuell: float, ziel: float, dt: float) -> float:
+	return lerp_angle(aktuell, ziel, 1.0 - exp(-DREH_RATE * dt))
+
+
+## Ein Fahr-Schritt eines Loop-Autos: Zieltempo aus Ampel + Vordermann +
+## Kurve voraus, sanft integriert. `vordermann_m` = Bogenabstand zum
+## nächsten Auto voraus (INF, wenn frei). Mutiert `wagen` ({s, tempo}),
+## PURE sonst.
 static func schritt(
 	wagen: Dictionary,
 	dt: float,
@@ -114,6 +147,8 @@ static func schritt(
 	vordermann_m: float
 ) -> void:
 	var ziel := CityCarFeel.TRAFFIC_SPEED
+	if kurve_voraus(wagen):
+		ziel = KURVEN_TEMPO
 	if vordermann_m < MIN_ABSTAND_M or rot_voraus(wagen, zeit, karte, ampeln):
 		ziel = 0.0
 	var tempo := float(wagen.get("tempo", 0.0))
