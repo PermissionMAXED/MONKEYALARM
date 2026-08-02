@@ -89,6 +89,27 @@ func test_pure_helfer() -> void:
 	assert_eq(StickerCatalog.by_id(items, "gibtEsNicht"), {}, "unbekannte Id → {}")
 
 
+## RARITY-POLISH: Rang-Mapping + stabile Album-Sortierung (häufig zuerst,
+## geheim zuletzt; gleiche Rarity behält die Katalog-Reihenfolge).
+func test_rarity_sortierung() -> void:
+	assert_eq(StickerCatalog.rarity_rank("haeufig"), 0, "haeufig = Rang 0")
+	assert_eq(StickerCatalog.rarity_rank("selten"), 1, "selten = Rang 1")
+	assert_eq(StickerCatalog.rarity_rank("episch"), 2, "episch = Rang 2")
+	assert_eq(StickerCatalog.rarity_rank("geheim"), 3, "geheim = Rang 3")
+	assert_eq(StickerCatalog.rarity_rank("quatsch"), 0, "unbekannt fällt auf häufig zurück")
+	var page := [
+		{"id": "gold", "rarity": "episch"},
+		{"id": "a", "rarity": "haeufig"},
+		{"id": "mystery", "rarity": "geheim"},
+		{"id": "b", "rarity": "haeufig"},
+		{"id": "silber", "rarity": "selten"},
+	]
+	var ids: Array = []
+	for def: Dictionary in StickerCatalog.sort_for_album(page):
+		ids.append(def["id"])
+	assert_eq(ids, ["a", "b", "silber", "gold", "mystery"], "aufsteigend + stabil (a vor b)")
+
+
 func test_de_en_paritaet_album_domain() -> void:
 	I18nService.reset_cache()
 	var de := I18nService.table("de")

@@ -110,6 +110,10 @@ func _ready() -> void:
 	_catalog = catalog_override if not catalog_override.is_empty() else StickerCatalog.all()
 	_pages = pages_override if not pages_override.is_empty() else StickerCatalog.pages()
 	_by_page = StickerCatalog.by_page(_catalog)
+	# RARITY-POLISH: jede Seite zeigt ihre Sticker Rarity-aufsteigend (häufig
+	# zuerst, geheim zuletzt) — stabil innerhalb gleicher Rarity.
+	for page_id: String in _by_page:
+		_by_page[page_id] = StickerCatalog.sort_for_album(_by_page[page_id])
 	if not _pages.is_empty():
 		_current_page = str(_pages[0].get("id", ""))
 	_build_ui()
@@ -665,13 +669,23 @@ func _build_card_art(def: Dictionary, unlocked: bool, tint: Color) -> Control:
 
 func _build_name_band(def: Dictionary, unlocked: bool) -> Control:
 	var band := PanelContainer.new()
+	band.name = "NameBand"
 	band.theme_type_variation = &"StatusCapsule"
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var band_style := StyleBoxFlat.new()
 	band_style.bg_color = AcTokens.PAPER
 	band_style.set_corner_radius_all(AcTokens.RADIUS_ROW)
-	band_style.border_color = RARITY_BORDER.get(str(def.get("rarity", "haeufig")), AcTokens.WHITE)
-	band_style.set_border_width_all(3)
+	# RARITY-POLISH (H §3.4 leak-frei, wie beim Gold-Schimmer): NUR
+	# freigeschaltete Karten tragen den Rarity-Rand — vorher verriet der
+	# farbige Rand die Rarity des noch geheimen Mystery-Slots. Häufig bleibt
+	# dezent (2 px), Selten/Episch/Geheim betonen mit 3 px.
+	var rarity := str(def.get("rarity", "haeufig"))
+	if unlocked:
+		band_style.border_color = RARITY_BORDER.get(rarity, AcTokens.WHITE)
+		band_style.set_border_width_all(2 if rarity == "haeufig" else 3)
+	else:
+		band_style.border_color = AcTokens.WHITE
+		band_style.set_border_width_all(2)
 	band_style.set_content_margin_all(6.0)
 	band.add_theme_stylebox_override("panel", band_style)
 	var label := Label.new()
@@ -687,6 +701,32 @@ func _build_name_band(def: Dictionary, unlocked: bool) -> Control:
 	return band
 
 
+## Farbige Rarity-Kapsel fürs Detail-Sheet (RARITY-POLISH): Rand + sanfte
+## Füllung in der Rarity-Farbe des Karten-Rands, Text aus album.rarity_*.
+## HBox-Hülle = Kapsel in natürlicher Breite statt volle Sheet-Breite.
+func _build_rarity_chip(rarity: String) -> Control:
+	var wrap := HBoxContainer.new()
+	var chip := PanelContainer.new()
+	chip.name = "RarityChip"
+	var border: Color = RARITY_BORDER.get(rarity, AcTokens.WHITE)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(border, 0.3)
+	style.border_color = border
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(AcTokens.RADIUS_ROW)
+	style.set_content_margin_all(5.0)
+	style.content_margin_left = 12.0
+	style.content_margin_right = 12.0
+	chip.add_theme_stylebox_override("panel", style)
+	var label := Label.new()
+	label.text = I18nService.t("album.rarity_%s" % rarity)
+	label.add_theme_color_override("font_color", AcTokens.INK)
+	_scale_font(label, 13)
+	chip.add_child(label)
+	wrap.add_child(chip)
+	return wrap
+
+
 func _on_sticker_tapped(def: Dictionary) -> void:
 	var id := str(def.get("id", ""))
 	var unlocked := _is_unlocked(id)
@@ -698,12 +738,9 @@ func _on_sticker_tapped(def: Dictionary) -> void:
 			art.custom_minimum_size = Vector2(0, 220.0 * _f)
 			body.add_child(art)
 	if unlocked:
-		# W13B/STICKER: Rarity-Begriff im Detail-Sheet (strings album.rarity_*).
-		var rarity_label := Label.new()
-		rarity_label.text = I18nService.t("album.rarity_%s" % str(def.get("rarity", "haeufig")))
-		rarity_label.theme_type_variation = &"SoftLabel"
-		_scale_font(rarity_label, 13)
-		body.add_child(rarity_label)
+		# W13B/STICKER + RARITY-POLISH: Rarity als farbige Kapsel statt grauem
+		# Fließtext — gleiche Farbwelt wie der Karten-Rand (RARITY_BORDER).
+		body.add_child(_build_rarity_chip(str(def.get("rarity", "haeufig"))))
 	var text := Label.new()
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_scale_font(text, 16)

@@ -50,6 +50,40 @@ func test_neu_marker_und_chip_fortschritt() -> void:
 	await _close_album(ctx)
 
 
+## RARITY-POLISH: das Grid sortiert Rarity aufsteigend (stabil bei gleicher
+## Rarity), und Mystery-Slots leaken die Rarity NICHT über den Namensband-
+## Rand — erst der Unlock bringt die Rarity-Farbe.
+func test_rarity_sortierung_und_leakfreier_rand() -> void:
+	# Katalog absichtlich UNsortiert: Gold zuerst, zwei Häufige (Stabilität).
+	var ctx := await _open_album(
+		[
+			_rarity_def("st_gold", "episch", "gold_zaehler"),
+			_rarity_def("st_a", "haeufig", "alpha_zaehler"),
+			_rarity_def("st_a2", "haeufig", "alpha2_zaehler"),
+			_rarity_def("st_b", "selten", "beta_zaehler"),
+		]
+	)
+	var album: AlbumScreen = ctx["album"]
+	var namen: Array = []
+	for child in album._grid.get_children():
+		namen.append(String(child.name))
+	assert_eq(
+		namen,
+		["Sticker_st_a", "Sticker_st_a2", "Sticker_st_b", "Sticker_st_gold"],
+		"Grid sortiert Rarity aufsteigend, gleiche Rarity stabil"
+	)
+	assert_eq(_band_border(album, "st_gold"), AcTokens.WHITE, "Mystery-Rand neutral (episch)")
+	assert_eq(_band_border(album, "st_b"), AcTokens.WHITE, "Mystery-Rand neutral (selten)")
+	_bump(ctx["gs"], "beta_zaehler")
+	await wait_frames(2)
+	assert_eq(
+		_band_border(album, "st_b"),
+		AlbumScreen.RARITY_BORDER["selten"],
+		"Unlock bringt den Silber-Rand"
+	)
+	await _close_album(ctx)
+
+
 func test_set_komplett_belohnung_einmalig() -> void:
 	var ctx := await _open_album()
 	var album: AlbumScreen = ctx["album"]
@@ -109,7 +143,29 @@ func _mini_catalog() -> Array:
 	]
 
 
-func _open_album() -> Dictionary:
+## Sticker-Def für die Rarity-Tests (alle auf der einen Testset-Seite).
+func _rarity_def(id: String, rarity: String, counter_key: String) -> Dictionary:
+	return {
+		"id": id,
+		"name_de": id,
+		"flavor_de": "x",
+		"hint_de": "x",
+		"set": "testset",
+		"page": "testset",
+		"rarity": rarity,
+		"image": ART_A,
+		"cond": {"type": "counter", "key": counter_key, "count": 1},
+	}
+
+
+## Rand-Farbe des Namensbands einer Karte (RARITY-POLISH-Wache).
+func _band_border(album: AlbumScreen, id: String) -> Color:
+	var band := _card(album, id).find_child("NameBand", true, false) as PanelContainer
+	var style := band.get_theme_stylebox("panel") as StyleBoxFlat
+	return style.border_color
+
+
+func _open_album(catalog: Array = []) -> Dictionary:
 	_dir_seq += 1
 	var dir := "user://backlogrest_tests/album_%d_%d" % [Time.get_ticks_usec(), _dir_seq]
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
@@ -119,7 +175,7 @@ func _open_album() -> Dictionary:
 	var album := AlbumScreen.new()
 	album.auto_navigate = false
 	album.gs_override = gs
-	album.catalog_override = _mini_catalog()
+	album.catalog_override = catalog if not catalog.is_empty() else _mini_catalog()
 	album.pages_override = [
 		{"id": "testset", "title_de": "Testset", "icon": "star", "tint": "#CDE6BE", "order": 0}
 	]

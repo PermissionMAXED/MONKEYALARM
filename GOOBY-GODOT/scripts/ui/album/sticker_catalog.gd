@@ -42,6 +42,36 @@ static func by_page(items: Array) -> Dictionary:
 	return grouped
 
 
+## Rarity-Rang fürs Album (RARITY-POLISH): Index in RARITIES — häufig 0,
+## selten 1, episch 2, geheim 3; Unbekanntes fällt auf häufig zurück.
+static func rarity_rank(rarity: String) -> int:
+	var rank := RARITIES.find(rarity)
+	return rank if rank >= 0 else 0
+
+
+## Album-Sortierung einer Seite (RARITY-POLISH): Rarity aufsteigend (häufig
+## zuerst, geheim zuletzt) — die seltenen Schätze stehen am Seitenende wie
+## im Panini-Heft. STABIL innerhalb gleicher Rarity: `sort_custom` ist in
+## Godot NICHT stabil, deshalb entscheidet der Original-Index als
+## Zweitschlüssel (Katalog-Reihenfolge bleibt erhalten).
+static func sort_for_album(items: Array) -> Array:
+	var decorated: Array = []
+	for i in items.size():
+		decorated.append({"idx": i, "def": items[i]})
+	decorated.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool:
+			var rank_a := _rank_of(a["def"])
+			var rank_b := _rank_of(b["def"])
+			if rank_a != rank_b:
+				return rank_a < rank_b
+			return int(a["idx"]) < int(b["idx"])
+	)
+	var result: Array = []
+	for entry: Dictionary in decorated:
+		result.append(entry["def"])
+	return result
+
+
 static func by_id(items: Array, id: String) -> Dictionary:
 	for def: Variant in items:
 		if def is Dictionary and str(def.get("id", "")) == id:
@@ -91,6 +121,12 @@ static func validate(items: Array, page_defs: Array) -> Array:
 		elif str(cond.get("key", "")).is_empty():
 			errors.append("%s: cond.key fehlt" % id)
 	return errors
+
+
+static func _rank_of(def: Variant) -> int:
+	if not (def is Dictionary):
+		return 0
+	return rarity_rank(str((def as Dictionary).get("rarity", "")))
 
 
 static func _registry_items(domain: String) -> Array:
