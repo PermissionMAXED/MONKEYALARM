@@ -1,4 +1,4 @@
-extends TestCase
+extends TestCase  # gdlint: ignore=max-public-methods
 ## W13B/REISEPASS — Reisepass 2.0 (Doc H §2.2) + Abflugtafel/Boarding-Pass
 ## (Doc H §2.4): Flip-Zustandsmaschine, Passfoto-Persistenz (setzen →
 ## speichern → laden über den echten GameState/SaveSchema-Pfad), MRZ-Gag
@@ -461,4 +461,47 @@ func test_reise_app_einsteigen_zeigt_boarding_pass() -> void:
 	)
 	tree.root.remove_child(app)
 	app.free()
+	await wait_frames(1)
+
+
+## BUG-WÄCHTER (Playtest PT-stadt, Blocker): „Gute Reise!“ schließt das
+## Sheet → der closed-Handler gibt den ReiseApp-Layer frei. Der Cutscene-
+## Abschluss muss das ÜBERLEBEN (statisch, ohne Instanz-Bindung), sonst
+## wird nie gebucht, nie heim geroutet und die Cutscene bleibt stehen.
+func test_cutscene_abschluss_ueberlebt_sheet_aufraeumen() -> void:
+	var gs := FakeGameState.new()
+	gs.set_value("economy.coins", 500)
+	var app := ReiseApp.new()
+	app.gs = gs
+	tree.root.add_child(app)
+	await wait_frames(1)
+	app._on_buchen("beach")
+	# Taxi in FAHRT bringen (wie nach Einsteigen + Boarding-Pass).
+	var taxi := CityState.taxi_slice(gs)
+	var jetzt := int(taxi["ankunftAt"]) + 1000
+	var res := TaxiLogic.einsteigen(TaxiLogic.tick(taxi, jetzt)["slice"], jetzt)
+	CityState.save_taxi_slice(gs, res["slice"])
+	gs.clock.ms = jetzt
+	# ECHTE Verdrahtung über _spiele_cutscene (reale Szene + fertig-Signal),
+	# dann die App freigeben — genau das passiert beim Sheet-Aufräumen.
+	# fertig feuern wir selbst (der 20-s-Ablauf spielt im Runner keine Rolle).
+	app._spiele_cutscene("beach")
+	var cutscene: ReiseCutscene = null
+	for kind in tree.root.get_children():
+		if kind is ReiseCutscene:
+			cutscene = kind
+	assert_true(cutscene != null, "Cutscene hängt am Baum-Root")
+	tree.root.remove_child(app)
+	app.free()
+	await wait_frames(1)
+	cutscene.fertig.emit()
+	var vac := Vacation.slice_of(gs.state())
+	assert_eq(str(vac["phase"]), Vacation.PHASE_AWAY, "Urlaub nach der Cutscene gebucht")
+	assert_eq(str(vac["destId"]), "beach", "Ziel aus der Buchung übernommen")
+	assert_eq(
+		str(CityState.taxi_slice(gs)["state"]),
+		TaxiLogic.STATE_IDLE,
+		"Taxi-Slice nach der Fahrt abgeschlossen"
+	)
+	assert_true(cutscene.is_queued_for_deletion(), "Cutscene räumt sich weg")
 	await wait_frames(1)

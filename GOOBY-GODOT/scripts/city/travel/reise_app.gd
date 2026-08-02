@@ -289,6 +289,9 @@ func _render_confirm(ziel_id: String) -> void:
 	_label(I18nService.t("travel.confirm.nutzen"), "CaptionLabel")
 	_label(I18nService.t("travel.confirm.taxi_hinweis"), "CaptionLabel")
 	var buchen := _knopf(I18nService.t("travel.confirm.buchen"), "PrimaryButton")
+	# Stabiler Name (Muster GoobyBesuchen): „Buchen ✈“ ist als TEXT mehrdeutig
+	# — der Flughafen-Knopf dahinter heißt „Reise buchen ✈“ (Playtest PT-stadt).
+	buchen.name = "BuchenKnopf"
 	buchen.pressed.connect(_on_buchen.bind(ziel_id))
 	_box.add_child(buchen)
 	var doch_nicht := _knopf(I18nService.t("travel.confirm.doch_nicht"), "GhostButton")
@@ -423,18 +426,27 @@ func _on_gute_reise(ziel_id: String) -> void:
 func _spiele_cutscene(ziel_id: String) -> void:
 	var cutscene: Node = CutsceneScene.instantiate()
 	cutscene.ziel_id = ziel_id
-	var wurzel := get_tree().root
-	cutscene.fertig.connect(_on_cutscene_fertig.bind(cutscene, ziel_id))
-	wurzel.add_child(cutscene)
+	# BUGFIX (Playtest PT-stadt, Blocker): „Gute Reise!“ schließt das Sheet,
+	# dessen closed-Handler den ReiseApp-Layer freigibt — eine fertig-
+	# Verbindung auf DIESE Instanz starb am Frame-Ende leise mit: keine
+	# Buchung, keine Heimfahrt, die Cutscene blieb ewig stehen (Geld weg).
+	# Deshalb ein STATISCHER Abschluss, der alles Nötige gebunden bekommt.
+	cutscene.fertig.connect(_cutscene_abschliessen.bind(cutscene, ziel_id, gs))
+	get_tree().root.add_child(cutscene)
 
 
-func _on_cutscene_fertig(cutscene: Node, ziel_id: String) -> void:
-	cutscene.queue_free()
-	var res := ReiseLogic.buchen(Vacation.slice_of(gs.state()), ziel_id, now_ms())
+## Cutscene-Abschluss OHNE Instanz-Bindung (überlebt das Sheet-Aufräumen):
+## Urlaub buchen, Taxi abschließen, Cutscene wegräumen, heim routen.
+static func _cutscene_abschliessen(cutscene: Node, ziel_id: String, game_state: Object) -> void:
+	var jetzt := int(Time.get_unix_time_from_system() * 1000.0)
+	if game_state != null and "clock" in game_state:
+		jetzt = int(game_state.clock.now_ms())
+	var res := ReiseLogic.buchen(Vacation.slice_of(game_state.state()), ziel_id, jetzt)
 	if bool(res["ok"]):
-		gs.set_value("vacation", res["vacation"])
-	CityState.save_taxi_slice(gs, TaxiLogic.abgeschlossen(CityState.taxi_slice(gs)))
-	var router := get_node_or_null("/root/SceneRouter")
+		game_state.set_value("vacation", res["vacation"])
+	CityState.save_taxi_slice(game_state, TaxiLogic.abgeschlossen(CityState.taxi_slice(game_state)))
+	var router := cutscene.get_node_or_null("/root/SceneRouter")
+	cutscene.queue_free()
 	if router != null and not router.is_busy():
 		router.goto(&"home/living", {})
 
