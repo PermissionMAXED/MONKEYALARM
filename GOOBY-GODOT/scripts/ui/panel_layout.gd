@@ -31,19 +31,28 @@ static func sheet_width(canvas: Vector2, insets: Dictionary, f: float) -> float:
 
 
 ## Höhen-Deckel für das ganze Sheet (inkl. Titel/Chrome).
-static func max_sheet_height(canvas: Vector2, insets: Dictionary, f: float) -> float:
+## LOOP-QUESTS: `top_reserve_px` (Canvas-px ab Safe-Area-Oberkante) hebt die
+## Design-Reserve an, wenn die ECHTE HUD-Statuszeile höher baut (große
+## Schriften/Touch-Floors) — Status-Leisten werden NIE überdeckt. 0 = nur
+## die Design-Konstante (bisheriges Verhalten).
+static func max_sheet_height(
+	canvas: Vector2, insets: Dictionary, f: float, top_reserve_px := 0.0
+) -> float:
 	var safe_h := canvas.y - float(insets["top"]) - float(insets["bottom"])
 	var cap := safe_h * MAX_HEIGHT_SHARE
-	var with_reserve := safe_h - TOP_RESERVE * f - BOTTOM_GAP * f
+	var reserve := maxf(TOP_RESERVE * f, top_reserve_px)
+	var with_reserve := safe_h - reserve - BOTTOM_GAP * f
 	return maxf(minf(cap, with_reserve), 0.0)
 
 
 ## Finale Sheet-Geometrie: `desired_h` = gewünschte Gesamthöhe (Inhalt +
 ## Chrome); wird auf den Deckel geklemmt. Ergebnis liegt IMMER im sicheren
-## Bereich (Notch/Home-Indicator).
-static func sheet_rect(canvas: Vector2, insets: Dictionary, f: float, desired_h: float) -> Rect2:
+## Bereich (Notch/Home-Indicator). `top_reserve_px` s. max_sheet_height.
+static func sheet_rect(
+	canvas: Vector2, insets: Dictionary, f: float, desired_h: float, top_reserve_px := 0.0
+) -> Rect2:
 	var width := sheet_width(canvas, insets, f)
-	var height := clampf(desired_h, 0.0, max_sheet_height(canvas, insets, f))
+	var height := clampf(desired_h, 0.0, max_sheet_height(canvas, insets, f, top_reserve_px))
 	var safe_left := float(insets["left"])
 	var safe_right := canvas.x - float(insets["right"])
 	var x := safe_left + ((safe_right - safe_left) - width) / 2.0

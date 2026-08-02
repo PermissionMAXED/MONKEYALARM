@@ -153,6 +153,51 @@ func test_quest_panel_hebt_claim_und_reroll_auf_touch_floor() -> void:
 	await _unpin()
 
 
+## LOOP-QUESTS Claim-Politur: mark_claimed tauscht Knopf gegen Häkchen und
+## der Fortschrittsbalken GLEITET auf voll (UiMotion.bar_to) statt zu
+## springen; die Karte hüpft (bounce) — Quellen-Wache unten, weil der
+## Scale-Peak zeitkritisch ist.
+func test_quest_claim_feiert_mit_gleitendem_balken_und_haekchen() -> void:
+	await _pin(QUER)
+	var theme_svc := tree.root.get_node_or_null("/root/UiTheme")
+	var rm_vorher := false
+	if theme_svc != null:
+		rm_vorher = bool(theme_svc.reduced_motion)
+		theme_svc.reduced_motion = false
+	var panel := DailyQuestPanel.new()
+	var row := {
+		"def": {"id": "feed3", "kategorie": "care", "muenzen": 20, "xp": 10},
+		"target": 3,
+		"progress": 1,
+		"complete": true,
+		"claimed": false,
+	}
+	panel.rebuild([row], {"muenzen": 20, "xp": 10}, true, 1.0)
+	tree.root.add_child(panel)
+	await wait_frames(1)
+	var claim := panel.find_child("ClaimFeed3", true, false) as Button
+	var check := panel.find_child("CheckFeed3", true, false) as TextureRect
+	# rebuild() schreibt _bar/_count per Referenz in die Row zurück.
+	var bar := row["_bar"] as ProgressBar
+	var count := row["_count"] as Label
+	assert_false(check.visible, "vor dem Claim: kein Häkchen")
+	panel.mark_claimed("feed3", {"muenzen": 20, "xp": 10})
+	assert_false(claim.visible, "Claim-Knopf verschwindet")
+	assert_true(check.visible, "Häkchen erscheint (pop_in)")
+	assert_true(bar.value < bar.max_value - 1e-3, "Balken GLEITET (springt nicht sofort auf voll)")
+	var voll := await wait_until(func() -> bool: return bar.value >= bar.max_value - 1e-3)
+	assert_true(voll, "Balken kommt am vollen Ziel an")
+	assert_eq(count.text, I18nService.t("quests.erledigt"), "Zähler wird zum Erledigt-Text")
+	# Quellen-Wache für den Hüpfer + Gleit-Balken (Muster Sound-Wache unten).
+	var src := FileAccess.get_file_as_string("res://scripts/ui/quests/quest_panel.gd")
+	assert_true(src.contains("UiMotion.bounce("), "Karte hüpft beim Claim (bounce)")
+	assert_true(src.contains("UiMotion.bar_to(bar, bar.max_value)"), "Balken gleitet per bar_to")
+	if theme_svc != null:
+		theme_svc.reduced_motion = rm_vorher
+	panel.free()
+	await _unpin()
+
+
 func test_quest_service_sound_und_haptik_zeilen() -> void:
 	# Quellen-Wache (Muster test_g3_arcade): G2-Fixliste A5 — der Claim
 	# behält seinen EINEN Sticker-Sound und bekommt die Erfolgs-Haptik,

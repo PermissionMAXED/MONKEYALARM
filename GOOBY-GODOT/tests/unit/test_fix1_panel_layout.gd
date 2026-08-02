@@ -60,6 +60,27 @@ func test_sheet_rect_bleibt_im_sicheren_bereich() -> void:
 		assert_almost(rect.position.x + rect.size.x / 2.0, safe_mitte, 0.01, "zentriert")
 
 
+func test_status_reserve_hebt_die_obergrenze_an() -> void:
+	# LOOP-QUESTS: baut die ECHTE Statuszeile höher als TOP_RESERVE (große
+	# Schriften/Touch-Floors), klemmt `top_reserve_px` das Blatt trotzdem
+	# darunter — Status-Leisten werden NIE überdeckt.
+	for probe: Array in [[CANVAS_DESKTOP, OHNE, 1.0], [CANVAS_HOCH, NOTCH_HOCH, 1280.0 / 720.0]]:
+		var canvas: Vector2 = probe[0]
+		var insets: Dictionary = probe[1]
+		var f: float = probe[2]
+		var reserve := PanelSheetLayout.TOP_RESERVE * f + 80.0
+		var rect := PanelSheetLayout.sheet_rect(canvas, insets, f, 99_999.0, reserve)
+		assert_true(
+			rect.position.y >= float(insets["top"]) + reserve - 1e-4,
+			"Blatt beginnt unter der echten Statuszeile (canvas %s)" % canvas
+		)
+	# Default (0) bleibt exakt beim bisherigen Verhalten.
+	var alt := PanelSheetLayout.sheet_rect(CANVAS_DESKTOP, OHNE, 1.0, 99_999.0)
+	var neu := PanelSheetLayout.sheet_rect(CANVAS_DESKTOP, OHNE, 1.0, 99_999.0, 0.0)
+	assert_almost(neu.position.y, alt.position.y, 1e-4, "Default-Reserve unverändert")
+	assert_almost(neu.size.y, alt.size.y, 1e-4, "Default-Höhe unverändert")
+
+
 func test_kleiner_inhalt_bekommt_kleines_sheet() -> void:
 	# Kleine Inhalte (Status-Sheet) bleiben klein — kein künstliches Aufblasen.
 	var rect := PanelSheetLayout.sheet_rect(CANVAS_QUER, NOTCH_QUER, 1.0, 240.0)

@@ -58,6 +58,21 @@ class FakeGameState:
 		pass
 
 
+## HUD-Double für die Status-Leisten-Wache: hängt wie das echte HUD in der
+## Gruppe „hud" und liefert `hint_lane()` (Duck-Typing-Vertrag von
+## PanelSheet._status_reserve_px) mit einer frei setzbaren Unterkante.
+class FakeHud:
+	extends Control
+
+	var lane_top := 0.0
+
+	func _ready() -> void:
+		add_to_group(&"hud")
+
+	func hint_lane() -> Dictionary:
+		return {"left": 0.0, "right": size.x, "top": lane_top}
+
+
 var _root_size := Vector2i.ZERO
 var _user_factor := 1.0
 var _text_factor := 1.0
@@ -448,3 +463,70 @@ func test_radio_like_bleibt_im_canvas_hoch_und_quer() -> void:
 		PanelStack.clear()
 		_unpin()
 		await wait_frames(1)
+
+
+## ---------------------------------------------- LOOP-QUESTS Blatt-Politur
+
+
+## Scroll-Affordance (Tagesquests-Blatt & Co., P54-Muster Garderobe): die
+## Fade-Kanten über %SheetScroll laden NUR ein, wenn es in der Richtung
+## wirklich weitergeht — langer Inhalt zeigt unten die Kante, am
+## Scroll-Ende verschwindet sie und die Oben-Kante übernimmt; kurzer
+## Inhalt zeigt gar keine Kanten (statische Affordance, kein Motion).
+func test_scroll_affordance_kanten_laden_nur_bei_mehr_inhalt() -> void:
+	var ctx: Dictionary = await _mount(60)
+	var panel := ctx["panel"] as PanelSheet
+	var scroll := ctx["scroll"] as ScrollContainer
+	var fade := panel.get_node("%SheetFade") as ScrollFade
+	assert_true(fade != null, "SheetFade-Wrapper existiert im Blatt")
+	assert_true(fade.unten_aktiv(), "langer Inhalt: Unten-Kante lädt zum Scrollen ein")
+	assert_false(fade.oben_aktiv(), "ganz oben: keine Oben-Kante")
+	scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
+	await wait_frames(2)
+	assert_false(fade.unten_aktiv(), "am Scroll-Ende verschwindet die Unten-Kante")
+	assert_true(fade.oben_aktiv(), "…und die Oben-Kante übernimmt")
+	await _abbau(ctx)
+	var kurz: Dictionary = await _mount(2)
+	var fade_kurz := (kurz["panel"] as PanelSheet).get_node("%SheetFade") as ScrollFade
+	assert_false(fade_kurz.unten_aktiv(), "kurzer Inhalt: keine Unten-Kante")
+	assert_false(fade_kurz.oben_aktiv(), "kurzer Inhalt: keine Oben-Kante")
+	await _abbau(kurz)
+
+
+## Status-Leisten-Wache (User-Screenshot „Tagesquests-Blatt liegt ÜBER den
+## Status-Leisten"): meldet ein SICHTBARES HUD per hint_lane() eine
+## Statuszeile, die TIEFER endet als TOP_RESERVE (große Schriften/
+## Touch-Floors), beginnt das Blatt trotzdem darunter. Unsichtbares HUD
+## (P50: es weicht bei offenem Blatt) zählt nicht — Design-Reserve reicht.
+func test_blatt_beginnt_unter_der_echten_statuszeile() -> void:
+	var canvas := Vector2(tree.root.get_visible_rect().size)
+	var insets := UiScale.safe_insets_canvas(tree.root)
+	var safe_h := canvas.y - float(insets["top"]) - float(insets["bottom"])
+	var fake := FakeHud.new()
+	# Deutlich UNTER der 0,78-Deckel-Oberkante (0,22×safe) — ohne die
+	# Live-Reserve stünde die Blatt-Oberkante klar über dieser Linie.
+	fake.lane_top = float(insets["top"]) + 0.35 * safe_h
+	tree.root.add_child(fake)
+	await wait_frames(1)
+	var ctx: Dictionary = await _mount(60)
+	var karte := ctx["karte"] as Control
+	assert_true(
+		karte.get_global_rect().position.y >= fake.lane_top - 0.5,
+		(
+			"Blatt beginnt unter der Statuszeile (%.1f >= %.1f)"
+			% [karte.get_global_rect().position.y, fake.lane_top]
+		)
+	)
+	await _abbau(ctx)
+	# Unsichtbares HUD: die Live-Reserve greift nicht, das Blatt darf
+	# wieder bis an die Design-Reserve wachsen.
+	fake.visible = false
+	var ohne: Dictionary = await _mount(60)
+	var karte_ohne := (ohne["karte"] as Control).get_global_rect()
+	assert_true(
+		karte_ohne.position.y < fake.lane_top - 0.5,
+		"HUD weicht (unsichtbar) → Design-Reserve, Blatt nutzt die Höhe wieder"
+	)
+	await _abbau(ohne)
+	fake.queue_free()
+	await wait_frames(1)

@@ -14,6 +14,11 @@ extends MarginContainer
 ## `rand_inset()` schiebt den Scroll samt Scrollbar vom Spalten-/
 ## Display-Rand weg (User-Befund: „Scrollbar klebt am Bildschirmrand“).
 ##
+## LOOP-QUESTS: alternativ als SZENEN-Node nutzbar (panel_sheet.tscn) —
+## liegt das Skript auf einem Wrapper, der seinen ScrollContainer schon
+## als Szenen-Kind mitbringt, adoptiert `_ready()` dieses Kind und baut
+## das Fade-Deck selbst dazu (`um()` bleibt der Bauzeit-Weg).
+##
 ## Die Kanten sind STATISCHE Affordance (kein Motion) — sie bewegen sich
 ## nicht von selbst, darum braucht es hier kein Reduced-Motion-Gate.
 
@@ -47,7 +52,14 @@ static func um(scroll: ScrollContainer) -> ScrollFade:
 
 func _ready() -> void:
 	if _scroll == null:
-		return
+		# Szenen-Weg: ScrollContainer-Kind adoptieren + Deck nachrüsten.
+		for child in get_children():
+			if child is ScrollContainer:
+				_scroll = child
+				break
+		if _scroll == null:
+			return
+		add_child(_deck_bauen())
 	# Range.changed feuert bei max/page-Änderungen (Inhalt/Resize),
 	# value_changed beim Scrollen selbst — beide halten die Kanten frisch.
 	var vbar := _scroll.get_v_scroll_bar()
@@ -135,6 +147,11 @@ func _ziel(hole_ziel: Callable) -> Control:
 ## Test-Introspektion: lädt die Unten-Kante gerade zum Weiterscrollen ein?
 func unten_aktiv() -> bool:
 	return _unten != null and _unten.visible
+
+
+## Test-Introspektion: lädt die Oben-Kante (zurückscrollen) gerade ein?
+func oben_aktiv() -> bool:
+	return _oben != null and _oben.visible
 
 
 ## Test-Introspektion: lädt die Rechts-Kante (h-Scroll) gerade ein?

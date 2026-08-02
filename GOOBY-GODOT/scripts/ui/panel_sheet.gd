@@ -27,6 +27,17 @@ extends Control
 ## Reduced Motion: der Finger-Zug bleibt (direkte Manipulation, keine
 ## Animation), aber Zurückschnappen/Schließen springen sofort.
 ##
+## LOOP-QUESTS (Tagesquests-Blatt-Politur, gilt für ALLE Blätter):
+## - Scroll-Affordance: `%SheetFade` (ScrollFade) legt weiche Fade-Kanten
+##   über `%SheetScroll` — nur sichtbar, wenn es oben/unten wirklich
+##   weitergeht (P54-Muster Garderobe; vorher endete langer Quest-Inhalt
+##   als harte Schnittkante ohne jeden Hinweis).
+## - Status-Leisten-Reserve: die Blatt-Geometrie fragt zusätzlich das LIVE
+##   sichtbare HUD (`hint_lane()`) ab — das Blatt beginnt IMMER unter der
+##   Statuszeile, auch wenn große Schriften/Touch-Floors sie höher bauen
+##   als die Design-Konstante TOP_RESERVE (User-Screenshot „Tagesquests-
+##   Blatt liegt ÜBER den Status-Leisten“ bleibt damit an der Wurzel weg).
+##
 ## Nutzung: Szene `panel_sheet.tscn` instanzieren, `add_content(node)`,
 ## dann `open()`. `closed`-Signal abonnieren.
 
@@ -86,6 +97,7 @@ var _fokus_vorher: WeakRef
 @onready var _backdrop: ColorRect = %Backdrop
 @onready var _sheet: PanelContainer = %Sheet
 @onready var _title_label: Label = %SheetTitle
+@onready var _scroll_fade: ScrollFade = %SheetFade
 @onready var _scroll: ScrollContainer = %SheetScroll
 @onready var _body: MarginContainer = %SheetBody
 @onready var _grab_handle: Panel = %GrabHandle
@@ -96,6 +108,9 @@ func _ready() -> void:
 	_backdrop.color = AcTokens.VEIL
 	_backdrop.gui_input.connect(_on_backdrop_input)
 	_style_grab_handle()
+	# LOOP-QUESTS: die Fade-Kanten lösen den Inhalt in die Kartenfarbe des
+	# Blatts auf (AcCardLg = Paper), nicht ins Wallpaper-Creme.
+	_scroll_fade.farbe(AcTokens.PAPER)
 	_fade_blocker = Control.new()
 	_fade_blocker.name = "FadeBlocker"
 	_fade_blocker.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -280,7 +295,9 @@ func _relayout() -> void:
 	var chrome_h := _sheet.get_combined_minimum_size().y
 	var content_min := _body_min_ohne_pendente()
 	var desired_h := chrome_h + content_min.y
-	var rect := PanelSheetLayout.sheet_rect(canvas, insets, f, desired_h)
+	var rect := PanelSheetLayout.sheet_rect(
+		canvas, insets, f, desired_h, _status_reserve_px(insets)
+	)
 	# Pass 2: Scroll-Fenster IMMER = verfuegbarer Innenraum.
 	# Frueher: min(content, inner) — wenn content≈inner nach Layout-Pass,
 	# kollabiert die Scrollrange (Symptom: Scroll geht 1×, danach tot).
@@ -296,6 +313,25 @@ func _relayout() -> void:
 	_rest_y = rect.position.y
 	if _zug_aktiv:
 		_sheet.position.y = _rest_y + _zug_offset
+
+
+## LOOP-QUESTS — Status-Leisten-Reserve in Canvas-px (ab Safe-Area-Oberkante):
+## steht ein SICHTBARES HUD im Baum, liefert dessen `hint_lane()` die echte
+## Unterkante der Statuszeile (Hochkant: TopBar-Ende + Luft) — das Blatt darf
+## nie darüber beginnen, selbst wenn die Zeile höher baut als TOP_RESERVE.
+## Duck-Typing statt `is Hud` (kein Klassen-Zyklus PanelSheet↔Hud); weicht
+## das HUD gerade (P50, Blatt offen), ist nichts zu schützen → 0.
+func _status_reserve_px(insets: Dictionary) -> float:
+	var tree := get_tree()
+	if tree == null:
+		return 0.0
+	for node: Node in tree.get_nodes_in_group(&"hud"):
+		var hud := node as Control
+		if hud == null or not hud.is_visible_in_tree() or not hud.has_method("hint_lane"):
+			continue
+		var lane: Dictionary = hud.hint_lane()
+		return maxf(float(lane["top"]) - float(insets["top"]), 0.0)
+	return 0.0
 
 
 ## Body-Wunschgröße wie MarginContainer.get_minimum_size(), aber OHNE
@@ -320,6 +356,8 @@ func _apply_scale(f: float) -> void:
 	_title_label.add_theme_font_size_override("font_size", int(AcTokens.FONT_SIZE_TITLE * f))
 	# Grabber-Pill skaliert mit (Web: 2.75rem × 0.3125rem = 44×5 Design-px).
 	_grab_handle.custom_minimum_size = Vector2(roundf(44.0 * f), maxf(roundf(5.0 * f), 4.0))
+	# Scroll-Affordance-Kanten skalieren mit (Muster customize_screen).
+	_scroll_fade.kanten_hoehe(ScrollFade.KANTE * f)
 	var pad := int(BODY_MARGIN * f)
 	for side in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
 		_body.add_theme_constant_override(side, pad)

@@ -8,7 +8,10 @@ extends VBoxContainer
 ##
 ## Häkchen-Animation: mark_claimed() tauscht den Abholen-Knopf gegen ein
 ## aufploppendes Häkchen (UiMotion.pop_in + sparkle) — der „Check“-Moment
-## aus der Aufgabe, ohne das ganze Brett neu zu bauen.
+## aus der Aufgabe, ohne das ganze Brett neu zu bauen. LOOP-QUESTS-Politur:
+## die Karte hüpft dazu kurz (UiMotion.bounce) und der Fortschrittsbalken
+## GLEITET auf voll (UiMotion.bar_to, Web .stat-fill) statt zu springen —
+## alles Reduced-Motion-gegated in UiMotion selbst.
 
 signal claim_pressed(id: String)
 signal reroll_pressed
@@ -72,9 +75,10 @@ func mark_claimed(id: String, bonus: Dictionary) -> void:
 	btn.visible = false
 	check.visible = true
 	UiMotion.pop_in(check)
+	UiMotion.bounce(row["card"] as Control)
 	UiMotion.sparkle(row["card"] as Control, AcTokens.GOLD)
 	var bar := row["bar"] as ProgressBar
-	bar.value = bar.max_value
+	UiMotion.bar_to(bar, bar.max_value)
 	(row["count"] as Label).text = I18nService.t("quests.erledigt")
 	_update_bonus(bonus)
 
