@@ -1,6 +1,7 @@
 package com.bubbleshield.client.render;
 
 import com.bubbleshield.BubbleShield;
+import com.bubbleshield.client.compat.IrisCompat;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 
@@ -28,6 +29,15 @@ import net.minecraft.resources.ResourceLocation;
  * ({@code LIGHTNING_TRANSPARENCY}) and keeps default back-face culling — its
  * crossed planes are wound toward the camera, and back faces would only double
  * the overdraw.
+ *
+ * <p><b>W9 Iris gate:</b> both lookups consult {@link IrisCompat} first — while
+ * a shaderpack is active, Iris owns the shader pipeline and modded
+ * {@code ShaderInstance}s misrender (no gbuffer/shadow-pass variants), so the
+ * vanilla-shader fallback types here are ALWAYS returned. Pre-W6 the fallback
+ * is the only pipeline, making the gate behaviourally a no-op today; it is
+ * kept explicit because it is the frozen contract W6 slots under: custom
+ * per-effect/beam pipelines may only ever be returned on the path below the
+ * gate (see docs/COMPAT.md).
  *
  * <p>Extends {@link RenderType} purely to reach the protected
  * {@code RenderStateShard} shards; never instantiated.
@@ -80,6 +90,12 @@ final class ShieldRenderTypes extends RenderType {
 	 * {@code EffectRegistry.get(effectId).surface()} like upstream ShieldPipelines.
 	 */
 	static RenderType renderType(int effectId) {
+		// W9: an active shaderpack forces the vanilla-shader fallback membrane.
+		if (IrisCompat.shaderPackInUse()) {
+			return MEMBRANE;
+		}
+
+		// TODO(W6): per-effect surface pipeline dispatch goes HERE, below the gate.
 		return MEMBRANE;
 	}
 
@@ -90,6 +106,12 @@ final class ShieldRenderTypes extends RenderType {
 	 * pipelines like upstream ShieldPipelines.
 	 */
 	static RenderType beamRenderType(int renderIndex) {
+		// W9: an active shaderpack forces the vanilla-shader fallback beam.
+		if (IrisCompat.shaderPackInUse()) {
+			return BEAM;
+		}
+
+		// TODO(W6): beam_*.fsh pipeline dispatch goes HERE, below the gate.
 		return BEAM;
 	}
 }

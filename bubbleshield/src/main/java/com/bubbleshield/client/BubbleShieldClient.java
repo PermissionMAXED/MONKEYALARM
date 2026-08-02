@@ -47,7 +47,10 @@ import net.neoforged.neoforge.event.level.LevelEvent;
  *
  * <p>TODO(W6): {@code InteriorRenderer}/{@code SceneCopy} bootstrap; TODO(W7):
  * {@code ScreenEffectManager} + {@code ProximityHum} registration land with
- * their waves.
+ * their waves. W9 compat contract for both: custom pipelines only below the
+ * {@code ShieldRenderTypes} Iris gate, and the W8 screen post-effects only
+ * while {@code com.bubbleshield.client.compat.IrisCompat#postFxAllowed()} —
+ * an active shaderpack owns the shader + post pipelines (see docs/COMPAT.md).
  */
 @EventBusSubscriber(modid = BubbleShield.MOD_ID, value = Dist.CLIENT)
 public final class BubbleShieldClient {
