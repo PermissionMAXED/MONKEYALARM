@@ -145,7 +145,11 @@ static func _warte_verdrahten(def: Dictionary, stand: Dictionary, _jetzt: int) -
 	if str((lauf as Dictionary).get("status")) != RQuestSlices.STATUS_WARTEND:
 		return
 	var ziel := RQuestEngine.aktuelles_ziel(def, lauf)
-	RQuestWarte.warte_gestartet(quest_id, ziel, lauf, I18nService.t("rquest.q.%s.titel" % quest_id))
+	# WARN-SWEEP: Pack-/Registry-Quests koennen ohne Strings ankommen —
+	# dann traegt die Notification die Quest-Id statt eines push_error.
+	var titel_key := "rquest.q.%s.titel" % quest_id
+	var titel := I18nService.t(titel_key) if I18nService.has_key(titel_key) else quest_id
+	RQuestWarte.warte_gestartet(quest_id, ziel, lauf, titel)
 
 
 static func _belohnung_anwenden(gs: Object, def: Dictionary, belohnung: Dictionary) -> void:

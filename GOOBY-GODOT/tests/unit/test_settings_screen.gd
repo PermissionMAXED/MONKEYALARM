@@ -99,13 +99,18 @@ func test_einzelregler_markiert_benutzerdefiniert() -> void:
 	var slider := (
 		screen.find_child("RowGraphicsParticles", true, false).get_node("Value") as HSlider
 	)
-	slider.value = 0.35
+	# WARN-SWEEP: 0.45 statt 0.35 — 0.35 ist der Partikel-Wert des
+	# "niedrig"-Buendels. Senkt die Auto-Notbremse im langsamen Headless-Lauf
+	# die Stufe auf niedrig, startet der Slider schon bei 0.35 und
+	# `slider.value = 0.35` feuert KEIN value_changed (Flake: got=auto).
+	# 0.45 kommt in keinem Profil-Buendel vor (0.35/0.65/0.75/1.0).
+	slider.value = 0.45
 	assert_eq(
 		str(app.value_of("graphics.preset")),
 		"benutzerdefiniert",
 		"Einzelregler stellt das Profil auf benutzerdefiniert"
 	)
-	assert_almost(float(app.value_of("graphics.particles")), 0.35, 0.001)
+	assert_almost(float(app.value_of("graphics.particles")), 0.45, 0.001)
 	_unmount(screen)
 	app.set_setting("graphics", prev_graphics)
 	app.set_setting("graphics.preset", str(prev_graphics.get("preset", "auto")))

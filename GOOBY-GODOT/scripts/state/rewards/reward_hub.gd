@@ -199,7 +199,10 @@ func _celebrate(def: Dictionary) -> void:
 ## Konfetti auf derselben obersten Layer wie die Sticker.
 func _celebrate_achievement(def: Dictionary) -> void:
 	var id := str(def.get("id", ""))
-	var ach_name := I18nService.t("achievements.defs.%s.name" % id)
+	# WARN-SWEEP: Pack-Erfolge koennen ohne Strings ankommen — dann feiert
+	# der Toast mit der Id statt eines push_error.
+	var name_key := "achievements.defs.%s.name" % id
+	var ach_name := I18nService.t(name_key) if I18nService.has_key(name_key) else id
 	_toasts.show_toast(
 		I18nService.t(
 			"achievements.unlock_toast", {"name": ach_name, "coins": int(def.get("coins", 0))}

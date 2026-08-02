@@ -84,7 +84,11 @@ func _mount(game_id: String) -> Node:
 	game.call("start")
 	if LEVEL_ENTRY.has(game_id):
 		var entry: Array = LEVEL_ENTRY[game_id]
-		game.callv(str(entry[0]), entry[1] as Array)
+		# WARN-SWEEP: callv mit einem READ-ONLY-Array (const-Literal) liest in
+		# Godot 4.4 alle Argumente aus demselben Scratch-Variant (zuletzt
+		# gelesenes Element) — der Aufruf schlug still fehl ("Cannot convert
+		# argument 1 from int to String"). duplicate() macht die Args mutabel.
+		game.callv(str(entry[0]), (entry[1] as Array).duplicate())
 	await wait_frames(2)
 	return game
 
