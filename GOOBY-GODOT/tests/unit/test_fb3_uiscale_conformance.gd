@@ -39,6 +39,8 @@ const MUST_USE_SCALE: Array[String] = [
 	"res://scripts/ranch/comp/szene/comp_level_select.gd",
 	"res://scripts/ui/onboarding/onboarding_flow.gd",
 	"res://scripts/city/travel/reise_app.gd",
+	# G7-P56 Brettspiel-Ausbau: Partie-Ende-Overlay im Minigame-Rahmen-Look.
+	"res://scripts/social/boardgame/board_result_overlay.gd",
 ]
 const SCALE_MARKERS: Array[String] = ["UiScale.", "ScreenShell.", "touch_floor_canvas"]
 ## Safe-Area-Pflicht für VOLLBILD-Screens/Overlays (Sheet-INHALTE wie
@@ -65,6 +67,8 @@ const MUST_USE_SAFE_AREA: Array[String] = [
 	"res://scripts/minigames/games/gobnom/gobnom_level_select.gd",
 	"res://scripts/ranch/comp/szene/comp_level_select.gd",
 	"res://scripts/ui/onboarding/onboarding_flow.gd",
+	# G7-P56 Brettspiel-Ausbau: das Overlay zentriert in der Safe-Area.
+	"res://scripts/social/boardgame/board_result_overlay.gd",
 ]
 const SAFE_MARKERS: Array[String] = ["safe_insets_canvas", "ScreenShell.metrics", "_safe_insets"]
 ## Inhaltsspalte W16: umgestellte Screens MÜSSEN zentriert bauen — direkt

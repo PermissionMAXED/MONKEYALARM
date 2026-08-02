@@ -292,6 +292,19 @@ Playtests, den Planner-Ideen und den restlichen G6-Paketen:
       Tour-Karte duckt sich MIT dem HUD, die Minispiel-Ergebniskarte bleibt
       über der Home-Indicator-Kante → das UI-Audit ist damit KOMPLETT GRÜN
       (204 Screens, 0 Befunde — vorher 23).
+- [x] **P56-Ausbau: Brettspiele enden im Rahmen** — Schach und Schiffe
+      versenken hatten am Partie-Ende noch eigene Mini-Panels/Toasts statt
+      des Ein-Spiel-Gefühls; jetzt teilen beide EIN Partie-Ende-Overlay im
+      Minigame-Rahmen-Look (dieselbe Abdunkelung wie Pause/Ergebnis, Creme-
+      Karte, Gooby-Sticker jubelt bei Sieg und steht bei „Bewegung
+      reduziert", EINE Knopf-Reihe mit der primären Aktion zuerst, Sieg-/
+      Niederlage-Klang des Rahmens). Brettspiel-gerecht: ein Tipp auf die
+      Abdunkelung legt die Karte beiseite, damit man die Schlussstellung
+      nachbetrachten kann; Revanche/Neue Partie/Verlassen laufen über die
+      bewährten Wege (Revanche sperrt, wenn der Gegner weg ist). Intro und
+      Pause bleiben bewusst Szenen-Sache — Brettspiele sind rundenbasiert,
+      die Auswahl-/Setup-Phase IST der Auftakt. Dauer-Wächter-Test plus
+      Sichtungs-Capture im Leitformat dazu.
 
 ---
 

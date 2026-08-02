@@ -72,8 +72,9 @@ func test_sieg_overlay_und_sticker_hook() -> void:
 	assert_true(scene._targets.has(0x70), "a8 erreichbar")
 	scene._on_square_pressed(0x70)
 	assert_eq(scene._phase, "over", "Matt beendet die Partie")
-	assert_true(scene._result_panel.visible, "Overlay steht")
-	assert_eq(scene._result_label.text, I18nService.t("chess.win"))
+	# G7-P56: das Partie-Ende steht im Minigame-Rahmen-Look (BoardResultOverlay).
+	assert_true(scene._result_overlay.is_open(), "Rahmen-Overlay steht")
+	assert_eq((scene._result_overlay.get("_title") as Label).text, I18nService.t("chess.win"))
 	assert_true(scene._new_game_button.visible, "Neue Partie angeboten")
 	var hooks: Variant = gs.get_value("stickers.hooks", {})
 	assert_true(hooks is Dictionary and (hooks as Dictionary).has("chess_win"), "chess_win-Hook")

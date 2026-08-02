@@ -10,9 +10,11 @@ extends Node3D
 ## (TomatoOverlay, rutscht ~4 s ab). Turn-Relay macht BoardSession.
 ## W16/G4 + F10 (Parität zum Schach): alle HUD-Knöpfe sind SquishButtons
 ## mit Sounds (ui_back/ui_confirm/ui_click/ui_chip), Spielmomente klingen
-## (mg_perfect/gvz_pop/mg_combo/mg_win/mg_lose); „Verlassen“ hängt an
-## Anker+Insets statt fixer Position, Emote/Tomate als Mitte-rechts-Cluster
-## unten statt in der Ecke (ui-ranch §3.2), Touch-Floor via ScreenShell.
+## (mg_perfect/gvz_pop/mg_combo); „Verlassen“ hängt an Anker+Insets statt
+## fixer Position, Emote/Tomate als Mitte-rechts-Cluster unten statt in der
+## Ecke (ui-ranch §3.2), Touch-Floor via ScreenShell. G7-P56: das Partie-
+## Ende läuft über das BoardResultOverlay im Minigame-Rahmen-Look (spielt
+## auch game_win/game_lose — die Rahmen-Klänge aller 38 Arcade-Spiele).
 
 const ROUTE := &"social/battleship"
 const ROUTES := {ROUTE: "res://scripts/social/boardgame/battleship_scene.tscn"}
@@ -46,6 +48,9 @@ var _tomato_button: Button
 var _leave_button: Button
 var _rematch_button: Button
 var _surrender_dialog: ConfirmationDialog
+## G7-P56 Brettspiel-Ausbau: Partie-Ende im Minigame-Rahmen-Look (dasselbe
+## Overlay wie im Schach) statt Toast + Mitte-Knopf allein.
+var _result_overlay: BoardResultOverlay
 var _grimace_accum := 0.0
 var _rng := RandomNumberGenerator.new()
 
@@ -276,6 +281,9 @@ func _build_hud() -> void:
 
 	overlay = TomatoOverlay.new()
 	root.add_child(overlay)
+	_result_overlay = BoardResultOverlay.new()
+	_result_overlay.action_pressed.connect(_on_result_action)
+	root.add_child(_result_overlay)
 	toast = ToastLayer.new()
 	root.add_child(toast)
 	# ToastLayer setzt in _ready nur die Anker — kommt er in einen bereits
@@ -556,13 +564,32 @@ func _play_tomato_arc(from_gooby: RemoteGooby, to_gooby: RemoteGooby, hits_me: b
 
 func _on_game_over(_winner: String, i_won: bool) -> void:
 	_phase = "over"
-	toast.show_toast(I18nService.t("board.win" if i_won else "board.lose"))
 	_turn_label.text = I18nService.t("board.win" if i_won else "board.lose")
-	_sfx("mg_win" if i_won else "mg_lose")
 	# FIX-6: Nach dem Spiel → Revanche anbieten, „Aufgeben“ wird „Verlassen“.
 	_leave_button.text = I18nService.t("board.exit")
 	_rematch_button.visible = true
 	_rematch_button.disabled = false
+	# G7-P56: Partie-Ende im Minigame-Rahmen-Look — das Overlay spielt auch
+	# den Rahmen-Klang (game_win/game_lose); Backdrop-Tap = Bretter ansehen
+	# (der Mitte-Revanche-Knopf bleibt darunter erreichbar).
+	(
+		_result_overlay
+		. show_result(
+			{
+				"titel": I18nService.t("board.win" if i_won else "board.lose"),
+				"sieg": i_won,
+				"buttons":
+				[
+					{
+						"id": "rematch",
+						"text": I18nService.t("board.rematch.button"),
+						"primary": true
+					},
+					{"id": "exit", "text": I18nService.t("board.exit")},
+				],
+			}
+		)
+	)
 	if i_won:
 		my_gooby.rig.set_emotion("ecstatic")
 		my_gooby.rig.play_clip("celebrate")
@@ -573,10 +600,22 @@ func _on_game_over(_winner: String, i_won: bool) -> void:
 		my_gooby.rig.set_emotion("sad")
 
 
+## Rahmen-Overlay-Knöpfe (G7-P56): Revanche + Verlassen laufen über die
+## BESTEHENDEN Wege (Server-Revanche bzw. Verlassen-Knopf-Logik).
+func _on_result_action(id: String) -> void:
+	match id:
+		"rematch":
+			_result_overlay.set_action_enabled("rematch", false)
+			_on_rematch_pressed()
+		"exit":
+			_on_leave_pressed()
+
+
 func _on_opponent_forfeit(_data: Dictionary) -> void:
 	toast.show_toast(I18nService.t("board.forfeit", {"name": _session.opponent_gooby_name}))
 	# Der Gegner ist WEG (Raum verlassen/Timeout) — Revanche unmöglich.
 	_rematch_button.visible = false
+	_result_overlay.set_action_enabled("rematch", false)
 
 
 # ── Revanche & Verbindung (FIX-6) ────────────────────────────────────────────
@@ -590,6 +629,7 @@ func _on_rematch_pressed() -> void:
 	var res: Dictionary = await _session.request_rematch()
 	if not res["ok"]:
 		_rematch_button.disabled = false
+		_result_overlay.set_action_enabled("rematch", true)
 		toast.show_toast(I18nService.t("board.rematch.failed", {"code": str(res["code"])}))
 		return
 	if bool(res["waiting"]):
@@ -601,6 +641,7 @@ func _on_rematch_pressed() -> void:
 
 ## BOARD_START während die Szene offen ist = Revanche → frisches Spiel.
 func _on_rematch_started(_data: Dictionary) -> void:
+	_result_overlay.hide_overlay()
 	my_board_view.clear_board()
 	opp_board_view.clear_board()
 	_rematch_button.visible = false
@@ -624,6 +665,7 @@ func _on_rematch_declined() -> void:
 		I18nService.t("board.rematch.declined", {"name": _session.opponent_gooby_name})
 	)
 	_rematch_button.visible = false
+	_result_overlay.set_action_enabled("rematch", false)
 
 
 func _on_peer_connection_changed(down: bool, _wait_ms: int) -> void:

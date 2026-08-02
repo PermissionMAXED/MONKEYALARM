@@ -69,9 +69,9 @@ var _emote_button: Button
 var _wheel: Control
 var _pick_panel: PanelContainer
 var _promo_panel: PanelContainer
-var _result_panel: PanelContainer
-var _result_label: Label
-var _result_reason: Label
+## G7-P56 Brettspiel-Ausbau: Partie-Ende im Minigame-Rahmen-Look (EIN
+## Overlay für Schach + Schiffe versenken statt des nackten Mini-Panels).
+var _result_overlay: BoardResultOverlay
 var _juice: JuiceKit
 
 
@@ -160,8 +160,9 @@ func _build_ui() -> void:
 	add_child(_pick_panel)
 	_promo_panel = _build_promo_panel()
 	add_child(_promo_panel)
-	_result_panel = _build_result_panel()
-	add_child(_result_panel)
+	_result_overlay = BoardResultOverlay.new()
+	_result_overlay.action_pressed.connect(_on_result_action)
+	add_child(_result_overlay)
 
 	_surrender_dialog = ConfirmationDialog.new()
 	_surrender_dialog.ok_button_text = I18nService.t("chess.surrender")
@@ -346,29 +347,6 @@ func _build_promo_panel() -> PanelContainer:
 	return panel
 
 
-func _build_result_panel() -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"AcCard"
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	panel.offset_top = -180.0
-	panel.offset_bottom = -120.0
-	panel.visible = false
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	panel.add_child(box)
-	_result_label = Label.new()
-	_result_label.theme_type_variation = &"TitleLabel"
-	_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(_result_label)
-	_result_reason = Label.new()
-	_result_reason.theme_type_variation = &"CaptionLabel"
-	_result_reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(_result_reason)
-	return panel
-
-
 func _wire_session() -> void:
 	if _session == null:
 		return
@@ -391,7 +369,7 @@ func _show_pick() -> void:
 	_mode = "solo"
 	_phase = "pick"
 	_pick_panel.visible = true
-	_result_panel.visible = false
+	_result_overlay.hide_overlay()
 	_new_game_button.visible = false
 	_emote_button.visible = false
 	_solo_logic = ChessLogic.new()
@@ -413,7 +391,7 @@ func _on_solo_start(color: int) -> void:
 	_solo_logic = ChessLogic.new()
 	_ai = ChessAi.new(int(Time.get_unix_time_from_system()) | 1)
 	_pick_panel.visible = false
-	_result_panel.visible = false
+	_result_overlay.hide_overlay()
 	_new_game_button.visible = false
 	_opp_label.text = (
 		"%s (%s)"
@@ -433,7 +411,7 @@ func _enter_multiplayer() -> void:
 	_phase = "play"
 	_my_color = _session.my_color
 	_pick_panel.visible = false
-	_result_panel.visible = false
+	_result_overlay.hide_overlay()
 	_rematch_button.visible = false
 	_new_game_button.visible = false
 	_emote_button.visible = true
@@ -770,7 +748,11 @@ func _check_solo_end() -> void:
 	_finish(i_won, i_lost, res)
 
 
-## Gemeinsames Partie-Ende (Solo + MP): Overlay, Konfetti, Sticker-Hook.
+## Gemeinsames Partie-Ende (Solo + MP): Rahmen-Overlay, Konfetti, Sticker-
+## Hook. G7-P56: Sieg/Niederlage klingen und aussehen wie im Minigame-
+## Rahmen (game_win/game_lose spielt das Overlay selbst) — die Seiten-
+## Knöpfe (Revanche/Neue Partie) bleiben fürs Weiterspielen NACH dem
+## Beiseitelegen des Overlays erreichbar.
 func _finish(i_won: bool, i_lost: bool, reason: String) -> void:
 	if _phase == "over":
 		return
@@ -782,21 +764,52 @@ func _finish(i_won: bool, i_lost: bool, reason: String) -> void:
 		key = "chess.win"
 	elif i_lost:
 		key = "chess.lose"
-	_result_label.text = I18nService.t(key)
-	var reason_key := "chess.reason." + reason
-	_result_reason.text = I18nService.t(reason_key)
-	_result_panel.visible = true
+	var buttons: Array = []
 	if _mode == "solo":
 		_new_game_button.visible = true
+		buttons = [
+			{"id": "again", "text": I18nService.t("mg.results.again"), "primary": true},
+			{"id": "new", "text": I18nService.t("chess.new_game")},
+			{"id": "exit", "text": I18nService.t("chess.exit")},
+		]
 	else:
 		_rematch_button.visible = true
 		_rematch_button.disabled = false
+		buttons = [
+			{"id": "rematch", "text": I18nService.t("chess.rematch.button"), "primary": true},
+			{"id": "exit", "text": I18nService.t("chess.exit")},
+		]
+	(
+		_result_overlay
+		. show_result(
+			{
+				"titel": I18nService.t(key),
+				"grund": I18nService.t("chess.reason." + reason),
+				"sieg": i_won,
+				"buttons": buttons,
+			}
+		)
+	)
 	_leave_button.text = I18nService.t("chess.exit")
 	if i_won:
 		_juice.confetti(70)
-		_sfx("mg_win")
 	_award_stickers(i_won, reason)
 	_render()
+
+
+## Rahmen-Overlay-Knöpfe: Nochmal (Solo, gleiche Stärke/Farbe), Neue Partie
+## (Auswahl), Revanche (MP) und Verlassen — alles über die BESTEHENDEN Wege.
+func _on_result_action(id: String) -> void:
+	match id:
+		"again":
+			_on_solo_start(_my_color)
+		"new":
+			_show_pick()
+		"rematch":
+			_result_overlay.set_action_enabled("rematch", false)
+			_on_rematch_pressed()
+		"exit":
+			_on_leave_pressed()
 
 
 ## Sticker-Hooks + Zähler am Partie-Ende (Album-Set Multiplayer):
@@ -877,6 +890,8 @@ func _is_draw_reason(reason: String) -> bool:
 func _on_opponent_forfeit(_data: Dictionary) -> void:
 	toast.show_toast(I18nService.t("chess.reason.forfeit") + " — " + _opponent_name())
 	_rematch_button.visible = false
+	# Der Gegner ist WEG — auch der Revanche-Knopf im Rahmen-Overlay sperrt.
+	_result_overlay.set_action_enabled("rematch", false)
 
 
 func _on_rematch_pressed() -> void:
@@ -886,6 +901,7 @@ func _on_rematch_pressed() -> void:
 	var res: Dictionary = await _session.request_rematch()
 	if not res["ok"]:
 		_rematch_button.disabled = false
+		_result_overlay.set_action_enabled("rematch", true)
 		toast.show_toast(I18nService.t("chess.rematch.failed", {"code": str(res["code"])}))
 		return
 	if bool(res["waiting"]):
@@ -893,7 +909,7 @@ func _on_rematch_pressed() -> void:
 
 
 func _on_rematch_started(_data: Dictionary) -> void:
-	_result_panel.visible = false
+	_result_overlay.hide_overlay()
 	_rematch_button.visible = false
 	_leave_button.text = I18nService.t("chess.leave")
 	_fire_hook("chess_rematch")
