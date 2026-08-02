@@ -76,6 +76,59 @@ func test_hint_duckt_sich_unter_offenen_panels() -> void:
 	await wait_frames(1)
 
 
+func test_hint_laesst_tap_auf_verdeckte_tuer_durch() -> void:
+	# PT-HOME F1: liegt hinter dem Tap-Punkt auf der Karte ein Welt-Tap-Ziel
+	# (Tür), wird die Karte für genau dieses Event durchlässig (IGNORE) und
+	# danach wieder fest (STOP). Aufbau: Kamera + breite Ziel-Area vor ihr.
+	var cam := Camera3D.new()
+	cam.position = Vector3(0.0, 0.0, 5.0)
+	tree.root.add_child(cam)
+	cam.current = true
+	var ziel := Area3D.new()
+	ziel.add_to_group(DoorTransition.TAP_ZIEL_GRUPPE)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(40.0, 40.0, 1.0)
+	shape.shape = box
+	ziel.add_child(shape)
+	tree.root.add_child(ziel)
+	var hint := WhatsNextHint.new()
+	tree.root.add_child(hint)
+	hint.show_suggestion(_hint_suggestion())
+	# Physik-Flush abwarten, damit der Probe-Ray die Area sieht.
+	await wait_frames(4)
+	var card := hint.find_child("WasNunKarte", true, false) as Control
+	assert_true(card != null and card.visible, "Karte sichtbar.")
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = card.get_global_rect().get_center()
+	hint._input(press)
+	assert_eq(
+		int(card.mouse_filter),
+		int(Control.MOUSE_FILTER_IGNORE),
+		"Tür hinterm Tap → Karte lässt das Event durch."
+	)
+	await wait_frames(1)
+	assert_eq(
+		int(card.mouse_filter),
+		int(Control.MOUSE_FILTER_STOP),
+		"Nach dem Event ist die Karte wieder fest."
+	)
+	# Ohne Ziel dahinter bleibt die Karte ein normaler Klick-Fänger.
+	ziel.queue_free()
+	await wait_frames(2)
+	hint._input(press)
+	assert_eq(
+		int(card.mouse_filter),
+		int(Control.MOUSE_FILTER_STOP),
+		"Ohne Welt-Ziel schluckt die Karte den Tap weiterhin."
+	)
+	cam.queue_free()
+	hint.queue_free()
+	await wait_frames(1)
+
+
 func test_ghost_button_icon_ist_gedeckelt() -> void:
 	var theme: Theme = (load("res://themes/build_theme.gd") as GDScript).build()
 	assert_eq(

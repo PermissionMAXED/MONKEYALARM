@@ -31,6 +31,11 @@ const TOUCH_MIN_PT := 46.0
 ## Telefon-Querformat (Status-Spalte links, Cockpit rechts) braucht der TEXT
 ## jede Spalte — sonst bricht er wortweise um (Runde-2-Befund, 2556×1179).
 const WELL_MIN_LANE_PX := 300.0
+## Ray-Reichweite (m) für die Welt-Ziel-Probe hinter der Karte — Home-Räume
+## sind < 20 m tief, 60 deckt jede Kameralage.
+const ZIEL_RAY_M := 60.0
+## Max. Area-Treffer, die die Probe entlang des Rays durchgeht.
+const ZIEL_RAY_HITS := 8
 
 var _suggestion: Dictionary = {}
 var _card: PanelContainer
@@ -57,6 +62,72 @@ func _ready() -> void:
 	add_child(_timer)
 	_build_card()
 	get_viewport().size_changed.connect(_relayout)
+
+
+## PT-HOME F1 (Karte liegt über der Küchentür): liegt HINTER dem Tap-Punkt
+## ein Welt-Tap-Ziel (DoorTransition.TAP_ZIEL_GRUPPE), lässt die Karte den
+## Tap DURCH, statt ihn zu schlucken — der Spieler meint die Tür, nicht das
+## Blatt. _input läuft VOR der GUI-Zustellung: für genau dieses Event wird
+## die Karte durchlässig (IGNORE) und direkt danach wieder fest. Das ×
+## (eigener STOP-Button) behält Vorrang und bleibt immer tippbar.
+func _input(event: InputEvent) -> void:
+	if not visible or _suppressed or _card == null or not _card.visible:
+		return
+	var punkt: Variant = _press_punkt(event)
+	if punkt == null or not _card.get_global_rect().has_point(punkt):
+		return
+	if _welt_ziel_hinter(punkt):
+		_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_restore_card_filter.call_deferred()
+
+
+## Canvas-Punkt eines Links-/Touch-Press — sonst null (kein Press).
+static func _press_punkt(event: InputEvent) -> Variant:
+	if event is InputEventMouseButton:
+		var mouse := event as InputEventMouseButton
+		if mouse.pressed and mouse.button_index == MOUSE_BUTTON_LEFT:
+			return mouse.position
+	elif event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			return touch.position
+	return null
+
+
+func _restore_card_filter() -> void:
+	if _card != null and is_instance_valid(_card):
+		_card.mouse_filter = Control.MOUSE_FILTER_STOP
+
+
+## Liegt unter diesem Canvas-Punkt ein tippbares 3D-Ziel? Ray durch die
+## aktive Kamera, NUR Areas (Wände/Böden sind Bodies und decken Türen im
+## Physik-Picking auch sonst nicht ab); mehrere Treffer entlang des Rays
+## werden durchgegangen, weil fremde Areas (z. B. Trigger) davor liegen
+## können.
+func _welt_ziel_hinter(pos: Vector2) -> bool:
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return false
+	var world := cam.get_world_3d()
+	if world == null or world.direct_space_state == null:
+		return false
+	var von := cam.project_ray_origin(pos)
+	var params := PhysicsRayQueryParameters3D.create(
+		von, von + cam.project_ray_normal(pos) * ZIEL_RAY_M
+	)
+	params.collide_with_areas = true
+	params.collide_with_bodies = false
+	var ausgeschlossen: Array[RID] = []
+	for _i in ZIEL_RAY_HITS:
+		params.exclude = ausgeschlossen
+		var hit := world.direct_space_state.intersect_ray(params)
+		if hit.is_empty():
+			return false
+		var collider: Object = hit.get("collider")
+		if collider is Node and (collider as Node).is_in_group(DoorTransition.TAP_ZIEL_GRUPPE):
+			return true
+		ausgeschlossen.append(hit["rid"])
+	return false
 
 
 func _process(_delta: float) -> void:

@@ -15,6 +15,11 @@ signal travel_finished(door_id: String)
 
 const DOOR_HEIGHT := 2.0
 const DOOR_THICKNESS := 0.07
+## Gruppe der Welt-Tap-Ziele (PT-HOME F1): UI-Karten in der hint_lane
+## (whats_next_hint) prüfen per Ray gegen diese Gruppe, ob unter einem
+## Tap ein tippbares 3D-Ziel liegt — dann lassen sie den Tap durch,
+## statt ihn zu schlucken.
+const TAP_ZIEL_GRUPPE := &"welt_tap_ziel"
 const PANEL_COLOR := Color(0.62, 0.42, 0.26)
 const FRAME_COLOR := Color(0.5, 0.33, 0.2)
 ## Offen-Winkel des Türblatts (Grad) — Öffnen-Tween, Rattle und W15-Fahrt.
@@ -331,6 +336,7 @@ static func _verlauf(von: Color, nach: Color) -> GradientTexture1D:
 func _build_tap_area() -> void:
 	var area := Area3D.new()
 	area.name = "TapArea"
+	area.add_to_group(TAP_ZIEL_GRUPPE)
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
 	box.size = Vector3(door_width + 0.3, DOOR_HEIGHT + 0.2, 0.6)
