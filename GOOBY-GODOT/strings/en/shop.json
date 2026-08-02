@@ -17,7 +17,15 @@
       "gekauft": "{name} is waiting in your storage!",
       "zu_teuer": "Not enough coins for that one.",
       "lager_voll": "Storage is full — clear it out or upgrade the shed.",
-      "fehler": "That did not work, sorry."
+      "fehler": "That did not work, sorry.",
+      "durchsagen": [
+        "The sofa in aisle three is now open for test-sitting!",
+        "Today's special: shelves that almost hold together on their own.",
+        "Little Gooby at the info desk is missing their herd. Please collect!",
+        "Please do not fall asleep on the display beds. Thank you!",
+        "Fresh cinnamon buns by the exit — the smell is intentional.",
+        "Lost? Follow the arrows — the exit shows up eventually."
+      ]
     },
     "kategorie": {
       "bad": "Bathroom",

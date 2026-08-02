@@ -62,7 +62,9 @@ func _npc_konfig() -> Dictionary:
 
 ## G7-P55: Ambient-Leben — 3 Kunden schlendern zwischen Kisten und
 ## Kühltheke, Frau Rehwald bekommt das Kassen-Verhalten, dazu Glöckchen
-## beim Betreten und leises Marktgemurmel.
+## beim Betreten und leises Marktgemurmel. SHOPS-1: einer der Kunden
+## steuert die Kasse an und BEZAHLT dort einmal pro Runde (kasse_punkt
+## = vor dem Tresen, Frau Rehwald piept + winkt über `kunde_kauft`).
 func _leben_konfig() -> Dictionary:
 	return {
 		"besucher": 3,
@@ -79,4 +81,5 @@ func _leben_konfig() -> Dictionary:
 		"gemurmel": true,
 		"tuer_glocke": true,
 		"kasse": true,
+		"kasse_punkt": Vector3(-0.2, 0.0, -0.3),
 	}

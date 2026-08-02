@@ -49,6 +49,9 @@ func _mount(gs: Node) -> IkeaScreen:
 	var screen := IkeaScreen.new()
 	screen.game_state_override = gs
 	screen.auto_navigate = false
+	# SHOPS-1: Ambient-Audio + Durchsagen-Takt stumm/aus (s. OrtLeben.stumm).
+	screen.stumm = true
+	screen.auto_zeit = false
 	tree.root.add_child(screen)
 	await wait_frames(2)
 	screen.showcase().set_spin_enabled(false)

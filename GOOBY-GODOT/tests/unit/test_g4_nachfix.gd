@@ -305,6 +305,9 @@ func test_ikea_wallet_umbruch_hoch_und_zurueck() -> void:
 	await _pin(HOCH_FENSTER, HOCH_SCALE, HOCH_INSETS_PT)
 	var screen := IkeaScreen.new()
 	screen.auto_navigate = false
+	# SHOPS-1: Ambient-Audio + Durchsagen-Takt stumm/aus (s. OrtLeben.stumm).
+	screen.stumm = true
+	screen.auto_zeit = false
 	tree.root.add_child(screen)
 	await wait_frames(3)
 	screen.showcase().set_spin_enabled(false)

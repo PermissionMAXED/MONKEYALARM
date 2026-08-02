@@ -69,6 +69,9 @@ func _shot_ausstellung() -> void:
 	var screen := IkeaScreen.new()
 	screen.game_state_override = gs
 	screen.auto_navigate = false
+	# SHOPS-1: Ambient-Audio + Durchsagen-Takt stumm/aus (deterministisches Bild).
+	screen.stumm = true
+	screen.auto_zeit = false
 	root.add_child(screen)
 	await process_frame
 	var showcase := screen.showcase()

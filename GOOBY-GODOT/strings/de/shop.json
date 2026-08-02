@@ -17,7 +17,15 @@
       "gekauft": "{name} liegt jetzt im Lager!",
       "zu_teuer": "Dafür reichen die Münzen nicht.",
       "lager_voll": "Das Lager ist voll — erst ausmisten oder den Schuppen ausbauen.",
-      "fehler": "Das hat leider nicht geklappt."
+      "fehler": "Das hat leider nicht geklappt.",
+      "durchsagen": [
+        "Das Sofa in Reihe drei ist zum Probesitzen freigegeben!",
+        "Heute im Angebot: Regale, die fast allein zusammenhalten.",
+        "Kleiner Gooby an der Info sucht seine Herde. Bitte abholen!",
+        "Bitte nicht auf den Ausstellungsbetten einschlafen. Danke!",
+        "Frische Zimtschnecken am Ausgang — der Duft ist Absicht.",
+        "Verlaufen? Den Pfeilen nach — irgendwann kommt der Ausgang."
+      ]
     },
     "kategorie": {
       "bad": "Bad",

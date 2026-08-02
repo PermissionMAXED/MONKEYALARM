@@ -10,9 +10,16 @@ extends Node3D
 ## Anschluss für neue Orte = ~15 Zeilen: `OrtScene._leben_konfig()`
 ## überschreiben und ein Dictionary liefern:
 ##   {"besucher": 3, "punkte": [Vector3, …], "sprueche": "laden",
-##    "gemurmel": true, "tuer_glocke": true, "kasse": true}
+##    "gemurmel": true, "tuer_glocke": true, "kasse": true,
+##    "kasse_punkt": Vector3(…)}
 ## Sprüche leben in strings/<locale>/city_leben.json unter
 ## `city_leben.sprueche.<domain>` (DE führend, EN paritätisch).
+##
+## SHOPS-1 „Kunden kaufen wirklich“: mit `kasse_punkt` nimmt GENAU EIN
+## Besucher (Seed-gewürfelt) die Kasse in seine Runde auf und „bezahlt“
+## dort einmal pro Runde (`kunde_kauft`-Signal, mitten in der Steh-Pause).
+## Die Ort-Szene verdrahtet das an ihren KassenNpc — die Kasse piept dann
+## auch, wenn der Spieler nur zuschaut.
 ##
 ## Performance (iPhone-Budget, Muster CityScene-Fußgänger): Besucher sind
 ## das ROHE gooby.glb + AnimationPlayer (keine GoobyRig-Maschinerie),
@@ -20,7 +27,13 @@ extends Node3D
 ## reine Wegpunkt-Interpolation ohne Physik. Reduced Motion: halbe
 ## Besucherzahl und alle stehen statisch (kein _update pro Frame).
 
+## SHOPS-1: der Ambient-Käufer hat an der Kasse „bezahlt“ (einmal pro
+## Runde, mitten in der Steh-Pause) — Anschluss für den KassenNpc.
+signal kunde_kauft
+
 const GOOBY_GLB := "res://assets/character/gooby.glb"
+## Steh-Pausen-Anteil, ab dem der Kassen-Besuch als „bezahlt“ gilt.
+const KASSE_PAUSE_FRAC := 0.55
 ## Schlender-Tempo (m/s) — im Laden noch gemütlicher als auf der Straße.
 const TEMPO_MIN := 0.45
 const TEMPO_MAX := 0.85
@@ -135,6 +148,11 @@ static func plaene(plan_konfig: Dictionary, seed_wert: int) -> Array[Dictionary]
 		return out
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_wert
+	# SHOPS-1: mit `kasse_punkt` wird GENAU EIN Besucher zum Käufer gewürfelt
+	# (VOR der Schleife — Konfigs ohne Kasse behalten ihren Zufalls-Strom).
+	var kaeufer := -1
+	if plan_konfig.get("kasse_punkt") is Vector3:
+		kaeufer = rng.randi_range(0, anzahl - 1)
 	for i in anzahl:
 		var eigene: Array[Vector3] = []
 		var idx := i % punkte.size()
@@ -146,6 +164,10 @@ static func plaene(plan_konfig: Dictionary, seed_wert: int) -> Array[Dictionary]
 			)
 			eigene.append(Vector3(punkte[idx]) + jitter)
 			idx = (idx + 1 + rng.randi_range(0, punkte.size() - 2)) % punkte.size()
+		# Der Käufer steuert die Kasse EXAKT an (kein Jitter — er soll vor
+		# dem Tresen stehen, nicht daneben).
+		if i == kaeufer:
+			eigene.append(Vector3(plan_konfig["kasse_punkt"]))
 		var felle := CityFussgaenger.FELLE
 		(
 			out
@@ -160,6 +182,8 @@ static func plaene(plan_konfig: Dictionary, seed_wert: int) -> Array[Dictionary]
 					rng.randi_range(0, HUT_FARBEN.size() - 1) if rng.randf() < HUT_ANTEIL else -1,
 					"greift": rng.randf() < GREIFER_ANTEIL,
 					"blick": Vector3(plan_konfig.get("blick", Vector3(0.0, 0.0, -4.0))),
+					"kauft": i == kaeufer,
+					"kasse_index": eigene.size() - 1 if i == kaeufer else -1,
 				}
 			)
 		)
@@ -168,14 +192,16 @@ static func plaene(plan_konfig: Dictionary, seed_wert: int) -> Array[Dictionary]
 
 ## Zustand eines Besuchers nach `sekunden` (PURE): läuft die eigene
 ## Punkt-Schleife ab, pausiert an jedem Punkt (Regal anschauen) und kehrt
-## zum Start zurück. Rückgabe: {pos, heading, steht, pause_frac}.
+## zum Start zurück. Rückgabe: {pos, heading, steht, pause_frac,
+## punkt_index (Steh-Punkt, -1 unterwegs), runde (Rundenzähler)} —
+## punkt_index+runde tragen den Kassen-Besuch (SHOPS-1).
 static func zustand(plan: Dictionary, sekunden: float) -> Dictionary:
 	var punkte_raw: Variant = plan.get("punkte", [])
 	var punkte: Array = punkte_raw if punkte_raw is Array else []
 	if punkte.is_empty():
-		return {"pos": Vector3.ZERO, "heading": 0.0, "steht": true, "pause_frac": 0.0}
+		return _zustand_still(Vector3.ZERO)
 	if punkte.size() < 2:
-		return {"pos": punkte[0], "heading": 0.0, "steht": true, "pause_frac": 0.0}
+		return _zustand_still(punkte[0])
 	var tempo := maxf(0.05, float(plan.get("tempo", TEMPO_MIN)))
 	var pause := maxf(0.0, float(plan.get("pause_s", PAUSE_MIN_S)))
 	var laengen: Array[float] = []
@@ -184,7 +210,9 @@ static func zustand(plan: Dictionary, sekunden: float) -> Dictionary:
 		var teil := Vector3(punkte[i]).distance_to(Vector3(punkte[(i + 1) % punkte.size()]))
 		laengen.append(maxf(teil, 0.001))
 		zyklus += laengen[i] / tempo + pause
-	var t := fposmod(sekunden + float(plan.get("phase", 0.0)) * zyklus, zyklus)
+	var roh := sekunden + float(plan.get("phase", 0.0)) * zyklus
+	var runde := int(floor(roh / zyklus))
+	var t := fposmod(roh, zyklus)
 	for i in punkte.size():
 		var von := Vector3(punkte[i])
 		var nach := Vector3(punkte[(i + 1) % punkte.size()])
@@ -196,6 +224,8 @@ static func zustand(plan: Dictionary, sekunden: float) -> Dictionary:
 				"heading": atan2(richtung.x, richtung.z),
 				"steht": false,
 				"pause_frac": 0.0,
+				"punkt_index": -1,
+				"runde": runde,
 			}
 		t -= gehzeit
 		if t < pause:
@@ -205,9 +235,18 @@ static func zustand(plan: Dictionary, sekunden: float) -> Dictionary:
 				"heading": atan2(blick.x, blick.z),
 				"steht": true,
 				"pause_frac": t / maxf(pause, 0.001),
+				"punkt_index": (i + 1) % punkte.size(),
+				"runde": runde,
 			}
 		t -= pause
-	return {"pos": punkte[0], "heading": 0.0, "steht": true, "pause_frac": 0.0}
+	return _zustand_still(punkte[0])
+
+
+## Still stehender Fallback-Zustand (leerer/degenerierter Plan).
+static func _zustand_still(pos: Vector3) -> Dictionary:
+	return {
+		"pos": pos, "heading": 0.0, "steht": true, "pause_frac": 0.0, "punkt_index": 0, "runde": 0
+	}
 
 
 ## Nächste Spruch-Zeile einer Domain (Rotation, Muster UrlaubsSprueche).
@@ -278,6 +317,7 @@ func _spawne_besucher(alle: Array[Dictionary]) -> void:
 					"player": node.find_child("AnimationPlayer", true, false),
 					"anim": "",
 					"spruch_cd": SPRUCH_START_S + float(i) * SPRUCH_VERSATZ_S,
+					"kasse_runde": -1,
 				}
 			)
 		)
@@ -290,6 +330,23 @@ func _update_besucher() -> void:
 		node.position = bei["pos"]
 		node.rotation.y = float(bei["heading"])
 		_spiele_clip(eintrag, bei)
+		_pruefe_kasse(eintrag, bei)
+
+
+## SHOPS-1: steht der Käufer an der Kasse und ist die Pause halb um, hat
+## er „bezahlt“ — genau einmal pro Runde (Runden-Marke gegen Doppel-Piep).
+func _pruefe_kasse(eintrag: Dictionary, bei: Dictionary) -> void:
+	var plan: Dictionary = eintrag["plan"]
+	if not bool(plan.get("kauft", false)) or not bool(bei["steht"]):
+		return
+	if int(bei["punkt_index"]) != int(plan.get("kasse_index", -1)):
+		return
+	if float(bei["pause_frac"]) < KASSE_PAUSE_FRAC:
+		return
+	if int(eintrag["kasse_runde"]) == int(bei["runde"]):
+		return
+	eintrag["kasse_runde"] = int(bei["runde"])
+	kunde_kauft.emit()
 
 
 ## Clip-Wahl: gehen = walk-Loop; Pause = einmal umsehen (idle_lookaround),

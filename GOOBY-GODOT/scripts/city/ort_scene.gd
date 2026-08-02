@@ -121,6 +121,9 @@ func _baue_leben() -> void:
 		kassen_npc.rig = rig
 		kassen_npc.reduced_override = leben_reduced_override
 		add_child(kassen_npc)
+		# SHOPS-1: Ambient-Käufer (kasse_punkt) zahlen am selben Tresen —
+		# gebundene Methode statt Lambda (REST5, B2).
+		leben.kunde_kauft.connect(kassen_npc.kunde_zahlt)
 
 
 ## Laden-Sheet öffnen (auch via Dialog-Effekt "laden"). M2-Orte mit eigenem

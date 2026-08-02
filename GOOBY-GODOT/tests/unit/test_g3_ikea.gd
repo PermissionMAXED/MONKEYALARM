@@ -17,6 +17,9 @@ func _mount(window: Vector2i) -> IkeaScreen:
 	tree.root.size = window
 	var screen := IkeaScreen.new()
 	screen.auto_navigate = false
+	# SHOPS-1: Ambient-Audio + Durchsagen-Takt stumm/aus (s. OrtLeben.stumm).
+	screen.stumm = true
+	screen.auto_zeit = false
 	tree.root.add_child(screen)
 	await wait_frames(2)
 	screen.showcase().set_spin_enabled(false)

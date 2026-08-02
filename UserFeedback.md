@@ -360,6 +360,11 @@ G6-Pakete wurden neu einsortiert (zwei davon sind oben schon gelandet)._
       Regale und haben Emoji-Momente, ein Kassen-NPC tippt/winkt/piept, dazu
       Türglöckchen + Markt-Gemurmel; das IKEA-Schaufenster lebt (wandelnde
       Silhouetten). Weitere Orte anschließen kostet ~20 Zeilen Konfiguration.
+      → SHOPS-1-Ausbau: in REHWEI geht ein Ambient-Kunde jetzt WIRKLICH zur
+      Kasse und bezahlt (Frau Rehwald piept + winkt, einmal pro Runde); der
+      IKEA-Katalog klingt nach Möbelhaus (Tür-Pling + leises Gemurmel) und
+      bringt rotierende Laden-Durchsagen über der Vitrine („Bitte nicht auf
+      den Ausstellungsbetten einschlafen. Danke!“, DE/EN).
 - [x] **P56 Ein-Spiel-Gefühl** — einheitlicher Minispiel-Rahmen (Intro/
       Outro/Pause im Gooby-Look überall) + einheitliche Szenen-Übergänge,
       damit sich nichts mehr wie ein Fremd-Spiel anfühlt.

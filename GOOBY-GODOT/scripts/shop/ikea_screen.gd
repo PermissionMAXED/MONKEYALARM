@@ -33,15 +33,32 @@ const CATEGORY_ALL := ""
 const LIST_WIDTH := 360
 const SWATCH_SIZE := 40
 const SHOWCASE_MIN_HEIGHT := 260
+## SHOPS-1 „Läden lebendig“: Ambiente-Sound (Tür-Pling + leises Gemurmel,
+## Bestands-Ids wie REHWEI/OrtLeben) und Laden-Durchsagen über der Vitrine.
+const GEMURMEL_ID := "ranch_menge_gemurmel"
+const PLING_ID := "gvz_wave"
+const PLING_PITCH := 1.35
+const DURCHSAGE_START_S := 7.0
+const DURCHSAGE_ALLE_S := 26.0
+const DURCHSAGE_DAUER_S := 5.0
+const DURCHSAGE_RAND_PX := 12.0
 ## Inhaltsspalte W16: eigene Grid-Basis — die 2-Spalten-Auslage braucht mehr
 ## Breite als die 660er-Menü-Spalte, bleibt auf iPad aber gedeckelt + mittig.
 const GRID_BASE := 880.0
 ## Höhen-Anteil der Vitrinen-/Detail-Spalte im Hochformat-Stapel.
 const PORTRAIT_DETAIL_SHARE := 0.55
 
+## Durchsagen-Rotation (Muster OrtLeben._spruch_zaehler): nichts wiederholt
+## sich, bevor alle Zeilen dran waren.
+static var _durchsage_zaehler := 0
+
 ## Tests/Screenshots: Navigation und Drehteller abschaltbar.
 var auto_navigate := true
 var game_state_override: Object = null
+## Test-Hooks (Muster OrtLeben): Ambient-Audio stumm (Headless-Runner —
+## nachklingende Samples melden sonst ObjectDB-Leaks) + Zeit von Hand.
+var stumm := false
+var auto_zeit := true
 
 var _showcase: FurnitureShowcase
 ## G7-P55: lebendiger Vitrinen-Hintergrund (verschwommene Ausstellung mit
@@ -67,6 +84,12 @@ var _variant := FurnitureVariants.DEFAULT_ID
 ## FB3: Metrik-Pass (Safe-Area/Touch-Floor/UiScale) bei jedem Resize.
 var _rows_box: VBoxContainer
 var _back_btn: Button
+## SHOPS-1: Laden-Durchsage (Pille + Text am Vitrinen-Oberrand) + Takt.
+var _durchsage_pill: PanelContainer
+var _durchsage_label: Label
+var _durchsage_cd := DURCHSAGE_START_S
+var _durchsage_rest := 0.0
+var _gemurmel_an := false
 ## G4-Nachfix: Kopfzeilen-Teile für den bedarfsbasierten Umbruch — die
 ## Wallet-Labels wandern auf schmalen Spalten in die eigene Zeile.
 var _header_zeile: HBoxContainer
@@ -118,6 +141,69 @@ func _ready() -> void:
 	var first := ShopCatalog.filter("", _kategorie)
 	if not first.is_empty():
 		select_item(str(first[0]["id"]))
+	# SHOPS-1: Betreten klingt nach Möbelhaus — Tür-Pling + leises Gemurmel
+	# (stumm-Hook wie OrtLeben: Tests starten keine nachklingenden Samples).
+	if not stumm:
+		AudioDirector.try_play(self, PLING_ID, PLING_PITCH)
+		AudioDirector.try_start_loop(self, GEMURMEL_ID)
+		_gemurmel_an = true
+
+
+func _exit_tree() -> void:
+	if _gemurmel_an:
+		AudioDirector.try_stop_loop(self, GEMURMEL_ID)
+		_gemurmel_an = false
+
+
+func _process(delta: float) -> void:
+	if auto_zeit:
+		advance_zeit(delta)
+
+
+## Zeit hereinreichen (vom _process ODER von Tests, Muster OrtLeben):
+## treibt die Laden-Durchsagen — erste nach DURCHSAGE_START_S, danach alle
+## DURCHSAGE_ALLE_S für DURCHSAGE_DAUER_S sichtbar. Läuft auch unter
+## Reduced Motion (Inhalt, keine Bewegung — wie die OrtLeben-Sprüche).
+func advance_zeit(delta: float) -> void:
+	if _durchsage_rest > 0.0:
+		_durchsage_rest -= delta
+		if _durchsage_rest <= 0.0:
+			_durchsage_pill.visible = false
+		else:
+			_zentriere_durchsage()
+		return
+	_durchsage_cd -= delta
+	if _durchsage_cd > 0.0:
+		return
+	_durchsage_cd = DURCHSAGE_ALLE_S
+	var text := naechste_durchsage()
+	if text.is_empty():
+		return
+	_durchsage_label.text = text
+	_durchsage_rest = DURCHSAGE_DAUER_S
+	_durchsage_pill.visible = true
+	_zentriere_durchsage()
+	if not stumm:
+		AudioDirector.try_play(self, "ui_toast")
+
+
+## Nächste Laden-Durchsage (Rotation ohne Wiederholung, Muster
+## OrtLeben.naechster_spruch). "" wenn die Strings-Domain fehlt.
+static func naechste_durchsage() -> String:
+	var key := "shop.ikea.durchsagen"
+	if not I18nService.has_key(key):
+		return ""
+	var liste := I18nService.items(key)
+	if liste.is_empty():
+		return ""
+	var index := _durchsage_zaehler % liste.size()
+	_durchsage_zaehler = index + 1
+	return String(liste[index])
+
+
+## Nur für Tests: Durchsagen-Rotation zurücksetzen.
+static func reset_durchsagen_fuer_tests() -> void:
+	_durchsage_zaehler = 0
 
 
 func _on_viewport_resized() -> void:
@@ -419,8 +505,64 @@ func _build_right_column() -> Control:
 	_showcase.custom_minimum_size = Vector2(0, SHOWCASE_MIN_HEIGHT)
 	_showcase.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	card.add_child(_showcase)
+	# SHOPS-1: Laden-Durchsage — Paper-Pille am Vitrinen-Oberrand. Kind des
+	# Schaufensters (KEIN Container): sie diktiert der Karte keine Minbreite
+	# und wird in _zentriere_durchsage von Hand gelegt.
+	_durchsage_pill = PanelContainer.new()
+	_durchsage_pill.name = "Durchsage"
+	_durchsage_pill.add_theme_stylebox_override("panel", _durchsage_stylebox())
+	_durchsage_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_durchsage_pill.visible = false
+	_durchsage_label = Label.new()
+	_durchsage_label.name = "DurchsageText"
+	_durchsage_label.theme_type_variation = &"CaptionLabel"
+	_durchsage_label.clip_text = true
+	_durchsage_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_durchsage_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_durchsage_pill.add_child(_durchsage_label)
+	_schaufenster.add_child(_durchsage_pill)
 	column.add_child(_build_detail_panel())
 	return scroll
+
+
+## Durchsage-Pille mittig an die Vitrinen-Oberkante legen — von Hand, das
+## Schaufenster ist bewusst kein Container. Breite = Textbreite (über die
+## Schrift gemessen, clip_text nullt die Label-Minbreite), auf die Vitrine
+## gedeckelt (dann Ellipse statt Überlauf).
+func _zentriere_durchsage() -> void:
+	if _durchsage_pill == null or _schaufenster == null:
+		return
+	var maxb := maxf(_schaufenster.size.x - 2.0 * DURCHSAGE_RAND_PX * _f, 80.0)
+	var font := _durchsage_label.get_theme_font("font")
+	var font_size := _durchsage_label.get_theme_font_size("font_size")
+	var text_b := 0.0
+	if font != null and font_size > 0:
+		text_b = (
+			font
+			. get_string_size(_durchsage_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size)
+			. x
+		)
+	var chrome := _durchsage_pill.get_combined_minimum_size().x
+	var breite := minf(text_b + chrome, maxb)
+	var hoehe := _durchsage_pill.get_combined_minimum_size().y
+	_durchsage_pill.size = Vector2(breite, hoehe)
+	_durchsage_pill.position = Vector2(
+		(_schaufenster.size.x - breite) / 2.0, DURCHSAGE_RAND_PX * _f
+	)
+
+
+## Weiche Paper-Pille für die Durchsage (dezenter als die Gold-Preis-Pille).
+static func _durchsage_stylebox() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(AcTokens.PAPER, 0.94)
+	box.set_corner_radius_all(AcTokens.RADIUS_PILL)
+	box.set_border_width_all(1)
+	box.border_color = AcTokens.OUTLINE_SOFT
+	box.content_margin_left = 14.0
+	box.content_margin_right = 14.0
+	box.content_margin_top = 5.0
+	box.content_margin_bottom = 5.0
+	return box
 
 
 func _build_detail_panel() -> Control:
