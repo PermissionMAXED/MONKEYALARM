@@ -19,8 +19,9 @@ unter `docs/playtests/` sowie Test-Runner- und CI-Ausgaben. Dieses Dokument sagt
   1 offiziell gestrichen (Gooby Welt) — die früheren Restpunkte (Ball-Wurf,
   Sammlungsset-UI, Gyro-Parallax, Wetter-FX, Fotomodus-Werkzeuge, Nougatschleuse,
   City Drive als Arcade-Runde) sind seit W13 alle im Code nachweisbar geschlossen.
-  Einziger Katalog-Rest: die Web-Speise `corn-dog` hat weiterhin kein 3D-Asset
-  (Details in `EVAL-VOLLSTAENDIGKEIT.md`, Revision W18).
+  Der letzte Katalog-Rest ist seit W19 geschlossen: die Web-Speise `corn-dog`
+  hat jetzt ein eigenes 3D-Asset (Kenney Food Kit 2.0) und steht in Katalog +
+  REHWEI-Sortiment (Details in `EVAL-VOLLSTAENDIGKEIT.md`, Revision W18 + W19-Nachtrag).
 - **Tests (Stand W18):** Voll-Lauf **3.511 Haupt-Tests / 0 rot** (nach den
   PT-META-Fixen), **157 Server-Tests / 0 rot** (nach der GvZ-PvP-Härtung),
   UI-Audit **204 Screens / 0 Befunde**
@@ -53,7 +54,7 @@ unter `docs/playtests/` sowie Test-Runner- und CI-Ausgaben. Dieses Dokument sagt
 | Fundament/Engine | Godot-4.4.1-Projekt, SceneRouter (EIN Transition-System; seit W15 fährt die Kamera beim Raumwechsel wirklich DURCH die Tür — additiv geladener Zielraum, Fallback auf den Wisch bei Reduced-Motion/Low-End), OrientationService, zwei Test-Runner, Playtest-Harness (P58/P59), CI (Import→Tests→Lint→Boot-Smoke→ios-ipa→Release) | Echtes iPhone-Profiling steht weiter aus (User-Action) |
 | Gooby/Charakter | Blender-Pipeline → `gooby.glb` (Rig, Morphs), Gebrabbel-Stimme, Soul-/Mood-System, 12 expressive Emotionen + Postprocessing-Stack (W12), 8 neue Rig-Clips (W13: dance, tomato_throw, ceiling_cling …) + phone_up/phone_tap (W15), Schüttel-Secret mit Ragdoll-Flug + Geheim-Sticker (W13) | P2-Clips/PhysicalBone-Ragdoll bleiben M3 |
 | UI/Meta-Loop | UI-Full-Rework (W14: Web-geeichte Tokens, AcBubble, Haptik) + Inhaltsspalte (W16) + Welle G7 „Spielgefühl“ (HUD-Dynamik, Sprechblasen ohne Wortabriss, IGohbie-Telefon-Rework, EIN Sheet-System mit Runterwischen, Ein-Spiel-Rahmen für alle 38 Spiele); Profil mit Abschluss-Karte, 44 Erfolge, Tagesquests (Pool 24) + Tagesbonus-Streak, Stickeralbum (144 Sticker) **inkl. der 4 Sammlungssets mit Claim** (W13) + Rarity-FX, Reisepass 2.0 + Abflugtafel, Codes, Galerie mit Export, Postkarten + Tagespaket, Radio mit Kauf-Gates, News, Settings inkl. Mehrspieler-Settings + Dev-Werkzeugkasten (W14), DE führend + EN-Parität | Garderobe ist weiterhin über HUD-Knopf UND Spiegel erreichbar — der alte H-Doc-Entscheid (Knopf entfernen?) ist nie gefallen |
-| State/Save | Save v5 (atomar, 3 Backups, Recovery), Migrationskette Web v0–v4→v5, Umzugskoffer-Codec, iOS-Legacy-Import komplett; W18: Import-Fuzz + Backup-vor-Import-Beweis (`SAVE-TRANSFER.md` synchron) | Recovery-Hinweis-Toast beim Boot weiterhin unverdrahtet (String `system.recovered_backup` + `state_loaded`-Signal existieren, kein Konsument) |
+| State/Save | Save v5 (atomar, 3 Backups, Recovery), Migrationskette Web v0–v4→v5, Umzugskoffer-Codec, iOS-Legacy-Import komplett; W18: Import-Fuzz + Backup-vor-Import-Beweis (`SAVE-TRANSFER.md` synchron); W19: Recovery-Hinweis-Toast beim Boot verdrahtet (`GameState.consume_recovery_notice()` → RewardHub-Toast `sys.save.recovered_backup`/`recovered_fresh`) | — |
 | Haus/Bau/Garten | 5 Räume, Baumodus mit RUG/FLOOR/SURFACE/WALL **+ CEILING-Layer & spannbare Girlanden** (W13), Garage + Layout-Presets (W13), 207+ Möbel + Lager, Haus von außen, Kühlschrank 2.0 mit Fütter-Sequenz (W14), Ball-Wurf & Apport auf Web-Parität (W13+W18), Nougatschleuse (W13), Werkstatt + Crafting (8 Rezepte, W15 +3), Garten 2.0 + 4 neue Crops (W15: Radieschen/Mais/Aubergine/Kürbis → alle 4 Sammlungen komplettierbar), Wochenmarkt-Eigenstand mit Verkaufs-Sim (W15) | Keller/Etage/Balkon = M3 |
 | Stadt/Orte | 15×12-Stadt mit Verkehr/Fußgängern/Tag-Nacht, sichtbares Wetter (Regen/Schnee/Gewitter, W13), begehbare Orte inkl. Tierarzt, Baumarkt, Autohaus, Wochenmarkt, Raumstation GOOB-1 (W13) und **NEU Kino „GOOBYWOOD“** (W18); Läden LEBENDIG (G7/W18: Ambient-Kunden, Kassen-NPCs, Flughafen-Reisende, GOOBERANDO-Fahrer); GOOBERANDO-Vollausbau mit 3 Restaurants + Fahrer-Sim (W13); IGohbie-Phone mit 7 Apps (inkl. Freunde-App, G5); Fotomodus MIT Pose-/Emotions-/Rahmenwerkzeugen (W13) + Gyro-Parallax (W13); Urlaub mit 9 Zielen, Weltengooby, Erholungs-Boost, GOOBY-FREE-Shop (W13) und „Gooby im Urlaub besuchen“ (W15) | — |
 | Minigames | Framework (Host/Pregame/Results/JuiceKit, GoobyRng bit-identisch), 38 startbare Spiele im EIN-Spiel-Rahmen (G7/P56, Registry-Wache), City Drive als Arcade-Runde + Auto-Stats (W13), Endless-Modi, Modifier-Engine, GvZ-Kampagne (Sticker/Goldi-Code seit W13 verdrahtet), GOB NOM inkl. Level-Editor (W15), 30/38 bit-genau Web-zertifiziert (W15), danceParty-Latenz-Kalibrierung + HDR-Glow-Auto-Downgrade (W15) | Playtest-Übergaben offen: sporadisches „Invalid polygon data“, Mini-Untertitel unter HUD-Timern, runner-Bäume zu dunkel (s. `docs/playtests/PT-minigames-b.md`) |
@@ -73,11 +74,6 @@ unter `docs/playtests/` sowie Test-Runner- und CI-Ausgaben. Dieses Dokument sagt
   `GOOBY-GODOT/scripts/platform/notification_service.gd`). Dynamic
   Island/Live-Activities + Homescreen-Widget sind bewusst zurückgestellt
   (brauchen eine SIGNIERTE App, Sideload kann das nicht).
-- **Recovery-Hinweis-Toast beim Boot unverdrahtet:** String
-  (`system.recovered_backup`) und Signal (`state_loaded`) existieren, aber kein
-  Konsument zeigt den Hinweis an. Die Recovery selbst funktioniert und ist
-  getestet.
-- **`corn-dog`** ist die letzte Web-Speise ohne 3D-Asset im Katalog.
 - **Echtes iPhone-Profiling steht aus** (User-Action: .ipa sideloaden,
   Rückmeldung); Store-/Dauer-Signing gibt es bewusst nicht (Sideload-Modell).
 - **CI-Schedule-Vorbehalt (CI-38):** GitHub feuert Cron-Läufe nur aus dem

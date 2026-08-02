@@ -60,8 +60,10 @@ Tagesquests, geführtes Onboarding, Schlaf/Krankheit/Tierarzt/Gewicht,
 Funkelpark, Radio, Codes, Galerie, Postkarten, Arcade-Modifier) und auch
 die FERTIG-1-Restpunkte (Ball-Wurf, Sammlungsset-UI, Gyro-Parallax,
 Wetter-FX, Fotomodus-Werkzeuge, Nougatschleuse, Katalog-Rest) sind
-umgesetzt und testgedeckt. Einziger Zeilen-INTERNER Rest: die Web-Speise
-`corn-dog` hat kein 3D-Asset (s. Zeile A-7).
+umgesetzt und testgedeckt. Der letzte Zeilen-INTERNE Rest — die Web-Speise
+`corn-dog` ohne 3D-Asset (s. Zeile A-7) — ist seit W19 geschlossen
+(GLB aus dem Kenney Food Kit 2.0 nachgeladen, Katalog + REHWEI + Namen,
+Wache `test_w13_food_nougat.gd::test_corn_dog_letzte_web_speise_komplett`).
 
 Das revidierte Label (Revision W18) lautet:
 
@@ -140,7 +142,7 @@ Die damals belegten Befunde:
 | 4 | Fünf Räume und Navigation | **Vollständig** | `GOOBY/src/home/rooms/{kitchen,living,bathroom,bedroom,garden}.js`, `ui/roomNav.js` | `scripts/home/rooms/*.gd`, `room_defs.gd`, `door_transition.gd`; living, bathroom, bedroom, garden und kitchen im Durchlauf besucht. |
 | 5 | Vier Care-Stats und Offline-Catch-up | **Vollständig** | `GOOBY/src/systems/stats.js`, `offline.js`, `core/timeEngine.js` | `scripts/logic/stats.gd`, `offline.gd`, `state/gooby_ticker.gd`; Live-Tick und Catch-up sind produktiv verkabelt. |
 | 6 | Füttern aus dem Kühlschrank | **Vollständig** | `GOOBY/src/home/interactions.js`, `systems/inventory.js` | `scripts/home/interactables/kuehlschrank.gd`, `logic/food_catalog.gd`; Vorrat, Animation, Stat-Deltas und Sticker-Hook sind verkabelt. |
-| 7 | Voller Lebensmittel-/Item-Katalog | **Vollständig** | `GOOBY/src/data/foods.js` enthält 39 Speisen plus Medizin/Dünger | *(W18 nachgeprüft, geschlossen)* W13 lieferte 9 neue Speisen inkl. `nutella`, `ice-cream`, `cake`, `sundae`, `cinnamonRoll`, `cupcakePink`, `lollypop`, `candy-bar`; W15 die 4 Garten-Crops `radish`/Mais/`eggplant`/`pumpkin` — alle per grep in `scripts/logic/food_catalog.gd` belegt. Von den 39 Web-IDs fehlt nur noch `corn-dog` (kein 3D-Asset); als Einzelposten kein wesentlicher Loop-Teil mehr im Sinne des Bewertungsmaßstabs. |
+| 7 | Voller Lebensmittel-/Item-Katalog | **Vollständig** | `GOOBY/src/data/foods.js` enthält 39 Speisen plus Medizin/Dünger | *(W19 komplett)* W13 lieferte 9 neue Speisen inkl. `nutella`, `ice-cream`, `cake`, `sundae`, `cinnamonRoll`, `cupcakePink`, `lollypop`, `candy-bar`; W15 die 4 Garten-Crops `radish`/Mais/`eggplant`/`pumpkin`; W19 schließt mit `corn-dog` (eigenes GLB aus dem Kenney Food Kit 2.0, Werte verbatim FOOD_TABLE, REHWEI-Preis 15) die letzte der 39 Web-IDs — Wache `test_w13_food_nougat.gd::test_corn_dog_letzte_web_speise_komplett`. |
 | 8 | Waschen, Dusche, Toilette, Zähne | **Vollständig** | `GOOBY/src/home/interactions.js`, `ui/careSheet.js` | `scripts/home/interactables/klo_dusche.gd`, `zahnputz.gd`, `bad_state.gd`; inklusive Timer, Bürstenbruch und Zähler. |
 | 9 | Streicheln, Kitzeln, Poken/Schwindel | **Vollständig** | `GOOBY/src/home/interactions.js` | `scripts/home/gooby_reactions.gd`; Tap-/Pet-Kaskade, Tickles, Schwindel und Feedback vorhanden. |
 | 10 | Ball werfen/Fangen | **Vollständig** | `GOOBY/src/home/interactions.js` | *(W18 nachgeprüft, geschlossen)* `scripts/home/interactables/ball.gd` + `ball_logic.gd` (W13, Web-Physik 1:1); W18 zog den Apport auf Web-Parität (2,2 m/s Antritt, Blickfolge, kapert keine Skript-Läufe). Tests `test_w13_ball.gd` + Spieler-Flow mit echtem Flick-Wurf (Welle H). |
@@ -390,11 +392,13 @@ Ehrlich offen wirken jetzt (Quellen: `STATUS.md`, `docs/playtests/`):
 
 - Natives Notification-Plugin fehlt (geschlossene App bekommt nichts);
   Live-Activities/Widget bewusst zurückgestellt (brauchen Signing).
-- Recovery-Hinweis-Toast beim Boot ist weiterhin unverdrahtet (String +
-  Signal existieren, kein Konsument).
+- ~~Recovery-Hinweis-Toast beim Boot unverdrahtet~~ — W19 verdrahtet:
+  `GameState.consume_recovery_notice()` (einmaliger Pull) + RewardHub zeigt
+  `sys.save.recovered_backup`/`recovered_fresh` auf seiner Boot-Toast-Layer.
 - Playtest-Übergaben: sporadisches „Invalid polygon data“, Untertitel-
   Kollisionen mit HUD-Timern in 4 Spielen, zu dunkle runner-Bäume.
-- `corn-dog` als letzte Web-Speise ohne 3D-Asset; Web-Zertifizierung
+- ~~`corn-dog` als letzte Web-Speise ohne 3D-Asset~~ — W19 geschlossen
+  (eigenes Kenney-GLB, s. Zeile A-7); Web-Zertifizierung
   deckt 30 von 38 Spielen (W15).
 
 ## Priorisierte Restliste (Top 30) — Stand Revision W18: ALLE 30 ERLEDIGT
@@ -451,9 +455,10 @@ verbliebenen Guard-Strings sind per Vertragstest
 
 Mit der Revision W18 sind alle 30 Punkte der Restliste und alle
 EVAL-2-Engine-Befunde B1–B11 geschlossen; die Feature-Matrix steht bei
-78/79 (1 bewusste Streichung, Katalog-Rest `corn-dog`). Die faire
+78/79 (1 bewusste Streichung). Der W18-Katalog-Rest `corn-dog` und der
+unverdrahtete Recovery-Toast sind seit W19 ebenfalls geschlossen. Die faire
 Einordnung lautet jetzt: **inhaltlich Web-paritätisches Spiel in der
 Politur-/Playtest-Phase** — offen sind keine Web-Features mehr, sondern
 Plattform-Punkte (natives Notification-Plugin, Signing-gebundene Extras,
-echtes Geräte-Profiling), der unverdrahtete Recovery-Toast und die in den
-Playtests übergebenen Politur-Befunde (s. `STATUS.md`, Stand W18).
+echtes Geräte-Profiling) und die in den
+Playtests übergebenen Politur-Befunde (s. `STATUS.md`, Stand W19).
