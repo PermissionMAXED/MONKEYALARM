@@ -1,5 +1,7 @@
 # GOOBY 🐰
 
+[![GOOBY Godot CI](https://github.com/PermissionMAXED/MONKEYALARM/actions/workflows/gooby-godot.yml/badge.svg?branch=cursor%2Fgooby-godot-improve-loop)](https://github.com/PermissionMAXED/MONKEYALARM/actions/workflows/gooby-godot.yml?query=branch%3Acursor%2Fgooby-godot-improve-loop)
+
 GOOBY ist ein virtuelles-Haustier-Spiel: ein fettes, liebenswertes Kaninchen zum
 Füttern, Waschen, Anziehen und Bespaßen — mit eigenem Haus samt Baumodus, einer
 Stadt mit freier Fahrt, Urlaub, Arcade-Minispielen, Stickeralbum und
