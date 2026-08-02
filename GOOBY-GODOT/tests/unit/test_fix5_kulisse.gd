@@ -61,6 +61,36 @@ func test_kulisse_hat_alle_kategorien() -> void:
 	assert_true(int(kategorien.get("gebaeude", 0)) >= 10, "genug Häuserzeilen")
 
 
+func test_parkreihen_haben_luecken_und_stossstangen_abstand() -> void:
+	var karte := CityMap.laden()
+	var reihen := {}
+	for eintrag in CityKulisse.plaene(karte, karte.deko_seed()):
+		if str(eintrag.get("kategorie", "")) != "parkauto":
+			continue
+		var tile := karte.welt_zu_tile(eintrag["pos"])
+		if not reihen.has(tile):
+			reihen[tile] = []
+		reihen[tile].append(Vector3(eintrag["pos"]))
+	assert_true(reihen.size() >= 4, "genug Parkreihen: %d" % reihen.size())
+	var mit_mehreren := 0
+	var mit_luecke := 0
+	for tile: Vector2i in reihen:
+		var autos: Array = reihen[tile]
+		assert_true(autos.size() <= CityKulisse.PARK_SLOTS.size(), "max. drei Wagen je Reihe")
+		if autos.size() >= 2:
+			mit_mehreren += 1
+		if autos.size() < CityKulisse.PARK_SLOTS.size():
+			mit_luecke += 1
+		# Slot-Raster + Jitter dürfen nie Stoßstange-an-Stoßstange kollidieren
+		# (Kenney-Auto ~4,5 m lang bei Scale 1,8).
+		for i in autos.size():
+			for j in range(i + 1, autos.size()):
+				var abstand: float = (autos[i] - autos[j]).length()
+				assert_true(abstand >= 4.6, "Reihe %s: Wagen kleben (%f m)" % [tile, abstand])
+	assert_true(mit_mehreren >= 1, "mind. eine Reihe mit mehreren Parkern")
+	assert_true(mit_luecke >= 1, "mind. eine Reihe mit sichtbarer Parklücke")
+
+
 func test_kulisse_bleibt_auf_der_karte_und_weg_von_strassenmitte() -> void:
 	var karte := CityMap.laden()
 	var halb := karte.welt_halb()

@@ -81,6 +81,14 @@ const PARKAUTO_POOL: Array[String] = [
 ]
 ## Modell-Skalierung Kenney-car-kit → Weltmeter (wie CityCarFeel.CAR_SCALE).
 const PARKAUTO_SCALE := 1.8
+## Parkreihen am Bordstein: drei Slots je Reihen-Tile (Kenney-Auto ~4,5 m
+## lang bei Scale 1,8) — das 6,4-m-Raster lässt Rangier-Luft zwischen den
+## Stoßstangen, und unbesetzte Slots bleiben als echte Parklücken sichtbar.
+const PARK_SLOTS: Array[float] = [-6.4, 0.0, 6.4]
+## Belegungs-Chance je Slot (der letzte Slot einer leeren Reihe parkt immer).
+const PARK_SLOT_CHANCE := 0.6
+## Längs-Wackler je Wagen (m) — keiner parkt millimetergenau im Raster.
+const PARK_JITTER_M := 0.5
 
 
 ## Kompletter Kulissen-Plan der Karte (deterministisch über `seed_wert`).
@@ -568,8 +576,10 @@ static func _plane_strassenraender(
 				)
 
 
-## Bordstein-Parker: stehende Autos an geraden Straßenstücken — Modelle
-## variieren, Blickrichtung wechselt, Orts-Eingänge bleiben frei.
+## Bordstein-Parker: PARKREIHEN an geraden Straßenstücken — je Reihe bis zu
+## drei Wagen im Slot-Raster mit echten Parklücken dazwischen (unbesetzte
+## Slots), Modelle variieren je Slot, eine Reihe parkt einheitlich in
+## Fahrtrichtung ihrer Straßenseite, Orts-Eingänge bleiben frei.
 static func _plane_parker(
 	karte: CityMap, rng: RandomNumberGenerator, out: Array[Dictionary]
 ) -> void:
@@ -589,25 +599,42 @@ static func _plane_parker(
 		var laengs := Vector3(v.z, 0.0, -v.x)
 		var richtung := 1.0 if (tile.x * 13 + tile.y) % 2 == 0 else -1.0
 		var mitte := karte.tile_zu_welt(tile)
-		(
-			out
-			. append(
-				{
-					"glb": PARKAUTO_POOL[(tile.x * 7 + tile.y * 3) % PARKAUTO_POOL.size()],
-					"pos":
-					(
-						mitte
-						+ v * PARKEN_ABSTAND_M
-						+ laengs * rng.randf_range(-2.0, 2.0)
-						+ Vector3(0.0, CityCarFeel.ROAD_Y, 0.0)
-					),
-					"rot_grad": rad_to_deg(atan2(laengs.x, laengs.z)) + (90.0 - richtung * 90.0),
-					"scale": PARKAUTO_SCALE,
-					"kategorie": "parkauto",
-					"klein": true,
-				}
+		var besetzt := 0
+		for slot in PARK_SLOTS.size():
+			# Jeder Slot würfelt einzeln (SO entstehen die Lücken) — nur der
+			# letzte Slot einer noch leeren Reihe parkt immer, sonst kippte
+			# die Tile-Auswahl gelegentlich komplett leer.
+			var frei := rng.randf() >= PARK_SLOT_CHANCE
+			if frei and (besetzt > 0 or slot < PARK_SLOTS.size() - 1):
+				continue
+			besetzt += 1
+			(
+				out
+				. append(
+					{
+						"glb":
+						PARKAUTO_POOL[(tile.x * 7 + tile.y * 3 + slot * 5) % PARKAUTO_POOL.size()],
+						"pos":
+						(
+							mitte
+							+ v * PARKEN_ABSTAND_M
+							+ (
+								laengs
+								* (
+									PARK_SLOTS[slot]
+									+ rng.randf_range(-PARK_JITTER_M, PARK_JITTER_M)
+								)
+							)
+							+ Vector3(0.0, CityCarFeel.ROAD_Y, 0.0)
+						),
+						"rot_grad":
+						rad_to_deg(atan2(laengs.x, laengs.z)) + (90.0 - richtung * 90.0),
+						"scale": PARKAUTO_SCALE,
+						"kategorie": "parkauto",
+						"klein": true,
+					}
+				)
 			)
-		)
 
 
 ## Kreisel-Inseln: ein dicker Baum + Blumenkranz in der Mitte.
