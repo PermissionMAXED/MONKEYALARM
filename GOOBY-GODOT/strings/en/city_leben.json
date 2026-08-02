@@ -26,6 +26,29 @@
         "That stall over there smells wonderful.",
         "Saturday is simply the best day.",
         "There's always room for a taste test."
+      ],
+      "flughafen": [
+        "Gate 3? I can't even find the exit.",
+        "Suitcase packed, heart pounding!",
+        "One trip to the Glitter Sea and back, please!",
+        "Does my trolley case need a vacation too?",
+        "Boarding? I only board with snacks.",
+        "The tower is blinking so nicely today!"
+      ],
+      "kino": [
+        "Popcorn first, movie later.",
+        "I already cry during the trailers.",
+        "Best seat: middle middle!",
+        "Shh, it's about to start!",
+        "The curtain is extra sparkly today.",
+        "The one with the carrot hero again, please!"
+      ],
+      "gooberando": [
+        "Gooby first!",
+        "Fresh, hot, and I only almost tripped once!",
+        "The bag passed the curve test.",
+        "Only the wind was faster today.",
+        "Smells good, right? I was only allowed to sniff."
       ]
     }
   }

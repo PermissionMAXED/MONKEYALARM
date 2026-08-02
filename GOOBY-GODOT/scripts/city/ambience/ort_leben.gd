@@ -307,7 +307,7 @@ func _spawne_besucher(alle: Array[Dictionary]) -> void:
 		_faerbe_geteilt(node, plan["tint"])
 		var hut_index := int(plan.get("hut", -1))
 		if hut_index >= 0:
-			node.add_child(_baue_hut(Color(HUT_FARBEN[hut_index % HUT_FARBEN.size()])))
+			node.add_child(baue_kaeppi(Color(HUT_FARBEN[hut_index % HUT_FARBEN.size()])))
 		(
 			_besucher
 			. append(
@@ -427,7 +427,9 @@ func _faerbe_geteilt(node: Node3D, farbe: Color) -> void:
 
 ## Kleines Käppchen (Zylinder + Krempe) mit geteiltem Material — sitzt am
 ## Wurzel-Node (Muster Wochenmarkt-Schürze), kein Bone-Attachment nötig.
-func _baue_hut(farbe: Color) -> Node3D:
+## CITY-2: öffentlich/static, damit auch der GOOBERANDO-Liefer-Gooby sein
+## orangenes Dienst-Käppi aus DIESEM Baustein bekommt (ein Material-Cache).
+static func baue_kaeppi(farbe: Color) -> Node3D:
 	var hut := Node3D.new()
 	hut.name = "Hut"
 	hut.position = Vector3(0.0, 1.01, 0.02)

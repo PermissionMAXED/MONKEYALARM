@@ -136,6 +136,31 @@ func _npc_konfig() -> Dictionary:
 	return {"tint": Color("#9BB7E8"), "emotion": "happy", "pos": Vector3(0.0, 0.0, -2.2)}
 
 
+## CITY-2 „Orte lebendig 3“: Ambient-Reisende (OrtLeben-Muster von REHWEI) —
+## vier Goobys pendeln zwischen Abflugtafeln, GOOBY-FREE-Stand und Schalter,
+## dazu Terminal-Gemurmel und Tür-Pling. SHOPS-1-Baustein: EIN Reisender
+## steuert den Check-in-Schalter an und „zahlt“ dort einmal pro Runde
+## (kasse_punkt vor dem Tresen — der Schalter-Gooby piept + winkt).
+func _leben_konfig() -> Dictionary:
+	return {
+		"besucher": 4,
+		"punkte":
+		[
+			Vector3(-2.6, 0.0, -2.4),
+			Vector3(-4.2, 0.0, 0.6),
+			Vector3(2.6, 0.0, -2.4),
+			Vector3(4.0, 0.0, 0.4),
+			Vector3(0.8, 0.0, 1.4),
+		],
+		"sprueche": "flughafen",
+		"blick": Vector3(0.0, 0.0, -4.0),
+		"gemurmel": true,
+		"tuer_glocke": true,
+		"kasse": true,
+		"kasse_punkt": Vector3(0.0, 0.0, -0.3),
+	}
+
+
 func _baue_ui() -> void:
 	super._baue_ui()
 	var reise_btn := Button.new()

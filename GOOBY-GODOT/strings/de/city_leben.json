@@ -26,6 +26,29 @@
         "Der Stand da drüben duftet herrlich.",
         "Samstag ist einfach der beste Tag.",
         "Eine Kostprobe geht immer."
+      ],
+      "flughafen": [
+        "Gate 3? Ich finde ja nicht mal den Ausgang.",
+        "Koffer gepackt, Herz klopft!",
+        "Einmal Glitzermeer und zurück, bitte!",
+        "Ob mein Rollkoffer auch Urlaub braucht?",
+        "Boarding? Ich boarde nur mit Snacks.",
+        "Der Tower blinkt heute so schön!"
+      ],
+      "kino": [
+        "Popcorn zuerst, Film später.",
+        "Ich weine schon im Trailer.",
+        "Bester Platz: Mitte Mitte!",
+        "Psst, es geht gleich los!",
+        "Der Vorhang glitzert heute besonders.",
+        "Nochmal den mit dem Karotten-Helden!"
+      ],
+      "gooberando": [
+        "Erstmal Goobyn!",
+        "Frisch, heiß und nur einmal fast gestolpert!",
+        "Die Tüte hat den Kurven-Test bestanden.",
+        "Schneller war heute nur der Wind.",
+        "Riecht gut, oder? Ich durfte nur schnuppern."
       ]
     }
   }
