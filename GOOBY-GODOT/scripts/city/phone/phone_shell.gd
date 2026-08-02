@@ -481,6 +481,11 @@ func _baue_statusleiste() -> Control:
 	zeile.add_child(_uhr)
 	var luecke := Control.new()
 	luecke.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# G7/P59 (Playtest-Befund flow_telefon): der Füll-Control stand auf dem
+	# Control-Default STOP und schluckte Gesten in der ganzen Mitte der
+	# Statuszeile — der Runterwisch-zum-Schließen erreichte das Gerät nie.
+	# Nicht-interaktive Status-Elemente müssen durchlässig sein.
+	luecke.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	zeile.add_child(luecke)
 	_status_icons.clear()
 	zeile.add_child(_icon("res://assets/ui/icons/coin.svg"))
@@ -494,6 +499,8 @@ func _baue_statusleiste() -> Control:
 	_akku.max_value = 100.0
 	_akku.custom_minimum_size = Vector2(52.0, 12.0)
 	_akku.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# Reine Anzeige (s. luecke oben) — darf Wisch-Gesten nicht abfangen.
+	_akku.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	zeile.add_child(_akku)
 	_aktualisiere_status()
 	return zeile

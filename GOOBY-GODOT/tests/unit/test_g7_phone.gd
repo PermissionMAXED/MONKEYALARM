@@ -396,6 +396,32 @@ func test_oeffnen_animation_poppt_und_respektiert_rm() -> void:
 	_restore_reduced_motion(rm)
 
 
+# ------------------------------------------------------------ Statuszeile
+
+
+## G7/P59-Wache (Playtest-Befund flow_telefon): die Statuszeile ist reine
+## Anzeige — KEIN Kind darf Gesten schlucken. Der Füll-Control stand auf dem
+## Control-Default STOP und fing den Runterwisch-zum-Schließen in der ganzen
+## Zeilen-Mitte ab, bevor die Geste das Gerät (_on_geraet_input) erreichte.
+func test_statuszeile_schluckt_keine_gesten() -> void:
+	await _pin(Vector2i(1280, 720))
+	var gs := FakeGameState.new()
+	var shell := await _oeffne_shell(gs)
+	var zeile: Control = shell.find_child("Statusleiste", true, false)
+	assert_true(zeile != null, "Statusleiste existiert")
+	if zeile != null:
+		for kind in zeile.get_children():
+			var ctl := kind as Control
+			if ctl == null:
+				continue
+			assert_true(
+				ctl.mouse_filter != Control.MOUSE_FILTER_STOP,
+				"Statuszeilen-Kind '%s' fängt keine Gesten ab (kein STOP)" % ctl.name
+			)
+	await _schliesse_shell(shell)
+	await _unpin()
+
+
 # -------------------------------------------------------- Spalten-Fenster
 
 
