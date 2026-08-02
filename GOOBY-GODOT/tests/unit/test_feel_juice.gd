@@ -134,6 +134,63 @@ func test_partikel_aufraeumen_haengt_am_finished_signal() -> void:
 	await _teardown(env)
 
 
+func test_confetti_variiert_pro_aufruf() -> void:
+	# GOOBY-LOOP-Polish: zwei Feiern würfeln verschiedene Wind/Dauer/Streuung
+	# (RNG-Floats — Gleichheit über DREI Parameter wäre ein Regressions-Indiz),
+	# und die Schnipsel sind Papier-Strips (Textur) statt nackter Quadrate.
+	var env := _setup()
+	var overlay: Control = env["overlay"]
+	var kit: JuiceKit = env["kit"]
+	await wait_frames(1)
+	var before := overlay.get_child_count()
+	kit.confetti(6)
+	kit.confetti(6)
+	assert_eq(overlay.get_child_count(), before + 2, "zwei Konfetti-Emitter im Overlay")
+	var erster := overlay.get_child(before) as CPUParticles2D
+	var zweiter := overlay.get_child(before + 1) as CPUParticles2D
+	if erster == null or zweiter == null:
+		fail_test("Konfetti-Nodes sind keine CPUParticles2D")
+		await _teardown(env)
+		return
+	assert_true(erster.texture != null, "Konfetti sind Papier-Schnipsel (Strip-Textur)")
+	var palette := erster.color_initial_ramp
+	assert_true(palette != null, "Fest-Palette gesetzt (hue_variation blieb sichtbar gold)")
+	if palette != null:
+		assert_true(palette.colors.size() >= 4, "Palette hat mehrere klare Bonbon-Farben")
+	assert_true(
+		absf(erster.gravity.x) <= JuiceKit.CONFETTI_WIND_MAX + 0.001,
+		"Seitenwind bleibt gedeckelt (%.1f)" % erster.gravity.x
+	)
+	assert_true(
+		erster.lifetime >= 1.45 and erster.lifetime <= 2.15,
+		"Fall-Dauer im Design-Fenster (%.2f)" % erster.lifetime
+	)
+	var variiert := (
+		not is_equal_approx(erster.gravity.x, zweiter.gravity.x)
+		or not is_equal_approx(erster.lifetime, zweiter.lifetime)
+		or not is_equal_approx(erster.spread, zweiter.spread)
+	)
+	assert_true(variiert, "zwei Aufrufe würfeln verschiedene Wind/Dauer/Streuung")
+	var clean := await wait_until(func() -> bool: return overlay.get_child_count() == before, 6000)
+	assert_true(clean, "beide Emitter räumen sich selbst auf")
+	await _teardown(env)
+
+
+func test_count_ease_rast_los_und_rollt_aus() -> void:
+	# GOOBY-LOOP-Polish: vorher zählte count_to LINEAR (EASE_OUT auf
+	# TRANS_LINEAR ist wirkungslos) — die Kurve ist jetzt pur und messbar.
+	assert_almost(JuiceKit.count_ease(0.0), 0.0, 1e-6, "Start exakt bei 0")
+	assert_almost(JuiceKit.count_ease(1.0), 1.0, 1e-6, "Ende exakt bei 1")
+	assert_true(JuiceKit.count_ease(0.5) > 0.8, "Halbzeit: Zahl schon fast am Ziel (Ease-Out)")
+	var vorher := -1.0
+	for i in 11:
+		var wert := JuiceKit.count_ease(i / 10.0)
+		assert_true(wert > vorher, "streng monoton steigend (t=%.1f)" % (i / 10.0))
+		vorher = wert
+	assert_almost(JuiceKit.count_ease(-1.0), 0.0, 1e-6, "unter 0 geklemmt")
+	assert_almost(JuiceKit.count_ease(2.0), 1.0, 1e-6, "über 1 geklemmt")
+
+
 func test_count_to_endet_exakt_und_tickt() -> void:
 	var env := _setup()
 	var kit: JuiceKit = env["kit"]

@@ -21,6 +21,9 @@ const GLOW_DECAY := 0.9
 const COMBO_FONT_BASE := 36
 const COMBO_FONT_STEP := 5
 const COMBO_FONT_MAX := 84
+## Konfetti: maximaler Seitenwind in px/s² (pro Aufruf gewürfelt) — gedeckelt,
+## damit der Regen auf schmalen Karten nicht komplett aus dem Bild driftet.
+const CONFETTI_WIND_MAX := 70.0
 
 ## CanvasItem, das beim Shake versetzt wird (der Host nimmt den
 ## SubViewportContainer). position wird um die Basis herum moduliert.
@@ -52,6 +55,8 @@ var _edge_glow_rect: ColorRect
 var _edge_glow_strength := 0.0
 var _combo_label: Label
 var _coin_texture: Texture2D
+var _confetti_texture: Texture2D
+var _confetti_palette: Gradient
 var _pop_bases: Dictionary = {}
 var _pop_tweens: Dictionary = {}
 
@@ -313,7 +318,11 @@ func edge_glow(strength: float, color := Color(1.0, 0.72, 0.25)) -> void:
 	_edge_glow_rect.visible = true
 
 
-## Konfetti-Regen von der Oberkante (Rekord/Sieg feiern).
+## Konfetti-Regen von der Oberkante (Rekord/Sieg feiern). GOOBY-LOOP-Polish:
+## echte Papier-Schnipsel (Strip-Textur statt Quadrate, taumeln um die eigene
+## Achse) und pro Aufruf gewürfelte Varianz — seitlicher Wind, Flatter-Schwung,
+## Streuung und Fall-Dauer unterscheiden sich, damit keine Feier zweimal
+## exakt gleich aussieht (Rekord im selben Spiel bleibt trotzdem EIN Look).
 func confetti(count := 90) -> void:
 	if _reduced_motion():
 		return
@@ -327,22 +336,32 @@ func confetti(count := 90) -> void:
 	particles.one_shot = true
 	particles.emitting = true
 	particles.amount = count
-	particles.lifetime = 1.7
-	particles.explosiveness = 0.85
+	particles.lifetime = _rng.randf_range(1.5, 2.1)
+	particles.explosiveness = _rng.randf_range(0.7, 0.95)
 	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
 	particles.emission_rect_extents = Vector2(maxf(size.x * 0.5, 60.0), 6.0)
 	particles.direction = Vector2.DOWN
-	particles.spread = 30.0
-	particles.gravity = Vector2(0.0, 380.0)
+	particles.spread = _rng.randf_range(22.0, 42.0)
+	# Wind (gravity.x) drückt den ganzen Regen leicht zur Seite, der
+	# Flatter-Schwung (tangential) lässt einzelne Schnipsel ausscheren.
+	particles.gravity = Vector2(_rng.randf_range(-CONFETTI_WIND_MAX, CONFETTI_WIND_MAX), 380.0)
+	var flutter := _rng.randf_range(30.0, 70.0)
+	particles.tangential_accel_min = -flutter
+	particles.tangential_accel_max = flutter
 	particles.initial_velocity_min = 60.0
 	particles.initial_velocity_max = 200.0
-	particles.angular_velocity_min = -260.0
-	particles.angular_velocity_max = 260.0
-	particles.scale_amount_min = 3.0
-	particles.scale_amount_max = 6.5
-	particles.hue_variation_min = -0.5
-	particles.hue_variation_max = 0.5
-	particles.color = Color(1.0, 0.75, 0.35)
+	particles.angular_velocity_min = -320.0
+	particles.angular_velocity_max = 320.0
+	particles.angle_min = 0.0
+	particles.angle_max = 360.0
+	particles.texture = _confetti_tex()
+	particles.scale_amount_min = 0.75
+	particles.scale_amount_max = 1.6
+	# BEFUND (xvfb-Frame-Messung): hue_variation ±0.5 ließ ALLE Schnipsel
+	# gold — sichtbar bunt wird der Regen erst über die explizite Palette
+	# (color_initial_ramp, konstante Stops = klar getrennte Papier-Farben).
+	particles.color = Color.WHITE
+	particles.color_initial_ramp = _confetti_colors()
 	parent.add_child(particles)
 	# Szenenwechsel-sicher aufräumen (one_shot gesetzt, s. burst()).
 	particles.finished.connect(particles.queue_free)
@@ -389,6 +408,9 @@ func coin_rain(count := 26) -> void:
 
 ## Zahl hochzählen (Score/Coins im Results): tickt hörbar mit steigender
 ## Tonhöhe; unter Reduced Motion steht sofort der Endwert da (ein Tick).
+## GOOBY-LOOP-Polish: der Zähler lief in Wahrheit LINEAR — set_ease(EASE_OUT)
+## ist auf dem Default-TRANS_LINEAR wirkungslos. Jetzt läuft die Kurve über
+## count_ease (unten, pur + testbar): losrasen, aufs Ziel ausrollen.
 func count_to(label: Label, from: int, to: int, dur := 0.8, prefix := "", suffix := "") -> void:
 	if label == null or not is_instance_valid(label):
 		return
@@ -398,9 +420,17 @@ func count_to(label: Label, from: int, to: int, dur := 0.8, prefix := "", suffix
 		return
 	var state := {"last_tick": -1, "steps": mini(absi(to - from), 24)}
 	var tween := create_tween()
-	tween.set_ease(Tween.EASE_OUT)
 	tween.tween_method(_count_step.bind(label, from, to, prefix, suffix, state), 0.0, 1.0, dur)
 	tween.tween_callback(_count_done.bind(label, to, prefix, suffix))
+
+
+## Zeitkurve des Count-Ups (kubisches Ease-Out) — pur + statisch, damit die
+## Wache sie direkt messen kann. Die Zahl rast los und rollt aufs Ziel aus,
+## die letzten Punkte ticken einzeln wie ein Spielautomat, während die
+## Tick-Tonhöhe weiter steigt (Ticks folgen der KURVE, nicht der Uhr).
+static func count_ease(t: float) -> float:
+	var x := clampf(t, 0.0, 1.0)
+	return 1.0 - pow(1.0 - x, 3.0)
 
 
 ## Der Siegmoment: kurze Zeitlupe + Goldblitz + Konfetti (Sound macht der
@@ -486,10 +516,11 @@ func _count_step(
 ) -> void:
 	if not is_instance_valid(label):
 		return
-	var value := lerpf(float(from), float(to), t)
+	var progress := count_ease(t)
+	var value := lerpf(float(from), float(to), progress)
 	label.text = "%s%d%s" % [prefix, int(round(value)), suffix]
 	var steps := int(state["steps"])
-	var tick := int(t * steps)
+	var tick := int(progress * steps)
 	if tick != int(state["last_tick"]):
 		state["last_tick"] = tick
 		sfx("game_count", 0.9 + 0.5 * (float(tick) / maxf(1.0, float(steps))))
@@ -498,6 +529,9 @@ func _count_step(
 func _count_done(label: Label, to: int, prefix: String, suffix: String) -> void:
 	if is_instance_valid(label):
 		label.text = "%s%d%s" % [prefix, to, suffix]
+		# Schluss-Punkt: heller Bestätigungs-Tick ÜBER dem Ramp-Ende (1.4)
+		# setzt dem ausgerollten Zähler ein hörbares Ausrufezeichen.
+		sfx("game_count", 1.55)
 		scale_pop(label, 1.15, 180)
 
 
@@ -522,6 +556,42 @@ func _coin_tex() -> Texture2D:
 				image.set_pixel(x, y, Color(0.85, 0.6, 0.1) if rim else Color(1.0, 0.85, 0.3))
 	_coin_texture = ImageTexture.create_from_image(image)
 	return _coin_texture
+
+
+## Papier-Schnipsel fürs Konfetti: weißer Hochkant-Strip (Farbe kommt aus
+## color + hue_variation), unterste Reihe leicht abgedunkelt — beim Taumeln
+## liest sich das als Papier-Knick statt als flaches Quadrat.
+func _confetti_tex() -> Texture2D:
+	if _confetti_texture != null:
+		return _confetti_texture
+	var image := Image.create(4, 7, false, Image.FORMAT_RGBA8)
+	image.fill(Color.WHITE)
+	for x in 4:
+		image.set_pixel(x, 6, Color(0.8, 0.8, 0.8))
+	_confetti_texture = ImageTexture.create_from_image(image)
+	return _confetti_texture
+
+
+## Fest-Palette fürs Konfetti: sechs Bonbon-Farben im AC-Look, konstante
+## Gradient-Stops = jeder Schnipsel zieht GENAU eine Farbe (kein Verlauf).
+func _confetti_colors() -> Gradient:
+	if _confetti_palette != null:
+		return _confetti_palette
+	var gradient := Gradient.new()
+	gradient.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
+	gradient.offsets = PackedFloat32Array([0.0, 1.0 / 6, 2.0 / 6, 3.0 / 6, 4.0 / 6, 5.0 / 6])
+	gradient.colors = PackedColorArray(
+		[
+			Color(0.96, 0.36, 0.42),
+			Color(1.0, 0.72, 0.2),
+			Color(1.0, 0.92, 0.5),
+			Color(0.45, 0.82, 0.5),
+			Color(0.4, 0.75, 0.95),
+			Color(0.8, 0.55, 0.95),
+		]
+	)
+	_confetti_palette = gradient
+	return _confetti_palette
 
 
 ## Expandierender Ring für ring_burst (zeichnet sich selbst, räumt sich auf).
