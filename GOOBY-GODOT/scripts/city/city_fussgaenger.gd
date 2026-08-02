@@ -7,14 +7,26 @@ extends RefCounted
 ## abgelaufen — NEU (FIX-5 „Leben"): an den Wendepunkten legen die Goobys
 ## eine Schaufenster-Pause ein (stehen, schauen zur Ladenzeile, manche
 ## winken), Routen vor Orts-Fassaden werden bevorzugt, und die Menge hängt
-## an der Tageszeit (nachts sind nur Nachtschwärmer unterwegs).
+## an der Tageszeit (nachts sind nur Nachtschwärmer unterwegs). Varianz:
+## zehn Fell-Töne und ein Tempo-Mix aus Trödlern, Schlenderern und Eiligen
+## (`tempo_wuerfeln`), damit die Menge nicht gleichgetaktet wirkt.
 
 ## Seitlicher Versatz von der Fahrbahnmitte (m) — Tile ist 20 m breit, die
 ## Kenney-Straßenplatte ~12 m, also liegt 7,5 m sauber auf dem Gehweg.
 const GEHWEG_M := 7.5
-## Gehtempo-Fenster (m/s) — Gooby schlendert.
-const TEMPO_MIN := 0.9
-const TEMPO_MAX := 1.6
+## Gehtempo-HÜLLKURVE (m/s): vom Trödel-Bummel bis zum Spät-dran-Hatschen —
+## kein Passant fällt je aus diesem Fenster.
+const TEMPO_MIN := 0.55
+const TEMPO_MAX := 2.4
+## Der Mix darin (`tempo_wuerfeln`): die meisten schlendern, ein Fünftel
+## trödelt vor den Schaufenstern, ein Fünftel ist spät dran — die Menge
+## wirkt gemischt statt gleichgetaktet.
+const SCHLENDER_MIN := 0.9
+const SCHLENDER_MAX := 1.6
+const TROEDLER_ANTEIL := 0.2
+const TROEDLER_MAX := 0.85
+const EILIG_ANTEIL := 0.2
+const EILIG_MIN := 1.9
 ## Mehr als das kostet auf dem Handy mehr, als die Stadt dadurch gewinnt.
 const MAX_GOOBYS := 14
 ## Schaufenster-Pause an den Wendepunkten (s).
@@ -25,13 +37,36 @@ const WINKER_ANTEIL := 0.4
 ## Tageszeit-Menge (CityScene fragt `anzahl(stunde)`).
 const TAG_ANZAHL := 11
 const NACHT_ANZAHL := 4
-## Fell-Töne der Passanten (AC-Palette, bewusst nicht Spieler-Gooby-weiß).
-const FELLE: Array[String] = ["#F2C14E", "#8FD06C", "#CFE9F5", "#FF7BA9", "#59C9B9", "#FFD166"]
+## Fell-Töne der Passanten (AC-Palette, bewusst nicht Spieler-Gooby-weiß) —
+## zehn Töne, damit sich auf einer Straße selten zwei Gleiche begegnen.
+const FELLE: Array[String] = [
+	"#F2C14E",
+	"#8FD06C",
+	"#CFE9F5",
+	"#FF7BA9",
+	"#59C9B9",
+	"#FFD166",
+	"#C9A7EB",
+	"#FFA96B",
+	"#9BB7D4",
+	"#E5989B",
+]
 
 
 ## Wie viele Goobys schlendern zur Stunde? Nachts wird es ruhig.
 static func anzahl(stunde: float) -> int:
 	return NACHT_ANZAHL if CityAmbiente.lichter_an(stunde) else TAG_ANZAHL
+
+
+## Gehtempo würfeln: Schlenderer als Mehrheit, dazu Trödler und Eilige —
+## alles innerhalb der Hüllkurve TEMPO_MIN..TEMPO_MAX.
+static func tempo_wuerfeln(rng: RandomNumberGenerator) -> float:
+	var los := rng.randf()
+	if los < TROEDLER_ANTEIL:
+		return rng.randf_range(TEMPO_MIN, TROEDLER_MAX)
+	if los < TROEDLER_ANTEIL + EILIG_ANTEIL:
+		return rng.randf_range(EILIG_MIN, TEMPO_MAX)
+	return rng.randf_range(SCHLENDER_MIN, SCHLENDER_MAX)
 
 
 ## `anzahl` Routen aus der Karte würfeln (deterministisch über `seed`).
@@ -78,7 +113,7 @@ static func routen(karte: CityMap, anzahl_wunsch: int, seed_wert: int) -> Array[
 					"von": von,
 					"nach": nach,
 					"laenge": von.distance_to(nach),
-					"tempo": rng.randf_range(TEMPO_MIN, TEMPO_MAX),
+					"tempo": tempo_wuerfeln(rng),
 					"phase": rng.randf(),
 					"tint": Color(FELLE[rng.randi_range(0, FELLE.size() - 1)]),
 					"pause_s": rng.randf_range(PAUSE_MIN_S, PAUSE_MAX_S),

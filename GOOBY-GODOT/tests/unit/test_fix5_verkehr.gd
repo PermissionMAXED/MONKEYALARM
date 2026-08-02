@@ -193,6 +193,46 @@ func test_fussgaenger_pausieren_am_schaufenster_und_winken() -> void:
 	assert_eq(daheim["pos"], Vector3.ZERO)
 
 
+func test_fussgaenger_tempo_mix_und_fellpalette() -> void:
+	# Tempo-Mix: alle Würfe bleiben in der Hüllkurve, und beide Ränder
+	# (Trödler/Eilige) kommen in plausiblen Anteilen vor (je Soll 20 %).
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	var troedler := 0
+	var eilige := 0
+	for _i in 300:
+		var tempo := CityFussgaenger.tempo_wuerfeln(rng)
+		assert_true(
+			tempo >= CityFussgaenger.TEMPO_MIN and tempo <= CityFussgaenger.TEMPO_MAX,
+			"Tempo in der Hüllkurve: %f" % tempo
+		)
+		if tempo <= CityFussgaenger.TROEDLER_MAX:
+			troedler += 1
+		elif tempo >= CityFussgaenger.EILIG_MIN:
+			eilige += 1
+	assert_true(troedler >= 30 and troedler <= 120, "Trödler-Anteil plausibel (%d/300)" % troedler)
+	assert_true(eilige >= 30 and eilige <= 120, "Eilige-Anteil plausibel (%d/300)" % eilige)
+	# Fell-Palette: genug unterschiedliche Töne, keine Dubletten, keiner
+	# fast weiß (der Spieler-Gooby bleibt der einzige Weiße der Stadt).
+	assert_true(CityFussgaenger.FELLE.size() >= 10, "genug Fell-Töne")
+	var einzigartig := {}
+	for fell: String in CityFussgaenger.FELLE:
+		einzigartig[fell] = true
+		assert_true(Color(fell).get_luminance() < 0.92, "kein Fast-Weiß: %s" % fell)
+	assert_eq(einzigartig.size(), CityFussgaenger.FELLE.size(), "keine Dubletten in der Palette")
+	# Und die Routen nutzen die Bandbreite wirklich: über ein paar Seeds
+	# trödelt jemand UND jemand ist spät dran.
+	var karte := CityMap.laden()
+	var langsam := false
+	var schnell := false
+	for seed_wert: int in [1, 2, 3, 4242]:
+		for route in CityFussgaenger.routen(karte, CityFussgaenger.MAX_GOOBYS, seed_wert):
+			langsam = langsam or float(route["tempo"]) <= CityFussgaenger.TROEDLER_MAX
+			schnell = schnell or float(route["tempo"]) >= CityFussgaenger.EILIG_MIN
+	assert_true(langsam, "über die Seeds trödelt jemand")
+	assert_true(schnell, "… und jemand ist spät dran")
+
+
 func test_schaufenster_routen_werden_bevorzugt() -> void:
 	var karte := CityMap.laden()
 	var laden_strassen := {}
