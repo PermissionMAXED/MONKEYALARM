@@ -135,6 +135,16 @@
       "fassade": {"glb": "building-b", "awning": true, "tint": "#D94F8C"}
     },
     {
+      "id": "kino",
+      "name_key": "city.ort.kino",
+      "typ": "laden",
+      "tiles": [[5, 12]],
+      "strasse": [4, 12],
+      "distrikt": "zentrum",
+      "szene": "res://scenes/city/orte/kino.tscn",
+      "fassade": {"glb": "building-d", "awning": false, "tint": "#B58CE4"}
+    },
+    {
       "id": "funkelpark",
       "name_key": "park.ort.funkelpark",
       "typ": "freizeitpark",

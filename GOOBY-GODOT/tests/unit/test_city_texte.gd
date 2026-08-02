@@ -14,9 +14,9 @@ const MEINE_DATEIEN: Array[String] = ["city.json", "phone.json"]
 ## Web-Referenz. Die Emoji-Regel gilt für ALLES, was M2/ORTE neu schreibt —
 ## der Altbestand wird hier bewusst nicht mitgerissen (eigener Auftrag).
 const EMOJI_ALTBESTAND := "travel."
-## Die Dialoge der fünf neuen Orte.
+## Die Dialoge der fünf neuen Orte (+ CITY-2: das Kino GOOBYWOOD).
 const NEUE_DIALOGE: Array[String] = [
-	"pow.json", "post.json", "autohaus.json", "baumarkt.json", "wochenmarkt.json"
+	"pow.json", "post.json", "autohaus.json", "baumarkt.json", "wochenmarkt.json", "kino.json"
 ]
 
 

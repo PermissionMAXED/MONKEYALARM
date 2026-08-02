@@ -1,0 +1,25 @@
+{
+  "id": "kino_lumi",
+  "start": "hallo",
+  "nodes": {
+    "hallo": {
+      "sprecher": "lumi",
+      "text": "Willkommen im GOOBYWOOD! Die Leinwand ist frisch geputzt.",
+      "optionen": [
+        {"text": "Was läuft heute?", "next": "programm"},
+        {"text": "Warum flimmert es so schön?", "next": "flimmern"}
+      ]
+    },
+    "flimmern": {
+      "sprecher": "lumi",
+      "text": "Das ist kein Flimmern, das ist Magie. Na gut: fünfzig Prozent Magie, fünfzig Prozent Staub.",
+      "next": "hallo"
+    },
+    "programm": {
+      "sprecher": "lumi",
+      "text": "Ein Meisterwerk, sag ich dir. Und das Popcorn spielt die zweite Hauptrolle.",
+      "effekt": ["laden"],
+      "ende": true
+    }
+  }
+}

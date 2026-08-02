@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://c3aortkino2c10"]
+
+[ext_resource type="Script" path="res://scripts/city/orte/kino.gd" id="1_kino"]
+
+[node name="Kino" type="Node3D"]
+script = ExtResource("1_kino")
+ort_id = "kino"

@@ -1,0 +1,25 @@
+{
+  "id": "kino_lumi",
+  "start": "hallo",
+  "nodes": {
+    "hallo": {
+      "sprecher": "lumi",
+      "text": "Welcome to GOOBYWOOD! The screen is freshly polished.",
+      "optionen": [
+        {"text": "What's on today?", "next": "programm"},
+        {"text": "Why does it flicker so nicely?", "next": "flimmern"}
+      ]
+    },
+    "flimmern": {
+      "sprecher": "lumi",
+      "text": "That's not flicker, that's magic. Fine: fifty percent magic, fifty percent dust.",
+      "next": "hallo"
+    },
+    "programm": {
+      "sprecher": "lumi",
+      "text": "A masterpiece, I'm telling you. And the popcorn plays the second lead.",
+      "effekt": ["laden"],
+      "ende": true
+    }
+  }
+}

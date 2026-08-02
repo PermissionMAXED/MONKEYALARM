@@ -1,0 +1,19 @@
+{
+  "kino": {
+    "sheet_titel": "GOOBYWOOD Programme",
+    "knopf": "Programme",
+    "heute": "Today on the big screen:",
+    "film_zeile": "\u201c{film}\u201d",
+    "ticket": "Buy ticket ({preis} coins)",
+    "pleite": "Not enough coins. The movie plays anyway — just without you.",
+    "film_ab": "And … action!",
+    "abspann": "Credits! Gooby hums the theme song.",
+    "filme": [
+      "Carrot Wars: A New Tuber",
+      "The Lord of the Doorbell",
+      "Finding Gooby",
+      "Jurassic Snack",
+      "Titanic 2: Now With Floaties"
+    ]
+  }
+}

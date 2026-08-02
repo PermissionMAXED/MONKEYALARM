@@ -54,10 +54,11 @@ func test_kulisse_hat_alle_kategorien() -> void:
 	for muss: String in ["gebaeude", "haus", "moebel", "gruen", "parkauto", "zaun"]:
 		assert_true(int(kategorien.get(muss, 0)) > 0, "Kategorie fehlt: %s" % muss)
 	assert_true(int(kategorien.get("parkauto", 0)) >= 8, "genug Bordstein-Parker")
-	# Die Karte hat 12 freie Gewerbe/Zentrums-Tiles (der Rest trägt Orte
-	# und Karten-Deko-Gebäude; W13C: GOOBYMAN-Laden belegt jetzt Zentrum
-	# [6,5]) — die Kulisse muss sie ALLE bebauen.
-	assert_true(int(kategorien.get("gebaeude", 0)) >= 11, "genug Häuserzeilen")
+	# Die Karte hat 11 freie Gewerbe/Zentrums-Tiles (der Rest trägt Orte
+	# und Karten-Deko-Gebäude; W13C: GOOBYMAN-Laden belegt Zentrum [6,5],
+	# CITY-2: das Kino GOOBYWOOD belegt Zentrum [5,12]) — die Kulisse muss
+	# sie ALLE bebauen.
+	assert_true(int(kategorien.get("gebaeude", 0)) >= 10, "genug Häuserzeilen")
 
 
 func test_kulisse_bleibt_auf_der_karte_und_weg_von_strassenmitte() -> void:

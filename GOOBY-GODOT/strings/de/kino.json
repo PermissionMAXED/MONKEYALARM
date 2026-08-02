@@ -1,0 +1,19 @@
+{
+  "kino": {
+    "sheet_titel": "GOOBYWOOD-Programm",
+    "knopf": "Programm",
+    "heute": "Heute auf der großen Leinwand:",
+    "film_zeile": "„{film}“",
+    "ticket": "Ticket kaufen ({preis} Münzen)",
+    "pleite": "Zu wenig Münzen. Der Film läuft trotzdem — nur ohne dich.",
+    "film_ab": "Und … Film ab!",
+    "abspann": "Abspann! Gooby summt die Titelmelodie.",
+    "filme": [
+      "Möhrenkrieg: Eine neue Knolle",
+      "Der Herr der Klingel",
+      "Findet Gooby",
+      "Jurassic Snack",
+      "Titanic 2: Jetzt mit Schwimmflügeln"
+    ]
+  }
+}
