@@ -23,6 +23,12 @@ const ROUTE_IKEA := &"ikea"
 const ROUTES := {ROUTE_IKEA: "res://scripts/shop/ikea_screen.tscn"}
 const HUD_ACTION := &"ikea"
 
+# Autoload-Skript fuer die statische classify() — der BARE Autoload-Name
+# kompiliert im --script-Modus (FB3-Audit/Test-Runner) NICHT, weil die
+# Autoload-Globals dort erst NACH dem Laden des Hauptskripts registriert
+# werden; alle anderen Call-Sites nutzen deshalb /root-Lookups.
+const ORIENTATION_SERVICE := preload("res://scripts/core/orientation_service.gd")
+
 const CATEGORY_ALL := ""
 const LIST_WIDTH := 360
 const SWATCH_SIZE := 40
@@ -138,7 +144,7 @@ func _apply_metrics() -> void:
 	if _back_btn != null:
 		ScreenShell.touch_target(_back_btn, m)
 	var portrait := (
-		OrientationService.classify(Vector2i(canvas)) == OrientationService.Orientation.PORTRAIT
+		ORIENTATION_SERVICE.classify(Vector2i(canvas)) == ORIENTATION_SERVICE.Orientation.PORTRAIT
 	)
 	_apply_body_layout(portrait, m)
 	_search.custom_minimum_size = Vector2(0.0, _floor)
