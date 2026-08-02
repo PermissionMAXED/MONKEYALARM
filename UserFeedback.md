@@ -247,25 +247,92 @@ Welle G7 „SPIELGEFÜHL" ist komplett gelandet (alle Pakete unten abgehakt,
 dein 1.8.-Feedback damit umgesetzt). W18 macht weiter mit den Spieler-
 Playtests, den Planner-Ideen und den restlichen G6-Paketen:
 
-- [~] **Welle H: PLAYTEST ×10** — läuft: die ersten Spieler-Agents haben ihre
+- [~] **Welle H: PLAYTEST ×10** — läuft: die Spieler-Agents haben ihre
       Bereiche KOMPLETT durchgespielt — Haus (Füttern/Bau/Schlaf, flow_schlaf
       29/29 grün), UI-Loops (10 Flows parallel: Telefon, Tagesquests-Blatt,
       Garderobe-Kauf, Affen-Chaostest … — 9/10 grün, das flow_schlaf-Rot des
-      Parallel-Laufs ist als Altlast an die Home-Welle übergeben) und
-      Stadt/Läden/Reise (flow_stadt 44/44 grün inkl. echter Urlaubs-Buchung);
-      Reports unter `docs/playtests/`. Dabei 4 ECHTE Bugs gefunden und sofort
-      gefixt (unten abgehakt). Als Nächstes: Minispiele ×3, DLCs, Progression,
+      Parallel-Laufs ist als Altlast an die Home-Welle übergeben),
+      Stadt/Läden/Reise (flow_stadt 44/44 grün inkl. echter Urlaubs-Buchung),
+      NEU alle 38 MINISPIELE (PT-MG-A: Spiele 1–19; PT-MG-B: Spiele 20–38
+      plus die Ranch-WETTBEWERBE komplett bis zur Siegerehrung) und NEU die
+      META-FEATURES (PT-META: DLC-Hub, Telefon-Apps, Radio, Garderobe,
+      Tagesquests, Erfolge — alle sechs end-zu-end grün mit Save-Beweisen);
+      Reports unter `docs/playtests/`. Dabei ECHTE Bugs gefunden und sofort
+      gefixt (unten abgehakt). Als Nächstes: DLC-Läden, Progression,
       Onboarding.
 - [ ] **Welle I: 30+ Ideen-Planner** — 10 Planner parallel, jeder liefert
       10+ priorisierte Ideen für seinen Bereich (≈100+ Ideen), konsolidiert
       zur Roadmap
 - [ ] **Wellen J+: Umsetzung** — Playtest-Bugs + beste Planner-Ideen + die
-      restlichen G6-Pakete (DLC Welle B beider Läden, DLC-Ladebildschirme,
-      Audio-Feel, Doku-Refresh, McGooby-Bühne, Alwin-NPC); Ball-Wurf,
-      Warn-Sweep und die CI-Release-Notes sind schon raus (direkt unten)
+      restlichen G6-Pakete (DLC-Ladebildschirme, Audio-Feel, Doku-Refresh);
+      schon raus: Ball-Wurf, Warn-Sweep, CI-Release-Notes — und jetzt auch
+      DLC Welle B BEIDER Läden, die McGooby-Bühne und der Alwin-NPC
+      (alles direkt unten abgehakt)
 
 **Schon in W18 gelandet** (vorgezogene Warteschlangen-Pakete + Playtest-Funde):
 
+- [x] **DLC „Goo und Bye" Welle B: Großmarkt + eigene Preise** — der Laden
+      lernt Einkaufen und Preise machen: Bestellzettel mit ±-Steppern und
+      Staffelrabatt ab 10 Stück einer Ware (der Kauf bucht ATOMAR — bei
+      Pleite passiert NICHTS), dazu ein Preis-Schieber je Warengruppe
+      (±30 % um den Richtwert, Live-Beispiel „5 → 4"), der WIRKLICH an der
+      Kasse piept; 7 neue Dauer-Wachen, Subset 26/26 grün.
+- [x] **DLC „McGooby" Welle B: Kauf-Gate + Belegen-Station + Bühne** — das
+      Eckgrundstück wird jetzt WIRKLICH gekauft (3000 Münzen ab Level 14,
+      Angebots-Sheet über „Grundstück ansehen" im DLC-Hub), und die Schicht
+      hat ihre zweite Station: nach dem Grillen wird der Burger Lage für
+      Lage BELEGT (Fehlgriffe kosten Punkte), beide Stationen laufen über
+      die neue Schicht-Bühne; 18 Wachen inkl. Zwei-Stationen-Durchspiel.
+      (Ein Index-Race der Parallel-Lanes hatte 12 Dateien des Pakets
+      verschluckt — per Nachzügler-Commit vollständig nachgeliefert.)
+- [x] **Onkel Alwin ist im Laden SICHTBAR** (Gag-Vertrag §6.3) — er kommt
+      um 9, hat eine 5-Schritte-Tagesroutine mit tickendem Uhrzeit-Zettel
+      („9:02 · poliert im Vorbeigehen ein Regal — blitzblank!"), poliert
+      WIRKLICH das Tages-Regal (es hüpft mit Glanz-Ton) und lässt sich
+      antippen: 12 Gags rotieren wiederholungsfrei durch den Tag, mit
+      Gebrabbel-Piep und Freuden-Hopser; Subset 22/22 grün.
+- [x] **CITY-2 „Orte lebendig 3" gelandet** — der Flughafen hat Reisende
+      (einer checkt WIRKLICH am Schalter ein), im Zentrum steht das NEUE
+      Kino „GOOBYWOOD" (Tagesfilm-Programm, Ticket 15 Münzen, flackernde
+      Leinwand) und der GOOBERANDO-Fahrer ist lebendig (Dienst-Käppi,
+      Papiertüte, Fahrer-Sprüche); Details oben beim P55-Ausbau in der
+      G7-Liste.
+- [x] **Playtest-Funde Minispiele gefixt** (PT-MG-A/B, alle 38 Spiele +
+      Ranch-Wettbewerbe) — die Verfolger-KAMERA in deliveryRush/cityDrive
+      steckte bei Wandkontakt sekundenlang IN der Hausgeometrie (Vollbild
+      dunkel, nur HUD — jetzt an der Wand abgefangen), der goalieGooby-
+      Trefferflash war auf dem hellen Rasen unlesbar (dunkleres Band +
+      Kontur), Gangart-Wische auf der Ranch wurden als zu langsam verworfen
+      (das Pferd blieb im Stand — Wisch-Fenster korrigiert, es galoppiert),
+      und das „Post/Blumen"-Label in snailMail war auf den Baumkronen
+      unlesbar; Reports: `docs/playtests/PT-minigames-a.md` +
+      `PT-minigames-b.md`.
+- [x] **Playtest-Funde Meta-Features gefixt** (PT-META) — drei echte
+      Spiel-Bugs: das Settings-Overlay blieb nach Reisebeginn als
+      unsichtbarer Deckel über der DLC-Bibliothek liegen (verschluckte alle
+      Taps), nach einem Radio-Senderwechsel war der Schließen-Knopf
+      unauffindbar, und geschlossene DLC-Detail-Sheets blieben unsichtbar
+      im Baum zurück (Leck pro Besuch); Report: `docs/playtests/PT-meta.md`,
+      Voll-Lauf danach 3511 Tests / 0 rot.
+- [x] **Spielstand-Import gegen Müll gehärtet (Fuzz + Backup-Beweis)** —
+      über 130 mutierte/kaputte Eingaben (Transfer-Texte, echte
+      GOOBY5-Codes, bplist-Zufallsbytes, eine 8-MiB-Riesendatei) crashen
+      NIE und korrumpieren NIE still einen Spielstand; dazu der bewiesene
+      REIHENFOLGE-Beweis, dass das Backup des ALTEN Standes schon auf
+      Platte liegt, BEVOR der Import schreibt; SAVE-TRANSFER.md auf den
+      Ist-Stand gebracht.
+- [x] **Performance-Governor nachgestellt + Messlauf** — ProMotion-Geräte
+      mit 120-Hz-Deckel fallen nicht mehr grundlos auf „Mittel" (neue
+      Spitzenstufe hoch120, erste Bremsstufe ist nur noch 120→60), die
+      FPS-Notbremse misst jetzt ECHTE Frame-Zeit (die Zeitlupe hatte reale
+      Einbrüche maskiert), 6-GB-Geräte werden korrekt eingestuft und der
+      Schatten-Atlas ist gedeckelt; Messlauf: Stadt 256 Draw-Calls
+      (Budget 400), Boot ~2,16 s.
+- [x] **iPhone-Build (.ipa) grün + bewacht** — der ios-ipa-Lauf baut grün
+      durch; NEU wacht `verify_ipa.py` über die fertige .ipa (Größen-
+      Baseline 188,9 MB aus dem grünen Lauf), der CI-Gate-Wächter prüft
+      die Job-Bedingung semantisch statt am Wortlaut, und das Root-README
+      hat eine konkrete Download-Anleitung („Spielen / Testen (iPhone)").
 - [x] **Ball-Wurf & Apport auf Web-Parität** (G6-Paket) — Gooby FLITZT jetzt
       mit dem alten Web-Tempo (2,2 m/s) zum Ball statt zu schlendern, schaut
       dem geworfenen Ball live hinterher, macht einen Antritts-Hopser und
@@ -425,8 +492,8 @@ gewandert — Welle H läuft bereits, Ball-Wurf und Warn-Sweep sind gelandet.)_
 
 | | |
 |---|---|
-| **Qualität (Stand 2.8., W18)** | Hauptsuite **3452 Tests / 0 rot**, Server-Tests **151 / 0**, UI-Audit **204 Screens / 0 Befunde** — Leitformat iPhone 17 Pro Max quer (2868×1320) |
-| **Playtests** | Subagents SPIELEN das Spiel wirklich (eigene Instanz, echte Taps/Wische, Screenshots): Reports unter `docs/playtests/` (PT-home, PT-ui-loops, PT-stadt), Start per `tools/ci/run_playtest.sh alle` |
+| **Qualität (Stand 2.8., W18)** | Hauptsuite **3511 Tests / 0 rot**, Server-Tests **151 / 0**, UI-Audit **204 Screens / 0 Befunde** — Leitformat iPhone 17 Pro Max quer (2868×1320) |
+| **Playtests** | Subagents SPIELEN das Spiel wirklich (eigene Instanz, echte Taps/Wische, Screenshots): Reports unter `docs/playtests/` (PT-home, PT-ui-loops, PT-stadt, PT-minigames-a/b, PT-meta), Start per `tools/ci/run_playtest.sh alle` |
 | **Testen** | GitHub → Actions → Lauf „GOOBY Godot" → Artefakt `GOOBY-godot-unsigned-ipa` herunterladen, mit AltStore/Sideloadly installieren. Anleitung: `docs/godot-rewrite/IOS-BUILD.md` — Release-Notes werden jetzt automatisch aus den Commits generiert |
 | **Spielstand von früher** | Einstellungen → Spielstand → „Alten Spielstand übertragen"; Anleitung: `docs/godot-rewrite/SAVE-TRANSFER.md` |
 | **Was noch offen ist** | `docs/godot-rewrite/EVAL-VOLLSTAENDIGKEIT.md` (ehrliche Feature-Matrix) |
