@@ -73,20 +73,31 @@ Diese Datei bleibt dein direkter Draht: einfach unten reinschreiben.)_
 
 
 
-- [~] **Dein Feedback vom 1. August (mit 7 Screenshots, iPhone quer):** UI-Full-
+- [x] **Dein Feedback vom 1. August (mit 7 Screenshots, iPhone quer):** UI-Full-
       Rework, dynamisches UI mit Animationen (z. B. Baumenü → andere Knöpfe
       verschwinden), ALLE Bugs fixen, Subagents sollen das Spiel richtig SPIELEN
       (10 parallel, jeder eigene Instanz), iPhone 17 Pro Max + Querformat als
       Leitformat, Modal-Menüs + Swipen/Wischen fixen, Läden sind zu leer (echte
       Orte mit animierten Chars!), alles fühlt sich wie eine Dev-Demo bzw. wie
-      einzelne Spiele statt EIN Gooby-Spiel an. → **Welle G7 „SPIELGEFÜHL" läuft**
-      (Zuschnitt unten in „In Arbeit"); danach Playtest-Welle (10 Spieler-Agents)
-      und die 30-Ideen-Planner-Welle. Deine Screenshots sind als Befunde erfasst:
-      HUD-Kacheln schneiden Wörter ab („IGohbi/Garder/Gestalt"), Sprechblasen
-      brechen mitten im Wort („Ohh, wird das sch"), Tagesquests-Blatt liegt ÜBER
-      den Status-Leisten, IGohbie-Telefon hat ein kaputtes Dunkel-Icon, Gestalten-
-      Liste schneidet „Briefkasten" ab, Baumodus = Knopf-Salat (der bekannte
-      97-Befunde-Wurzelfix, jetzt MIT Weggleit-Animation).
+      einzelne Spiele statt EIN Gooby-Spiel an.
+      → **Welle G7 „SPIELGEFÜHL" ist KOMPLETT GELANDET** (alle Pakete P50–P59,
+      Kurz-Erklärungen unten in „In Arbeit"): HUD-Knöpfe gleiten im Baumenü
+      animiert weg und kommen zurück, Sprechblasen reißen nie mehr mitten im
+      Wort ab, das Telefon hat Icons/Labels/Wisch-Gesten, EIN Sheet-System mit
+      Runterwischen-zum-Schließen überall, Garderobe + Gestalten poliert,
+      REHWEI/Baumarkt/IKEA haben animierte Kunden-Goobys + Kassen-NPC, alle 38
+      Minispiele laufen im selben Gooby-Rahmen (Ein-Spiel-Gefühl), iPhone 17
+      Pro Max quer ist das Leitformat (UI-Audit jetzt 204 Screens / 0 Befunde)
+      und die Subagents SPIELEN das Spiel wirklich: eigene Instanz pro Spieler,
+      10 parallel, 3 Playtest-Reports (Haus, UI-Loops, Stadt/Reise) — dabei
+      4 echte Bugs gefunden UND gefixt. Deine 7 Screenshot-Befunde sind ALLE
+      behoben: HUD-Kacheln schneiden Wörter ab („IGohbi/Garder/Gestalt"),
+      Sprechblasen brechen mitten im Wort („Ohh, wird das sch"), Tagesquests-
+      Blatt liegt ÜBER den Status-Leisten, IGohbie-Telefon hat ein kaputtes
+      Dunkel-Icon, Gestalten-Liste schneidet „Briefkasten" ab, Baumodus =
+      Knopf-Salat (der bekannte 97-Befunde-Wurzelfix, MIT Weggleit-Animation)
+      — jeder Punkt hat jetzt eine Dauer-Wache im Test, damit er nicht
+      zurückkommt.
 
 _(Runden W14 UND W15 sind FERTIG — Details unten in „Erledigt". Aktueller Stand:)_
 
@@ -230,43 +241,145 @@ _(gerade nichts offen — alle bisherigen Punkte stehen unten unter „Erledigt"
 
 ## 2. In Arbeit
 
-Runde W17 — Wellen G1–G5 sind FERTIG (Details oben + unten in „Erledigt").
-_Hinweis zur Transparenz: die am 31.7. gestartete Welle G6 ist einem VM-Neustart
-zum Opfer gefallen, bevor sie integriert/committet war — kein Stand verloren
-gegangen außer der unfertigen Subagent-Arbeit; die G6-Pakete sind neu einsortiert._
+### Runde W18 — LÄUFT (Stand 2. August)
 
-**Welle G7 „SPIELGEFÜHL" LÄUFT** (dein Feedback vom 1.8. hat Vorrang; 10
-Subagents parallel — das ist das harte Plattform-Limit, die Pipeline bleibt voll):
+Welle G7 „SPIELGEFÜHL" ist komplett gelandet (alle Pakete unten abgehakt,
+dein 1.8.-Feedback damit umgesetzt). W18 macht weiter mit den Spieler-
+Playtests, den Planner-Ideen und den restlichen G6-Paketen:
 
-- [~] **P50 HUD-Dynamik** — dein Wunsch wörtlich: beim Baumenü GLEITEN die
+- [~] **Welle H: PLAYTEST ×10** — läuft: die ersten Spieler-Agents haben ihre
+      Bereiche KOMPLETT durchgespielt — Haus (Füttern/Bau/Schlaf, flow_schlaf
+      29/29 grün), UI-Loops (10 Flows parallel: Telefon, Tagesquests-Blatt,
+      Garderobe-Kauf, Affen-Chaostest … — 9/10 grün, das flow_schlaf-Rot des
+      Parallel-Laufs ist als Altlast an die Home-Welle übergeben) und
+      Stadt/Läden/Reise (flow_stadt 44/44 grün inkl. echter Urlaubs-Buchung);
+      Reports unter `docs/playtests/`. Dabei 4 ECHTE Bugs gefunden und sofort
+      gefixt (unten abgehakt). Als Nächstes: Minispiele ×3, DLCs, Progression,
+      Onboarding.
+- [ ] **Welle I: 30+ Ideen-Planner** — 10 Planner parallel, jeder liefert
+      10+ priorisierte Ideen für seinen Bereich (≈100+ Ideen), konsolidiert
+      zur Roadmap
+- [ ] **Wellen J+: Umsetzung** — Playtest-Bugs + beste Planner-Ideen + die
+      restlichen G6-Pakete (DLC Welle B beider Läden, DLC-Ladebildschirme,
+      Audio-Feel, Doku-Refresh, McGooby-Bühne, Alwin-NPC); Ball-Wurf,
+      Warn-Sweep und die CI-Release-Notes sind schon raus (direkt unten)
+
+**Schon in W18 gelandet** (vorgezogene Warteschlangen-Pakete + Playtest-Funde):
+
+- [x] **Ball-Wurf & Apport auf Web-Parität** (G6-Paket) — Gooby FLITZT jetzt
+      mit dem alten Web-Tempo (2,2 m/s) zum Ball statt zu schlendern, schaut
+      dem geworfenen Ball live hinterher, macht einen Antritts-Hopser und
+      trabt nach der Freude auf seinen Platz zurück; Skript-Läufe (Tür-Reise/
+      Fütter-Anmarsch) werden vom Apport nie gekapert. Ein eigener Spieler-
+      Flow wirft den Ball per echtem Flick und beweist, dass Zähler, Spaß und
+      Gewicht wirklich gebucht werden.
+- [x] **Stadt-Playtest-Blocker: Reise-Cutscene** — der Stadt-Spieler-Agent
+      fand einen ECHTEN Blocker: nach „Gute Reise!" hing die Abflug-Cutscene
+      ewig über dem Flughafen — kein Urlaub, und die 190 G waren weg (das
+      Schließen des Boarding-Pass-Sheets riss den Cutscene-Abschluss mit ins
+      Grab). Gefixt (der Abschluss überlebt das Sheet-Aufräumen) + Bug-
+      Wächter-Test; Playtest-Lauf 3 danach 44/44 grün.
+- [x] **CI-Release-Notes-Automatik** — der Release-Body war bisher nur ein
+      Hand-Gerüst („Was ist neu?"), das nie gepflegt wurde; jetzt werden die
+      Notes automatisch aus den Commits seit dem letzten Release-Tag
+      generiert (verlinkte Kurz-Hashes, „… und N weitere" mit Vergleichs-
+      Link, bricht lieber sauber ab als Müll zu veröffentlichen).
+- [x] **Warn-Sweep** (G6-Paket) — 5 echte Headless-Fehler aus Suite-/CI-Logs
+      auf 0 gebracht (u. a. ein Godot-4.4-Fallstrick, durch den ein Testpfad
+      still nie betreten wurde, und ein Settings-Flake).
+- [x] **P50-Nacharbeiten (Audit-Rest)** — das Bau-Dock startet in Ruhelage
+      und die Kamera-Leiste weicht dem wachsenden Dock aus, die Onboarding-
+      Tour-Karte duckt sich MIT dem HUD, die Minispiel-Ergebniskarte bleibt
+      über der Home-Indicator-Kante → das UI-Audit ist damit KOMPLETT GRÜN
+      (204 Screens, 0 Befunde — vorher 23).
+
+---
+
+### Welle G7 „SPIELGEFÜHL" — FERTIG (Runde W17, gelandet 2. August)
+
+_Transparenz-Hinweis von damals bleibt stehen: die am 31.7. gestartete Welle G6
+ist einem VM-Neustart zum Opfer gefallen, bevor sie integriert/committet war —
+kein Stand verloren gegangen außer der unfertigen Subagent-Arbeit; die
+G6-Pakete wurden neu einsortiert (zwei davon sind oben schon gelandet)._
+
+- [x] **P50 HUD-Dynamik** — dein Wunsch wörtlich: beim Baumenü GLEITEN die
       HUD-Knöpfe animiert weg (und kommen animiert zurück); bei offenen
       Blättern/Modals (z. B. Tagesquests) weicht/dimmt das HUD statt
       durchzuscheinen; HUD-Kachel-Labels werden nie mehr abgeschnitten
       („IGohbi/Garder/Gestalt" → passende Beschriftung), „Wo ist mein
-      Gooby?"-Chip inklusive
-- [~] **P51 Sprechblasen + Text-Fit** — „Ohh, wird das sch" ade: Blasen
-      wachsen/wickeln sauber, nie mehr mitten im Wort enden; Text-Fit-Sweep
-- [~] **P52 IGohbie-Telefon-Rework** — kaputtes Dunkel-Icon, unklare Symbole,
-      App-Labels, Öffnen-Animation, Wisch-zum-Schließen
-- [~] **P53 Modal/Sheet-System + Swipe** — EIN einheitliches Blatt-Verhalten
+      Gooby?"-Chip inklusive.
+      → GELANDET: gestaffeltes Weggleiten (180 ms, bei „Bewegung reduziert"
+      sofort), das HUD weicht bei JEDEM offenen Blatt (robust auch bei
+      mehreren gleichzeitig), Labels werden per Font-Messung eingepasst
+      statt abgeschnitten; dazu die W18-Nacharbeiten oben (Bau-Dock-
+      Ruhelage, Tour-Karte, Ergebniskarte).
+- [x] **P51 Sprechblasen + Text-Fit** — „Ohh, wird das sch" ade: Blasen
+      wachsen/wickeln sauber, nie mehr mitten im Wort enden; Text-Fit-Sweep.
+      → GELANDET: die Blase misst ihren Text, wächst bis zur Wohlfühl-
+      Maxbreite, bricht nur an WORT-Grenzen und reserviert die Endgröße vor
+      dem Typewriter (kein Nachruckeln); Dauer-Wache mit den längsten
+      DE/EN-Sprüchen.
+- [x] **P52 IGohbie-Telefon-Rework** — kaputtes Dunkel-Icon, unklare Symbole,
+      App-Labels, Öffnen-Animation, Wisch-zum-Schließen.
+      → GELANDET: das Dunkel-Icon war ein SVG-Füllfehler (gefixt), alle
+      App-Kacheln haben Icon + nie abgeschnittenes Label, Öffnen-Pop +
+      App-Slide, Wischen links = zurück ins Grid, runter = Telefon zu; die
+      Statuszeile schluckt keine Wisch-Gesten mehr (Playtest-Fund).
+- [x] **P53 Modal/Sheet-System + Swipe** — EIN einheitliches Blatt-Verhalten
       überall: Slide-in/out, Hintergrund-Dim, runterwischen = schließen
-      (inkl. Radio-Like-Offscreen-Fix)
-- [~] **P54 Garderobe + Gestalten poliert** — abgeschnittene Kategorien
-      („Briefkasten"), Scroll-Hinweise, Karten-Layout, Kauf-Feedback
-- [~] **P55 Läden lebendig, Teil 1** — REHWEI + IKEA werden ECHTE Orte:
-      animierte Kunden-Goobys, Kassen-NPC, Ambiente-Sound, Deko
-- [~] **P56 Ein-Spiel-Gefühl** — einheitlicher Minispiel-Rahmen (Intro/
+      (inkl. Radio-Like-Offscreen-Fix).
+      → GELANDET: alle Blätter teilen EIN Verhalten — Slide-up + Dim (das
+      Taps dahinter blockiert), Runterwischen am Griff zieht das Blatt echt
+      mit (Schwelle: schließen oder zurückschnappen), Dim-Tap schließt; der
+      Radio-Like-Offscreen-Altbefund ist an der Wurzel gefixt, und der
+      Playtest-Fund „Tagesquests-Blatt kommt beim zweiten Öffnen leer hoch"
+      gleich mit.
+- [x] **P54 Garderobe + Gestalten poliert** — abgeschnittene Kategorien
+      („Briefkasten"), Scroll-Hinweise, Karten-Layout, Kauf-Feedback.
+      → GELANDET: „Briefkasten" wird nie mehr hart abgeschnitten (Scroll-
+      Fade-Kante + Endpolster), Zeilen ≥ 44 pt, Kategorie-Chips swipebar,
+      Kauf mit Squish + Konfetti-Tick — und Kopfschütteln + Fehlerton,
+      wenn's zu teuer ist.
+- [x] **P55 Läden lebendig, Teil 1** — REHWEI + IKEA werden ECHTE Orte:
+      animierte Kunden-Goobys, Kassen-NPC, Ambiente-Sound, Deko.
+      → GELANDET: REHWEI und der Baumarkt sind jetzt ORTE — Besucher-Goobys
+      (tages-deterministisch, mit Farb-/Hut-Varianten) schlendern, gucken in
+      Regale und haben Emoji-Momente, ein Kassen-NPC tippt/winkt/piept, dazu
+      Türglöckchen + Markt-Gemurmel; das IKEA-Schaufenster lebt (wandelnde
+      Silhouetten). Weitere Orte anschließen kostet ~20 Zeilen Konfiguration.
+- [x] **P56 Ein-Spiel-Gefühl** — einheitlicher Minispiel-Rahmen (Intro/
       Outro/Pause im Gooby-Look überall) + einheitliche Szenen-Übergänge,
-      damit sich nichts mehr wie ein Fremd-Spiel anfühlt
-- [~] **P57 iPhone-17-Pro-Max-Leitformat (2868×1320 quer)** — UI-Wache +
+      damit sich nichts mehr wie ein Fremd-Spiel anfühlt.
+      → GELANDET: alle 38 Spiele laufen im selben Gooby-Rahmen — rein/raus
+      immer über den Haus-Wipe, einheitliches Pregame (Creme-Karte, Cover,
+      Mini-Gooby), gleicher Countdown, Pause + Ergebnis in EINEM Look mit
+      gleicher Knopf-Reihenfolge und gleicher Münz-/XP-Zähl-Animation; eine
+      Registry-Wache stellt sicher, dass kein Spiel den Rahmen umgeht.
+- [x] **P57 iPhone-17-Pro-Max-Leitformat (2868×1320 quer)** — UI-Wache +
       Konformitätstests aufs neue Leitformat, plus die 17 bekannten
-      Audit-Restbefunde (RMP-Tippflächen, Onboarding-Knöpfe offscreen)
-- [~] **P38R GvZ-PvP-Server** — Relaunch des verlorenen Pakets (gvzmp.js
-      nach gobnom-Muster inkl. Node-Tests)
-- [~] **P58 Playtest-Harness + Pionier-Spieler** — baut das „Subagent
+      Audit-Restbefunde (RMP-Tippflächen, Onboarding-Knöpfe offscreen).
+      → GELANDET: 2868×1320 quer ist das Leit-Format des UI-Audits (plus
+      Hochformat, jetzt 34 Screens × 6 Formate), die 17 Altbefunde sind
+      gefixt (RMP-Tippflächen auf ≥ 44 pt, Onboarding-Knöpfe zurück im
+      Bild); nach den P50-Nacharbeiten steht das Audit auf 204 Screens /
+      0 Befunde.
+- [x] **P38R GvZ-PvP-Server** — Relaunch des verlorenen Pakets (gvzmp.js
+      nach gobnom-Muster inkl. Node-Tests).
+      → GELANDET: Einladung über die Freundesliste, deterministischer
+      Start-Handshake (Server-Seed + Seitenwahl), Desync-Wächter pro Tick,
+      Wiedereinstiegs-Frist bei Verbindungsabbruch, doppelt-sichere
+      Belohnung; 151 Server-Tests grün — der seit G5 fertige Client läuft
+      ohne Änderung, das „Offline"-Panel ist Geschichte.
+- [x] **P58 Playtest-Harness + Pionier-Spieler** — baut das „Subagent
       spielt das Spiel"-Werkzeug (eigene Instanz, echte Eingaben,
       Screenshot-Serie, Hänger-/Fehler-Detektor) und spielt den ersten
-      kompletten Durchlauf im Leitformat → Bug-Report Nr. 1
+      kompletten Durchlauf im Leitformat → Bug-Report Nr. 1.
+      → GELANDET: die Harness bootet das ECHTE Spiel im Leitformat (eigenes
+      Spielstand-Verzeichnis pro Lauf, 10 parallel möglich), tippt/wischt
+      wie ein Spieler, macht nach jedem Schritt einen Screenshot und
+      schreibt Markdown-Bug-Reports; der Pionier-Lauf fand sofort einen
+      echten Blocker (Arcade-Zurück startete eine frische Runde samt
+      0-Punkte-Belohnungs-Farm) — an der Wurzel im Router gefixt.
 - [x] **P59 Playtest-Ausbau „Subagents spielen"** — `run_playtest.sh alle`:
       JEDER Flow ist ein eigener Spieler-Agent, alle 10 laufen PARALLEL (je
       eigenes user:// + Display, Übersichts-Tabelle am Ende); 4 neue Spieler
@@ -277,18 +390,8 @@ Subagents parallel — das ist das harte Plattform-Limit, die Pipeline bleibt vo
       wiederverwendete Inhalte), und die Telefon-Statuszeile schluckte den
       Runterwisch-zum-Schließen. Report: `docs/playtests/PT-ui-loops.md`
 
-**Danach sofort (Warteschlange):**
-- [ ] **Welle H: PLAYTEST ×10** — 10 Spieler-Agents, jeder spielt seinen
-      Bereich mit eigener Instanz (Home/Bau, Stadt/Läden, Minispiele ×3,
-      DLCs, Telefon/Radio, Garderobe/Gestalten, Quests/Progression,
-      Onboarding) → gesammelte Bug-Liste
-- [ ] **Welle I: 30+ Ideen-Planner** — 10 Planner parallel, jeder liefert
-      10+ priorisierte Ideen für seinen Bereich (≈100+ Ideen), konsolidiert
-      zur Roadmap
-- [ ] **Wellen J+: Umsetzung** — Playtest-Bugs + beste Planner-Ideen +
-      die neu einsortierten G6-Pakete (DLC Welle B beider Läden, Ball-Wurf,
-      DLC-Ladebildschirme, Audio-Feel, B11/Warn-Sweep, Doku-Refresh,
-      McGooby-Bühne, Alwin-NPC)
+_(Die Warteschlange „Danach sofort" von damals ist in die W18-Liste oben
+gewandert — Welle H läuft bereits, Ball-Wurf und Warn-Sweep sind gelandet.)_
 
 ---
 
@@ -296,7 +399,9 @@ Subagents parallel — das ist das harte Plattform-Limit, die Pipeline bleibt vo
 
 | | |
 |---|---|
-| **Testen** | GitHub → Actions → Lauf „GOOBY Godot" → Artefakt `GOOBY-godot-unsigned-ipa` herunterladen, mit AltStore/Sideloadly installieren. Anleitung: `docs/godot-rewrite/IOS-BUILD.md` |
+| **Qualität (Stand 2.8., W18)** | Hauptsuite **3452 Tests / 0 rot**, Server-Tests **151 / 0**, UI-Audit **204 Screens / 0 Befunde** — Leitformat iPhone 17 Pro Max quer (2868×1320) |
+| **Playtests** | Subagents SPIELEN das Spiel wirklich (eigene Instanz, echte Taps/Wische, Screenshots): Reports unter `docs/playtests/` (PT-home, PT-ui-loops, PT-stadt), Start per `tools/ci/run_playtest.sh alle` |
+| **Testen** | GitHub → Actions → Lauf „GOOBY Godot" → Artefakt `GOOBY-godot-unsigned-ipa` herunterladen, mit AltStore/Sideloadly installieren. Anleitung: `docs/godot-rewrite/IOS-BUILD.md` — Release-Notes werden jetzt automatisch aus den Commits generiert |
 | **Spielstand von früher** | Einstellungen → Spielstand → „Alten Spielstand übertragen"; Anleitung: `docs/godot-rewrite/SAVE-TRANSFER.md` |
 | **Was noch offen ist** | `docs/godot-rewrite/EVAL-VOLLSTAENDIGKEIT.md` (ehrliche Feature-Matrix) |
 | **Trailer** | `trailer/GOOBY-5.1-Godot-Trailer.mp4` (neu, W17-Look) — Vorgänger 5.0 bleibt daneben liegen |
