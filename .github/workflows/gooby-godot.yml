@@ -53,6 +53,16 @@ on:
       - "GOOBY-GODOT/**"
       - "tools/ci/**"
       - ".github/workflows/gooby-godot.yml"
+  # CI-38: nächtlicher Gesundheits-Lauf — bewusst NUR lint + linux-checks.
+  # ios-ipa ist per Event-Gate am Job ausgeschlossen (macOS-Minuten sparen,
+  # ohne Push gibt es keine neue .ipa zu bauen); release ist ohnehin strikt
+  # Tag-/Dispatch-gegatet und über needs auf ios-ipa unerreichbar.
+  # GitHub-Semantik-Vorbehalt: schedule feuert AUSSCHLIESSLICH aus dem
+  # Workflow-Stand des DEFAULT-Branches — solange diese Datei dort nicht
+  # liegt, bleibt der Cron wirkungslos (dokumentierte Vorleistung).
+  # Minute ≠ :00 nach GitHub-Empfehlung (Lastspitzen zur vollen Stunde).
+  schedule:
+    - cron: "23 5 * * *"
   workflow_dispatch:
     inputs:
       # Leer (Default) = Verhalten wie bisher: nur Build, KEIN Release.
@@ -187,7 +197,9 @@ jobs:
     # Der Build bleibt nach den Linux-Tests eingeordnet, läuft aber auch bei
     # roten Tests. So gibt es weiterhin eine testbare IPA; ihr Artefaktname
     # kennzeichnet den roten Vorlauf unmissverständlich als UNVERIFIED.
-    if: ${{ always() && needs.linux-checks.result != 'cancelled' }}
+    # CI-38: im schedule-Lauf wird der Job übersprungen (lint+linux only);
+    # release bleibt dadurch automatisch skipped (needs + success-Gate).
+    if: ${{ always() && github.event_name != 'schedule' && needs.linux-checks.result != 'cancelled' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -300,7 +312,11 @@ jobs:
       # Erwartungen (Orientierungen, Bundle-Id, Min-iOS, Device-Family) werden
       # aus export_presets.cfg ABGELEITET — hart kodierte Sets veralten (8 rote
       # Runs nach W6/FIX). Druckt am Ende ".ipa gebaut: X MB, Y Dateien im PCK".
-      - name: .ipa forensisch verifizieren
+      # Groessenwacht (CI-36): Delta gegen tools/ci/ipa_baseline.json —
+      # Warnung ab +10 %, ROT ab +50 %; Report (Gesamt/Baseline/Delta + Anteile
+      # PCK/Mach-O/Assets.car) schreibt das Script in die GITHUB_STEP_SUMMARY.
+      # Gewolltes Wachstum: size_bytes in der Baseline auf den Log-Wert setzen.
+      - name: .ipa forensisch verifizieren (inkl. Groessenwacht)
         run: |
           set -euo pipefail
           python3 tools/ci/verify_ipa.py build/ios/GOOBY-godot-unsigned.ipa GOOBY-GODOT
