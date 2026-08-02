@@ -136,11 +136,23 @@ func set_title(text: String) -> void:
 ## die Min-Size des Blatts (Container-Messung), und ein einmal aufgeblähter
 ## PanelContainer schrumpft von selbst nicht zurück (Sheet ragte rechts
 ## aus dem Bild, s. news_50_panel/story_time in G4/P17).
+## G7/P59 (Playtest-Befund flow_quests_sheet): wird derselbe Inhalts-Node
+## WIEDER eingehängt (Dauer-Nutzer wie der DailyQuestService halten ihr
+## Panel über close/open hinweg), darf er dabei NICHT als „Alt-Inhalt"
+## ge-queue_free-t werden — das Blatt kam sonst beim zweiten Öffnen als
+## leerer Stummel am unteren Rand hoch und der dritte open() griff ins
+## Freigegebene.
 func add_content(node: Control) -> void:
 	for child in _body.get_children():
+		if child == node:
+			continue
 		_body.remove_child(child)
 		child.queue_free()
-	_body.add_child(node)
+	if node.get_parent() == null:
+		_body.add_child(node)
+	elif node.get_parent() != _body:
+		node.get_parent().remove_child(node)
+		_body.add_child(node)
 	if _open:
 		_relayout()
 

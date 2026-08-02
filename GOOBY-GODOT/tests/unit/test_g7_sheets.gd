@@ -227,6 +227,35 @@ func test_schliessen_raeumt_dim_und_gibt_fokus_zurueck() -> void:
 	PanelStack.clear()
 
 
+## G7/P59-Wache (Playtest-Befund flow_quests_sheet): Dauer-Nutzer wie der
+## DailyQuestService halten EIN Inhalts-Panel und hängen es bei jedem
+## open_panel() erneut per add_content ein. Vorher queue_free-te
+## add_content den wieder-eingehängten Node als „Alt-Inhalt" — das Blatt
+## kam beim zweiten Öffnen als leerer Stummel hoch, der dritte Aufruf
+## griff ins Freigegebene.
+func test_gleicher_inhalt_ueberlebt_wiederoeffnen() -> void:
+	var ctx: Dictionary = await _mount()
+	var panel := ctx["panel"] as PanelSheet
+	var body := panel.get_node("%SheetBody") as Control
+	var box := body.get_child(0) as Control
+	assert_true(box != null, "Probe-Inhalt hängt im Body")
+	for runde in 2:
+		panel.close()
+		var weg := await wait_until(func() -> bool: return not panel.visible)
+		assert_true(weg, "Blatt zu (Runde %d)" % runde)
+		panel.add_content(box)
+		panel.open()
+		await _settle(panel)
+		await wait_frames(2)
+		assert_true(is_instance_valid(box), "Inhalt lebt nach Wiederöffnen %d" % runde)
+		assert_false(
+			box.is_queued_for_deletion(), "Inhalt NICHT löschungs-pendent (Runde %d)" % runde
+		)
+		assert_eq(box.get_parent(), body, "Inhalt hängt wieder im Body (Runde %d)" % runde)
+		assert_true(box.is_visible_in_tree(), "Inhalt sichtbar (Runde %d)" % runde)
+	await _abbau(ctx)
+
+
 ## ------------------------------------------------------------ Runterwischen
 
 
