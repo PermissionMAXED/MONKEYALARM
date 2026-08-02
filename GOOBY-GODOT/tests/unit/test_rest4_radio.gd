@@ -2,7 +2,8 @@ extends TestCase
 ## REST-4 — Radio-Oberfläche (EVAL Rang 10): pure RadioLogic (Sender-/Titel-
 ## Sperren nach Level, Freischalt-Zähler, Likes-Normalisierung) und die
 ## RadioSheet-UI headless (An/Aus persistiert, Senderwahl, Like des
-## laufenden Titels, Schlösser an gesperrten Sendern).
+## laufenden Titels, Schlösser an gesperrten Sendern) — plus die
+## LOOP-Politur-Wache: Leerzustände, ♥-Like-Feedback, Senderwechsel in place.
 ##
 ## W13/RADIO (H §6.1, ABSICHTLICHE Verhaltensänderung): das Vollradio
 ## (Sender/Skip/Like) gibt es nur noch MIT gekauftem Radio — die UI-Tests
@@ -182,6 +183,62 @@ func test_radio_sheet_senderwahl_und_schloesser() -> void:
 	offen.pressed.emit()
 	await wait_frames(1)
 	assert_eq(str(gs.get_value("radio.station", "")), "gooby-fm", "Senderwahl persistiert")
+	sheet.queue_free()
+	music.queue_free()
+	await wait_frames(1)
+
+
+## GOOBY-LOOP-Politur: Leerzustände (Radio AUS → Einschalt-Hinweis im
+## Ticker, 0 Likes → Merken-Hinweis statt „…: 0"), sichtbares Like-Feedback
+## (♥-Toggle + Zähler) und Senderwechsel OHNE UI-Neubau (Instanzen bleiben,
+## Chips togglen in place — kein Flackern/Scroll-Reset, Namen stabil).
+func test_radio_sheet_leerzustaende_like_feedback_und_senderwechsel() -> void:
+	var gs := FakeGameState.new()
+	gs.set_value("radio.owned", true)
+	var music := FakeMusic.new()
+	tree.root.add_child(music)
+	var sheet := RadioSheet.new()
+	sheet.gs = gs
+	sheet.music = music
+	tree.root.add_child(sheet)
+	await wait_frames(2)
+	var ticker: NowPlayingChip = sheet.find_child("WasLaeuft", true, false)
+	assert_eq(
+		ticker.ticker_text(),
+		I18nService.t("radio.aus_hinweis"),
+		"Radio AUS: Ticker erklärt den nächsten Schritt"
+	)
+	var lieblinge: Label = sheet.find_child("Lieblinge", true, false)
+	assert_eq(
+		lieblinge.text,
+		I18nService.t("radio.lieblinge_leer"),
+		"0 Likes: freundlicher Hinweis statt Null-Zähler"
+	)
+	var an_aus: Button = sheet.find_child("AnAus", true, false)
+	an_aus.pressed.emit()
+	var like: Button = sheet.find_child("Like", true, false)
+	assert_true(like.toggle_mode, "Like ist ein sichtbarer Toggle")
+	assert_false(like.button_pressed, "frischer Track: noch kein Liebling")
+	like.pressed.emit()
+	assert_true(like.button_pressed, "nach dem Like zeigt der Knopf gedrückt")
+	assert_true(like.text.begins_with("♥"), "Knopftext trägt das Herz")
+	assert_eq(
+		lieblinge.text,
+		"%s: 1" % I18nService.t("radio.lieblinge"),
+		"Zähler ersetzt den Leer-Hinweis"
+	)
+	var schliessen: Button = sheet.find_child("Schliessen", true, false)
+	var ziel: Button = sheet.find_child("Sender_alle", true, false)
+	ziel.pressed.emit()
+	await wait_frames(1)
+	assert_true(
+		sheet.find_child("Schliessen", true, false) == schliessen,
+		"Senderwechsel baut die UI NICHT mehr neu (kein Flackern/Scroll-Reset)"
+	)
+	assert_true(ziel.button_pressed, "neuer Sender-Chip zeigt gewählt")
+	var alt: Button = sheet.find_child("Sender_bordmusik", true, false)
+	assert_false(alt.button_pressed, "alter Chip ist abgewählt")
+	assert_eq(str(gs.get_value("radio.station", "")), "alle", "Wechsel persistiert")
 	sheet.queue_free()
 	music.queue_free()
 	await wait_frames(1)

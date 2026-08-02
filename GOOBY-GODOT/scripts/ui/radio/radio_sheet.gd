@@ -17,6 +17,12 @@ extends VBoxContainer
 ## Lebt als Inhalt eines PanelSheets (RadioGeraet dockt es an Möbel) und
 ## ist headless testbar: `gs` + `music` sind injizierbar; ohne Musik-Knoten
 ## degradiert die Wiedergabe still (Zustand wird trotzdem persistiert).
+##
+## GOOBY-LOOP-Politur: Leerzustände erklären den nächsten Schritt (Radio
+## AUS → Einschalt-Hinweis im Ticker, 0 Likes → Merken-Hinweis statt „…: 0"),
+## der Like-Knopf ist ein sichtbarer ♥-Toggle, und der Senderwechsel läuft
+## OHNE UI-Neubau (Chips togglen in place, Toast bestätigt den Sender —
+## kein Flackern/Scroll-Reset mehr wie beim alten _baue_ui-Volltreffer).
 
 signal geschlossen
 
@@ -32,6 +38,7 @@ var _an_aus_btn: Button
 var _next_btn: Button
 var _like_btn: Button
 var _liste_box: VBoxContainer
+var _chips_box: HFlowContainer
 var _lieblinge_label: Label
 var _frei_label: Label
 
@@ -69,11 +76,12 @@ func _baue_ui() -> void:
 	# _refresh_titel_liste) — sonst kollidieren die Namen der neuen
 	# Direktkinder ("Schliessen", "SenderChips", …) mit den noch einen
 	# Frame lang anwesenden Alt-Geschwistern und Godot vergibt
-	# "@SquishButton@N"-Namen: nach jedem Senderwechsel wären die Knöpfe
-	# per Name (Tests, Automation) nicht mehr auffindbar.
+	# "@SquishButton@N"-Namen: nach jedem Neubau (z. B. Rotation) wären
+	# die Knöpfe per Name (Tests, Automation) nicht mehr auffindbar.
 	for kind in get_children():
 		remove_child(kind)
 		kind.queue_free()
+	_chips_box = null
 	# G4/P17 (Leitidee FB3): EINMAL Metriken ziehen — Touch-Floor +
 	# UiScale statt fester 44/48-px-Werte (physisch sonst nur ~24–26 pt).
 	var m := ScreenShell.metrics(get_viewport())
@@ -123,6 +131,9 @@ func _baue_ui() -> void:
 	_like_btn = SquishButton.new()
 	_like_btn.name = "Like"
 	_like_btn.theme_type_variation = "AccentButton"
+	# Like-Feedback: echter Toggle — nur so rendert `button_pressed` den
+	# Gedrückt-Look (auf einem Nicht-Toggle bleibt der Wert unsichtbar).
+	_like_btn.toggle_mode = true
 	_like_btn.text = I18nService.t("radio.gefaellt")
 	_like_btn.custom_minimum_size = Vector2(0.0, floor_px)
 	_like_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -175,6 +186,7 @@ func _baue_vollradio(m: Dictionary) -> void:
 	chips.add_theme_constant_override("h_separation", 8)
 	chips.add_theme_constant_override("v_separation", 8)
 	add_child(chips)
+	_chips_box = chips
 	var level := _level()
 	for station: Dictionary in RadioLogic.sender(level):
 		chips.add_child(_sender_cover_karte(station, m))
@@ -320,11 +332,29 @@ func _on_sender_gewaehlt(id: String) -> void:
 	if not RadioLogic.aktion_erlaubt(_owned, "sender"):
 		return
 	AudioDirector.try_play(self, "ui_chip")
+	var gewechselt := id != _station_id
 	_station_id = id
+	# Senderwechsel-Gefühl: KEIN kompletter Neubau mehr (früher _baue_ui —
+	# Flackern + Scroll-Reset bei jedem Tap). Die Chips togglen in place,
+	# Ticker/Like/Titelliste ziehen über _refresh nach, ein Toast bestätigt
+	# den neuen Sender. Die Knoten-Namen bleiben dabei stabil (PT-meta F4).
+	_update_sender_chips()
 	if _spielt() and music != null and music.has_method("radio_play"):
 		music.radio_play(id)
 	_schreibe_radio({"station": id})
-	_baue_ui()
+	if gewechselt:
+		_zeige_toast(I18nService.t("radio.sender_gewechselt", {"sender": _sender_anzeige_name(id)}))
+	_refresh()
+
+
+## Gewählt-Markierung der Cover-Chips nachziehen — auch nach einem Tap auf
+## den schon aktiven Chip (der Toggle würde sich sonst optisch "ausschalten").
+func _update_sender_chips() -> void:
+	if _chips_box == null or not is_instance_valid(_chips_box):
+		return
+	for kind in _chips_box.get_children():
+		if kind is Button:
+			(kind as Button).set_pressed_no_signal(str(kind.name) == "Sender_%s" % _station_id)
 
 
 func _on_like_aktueller() -> void:
@@ -370,16 +400,31 @@ func _refresh() -> void:
 		if playing and not track_id.is_empty():
 			var entry := MusicRegistry.entry(track_id)
 			_ticker.set_now(str(entry.get("title", track_id)), _sender_anzeige_name(_station_id))
-		else:
+		elif playing:
 			_ticker.set_leer(I18nService.t("radio.kein_titel"))
+		else:
+			# Leerzustand AUS: nennt den nächsten Schritt statt nur „Stille".
+			_ticker.set_leer(I18nService.t("radio.aus_hinweis"))
 	if _like_btn != null:
 		var likes := RadioLogic.likes_von(_state())
+		var liked: bool = not track_id.is_empty() and likes.has(track_id)
 		_like_btn.disabled = not _owned or track_id.is_empty() or not playing
-		_like_btn.text = I18nService.t("radio.gefaellt")
-		_like_btn.button_pressed = likes.has(track_id)
+		# Like-Feedback: der Toggle zeigt den Zustand — gedrückt + ♥-Text,
+		# solange der laufende Titel ein Liebling ist (♥ ist Bestands-Glyph
+		# der Sender-Cover, Font-Fallback vorhanden).
+		_like_btn.text = (
+			"♥ %s" % I18nService.t("radio.liebling_kurz")
+			if liked
+			else I18nService.t("radio.gefaellt")
+		)
+		_like_btn.set_pressed_no_signal(liked)
 	if _lieblinge_label != null:
+		var anzahl := RadioLogic.like_anzahl(_state())
+		# Leerzustand: 0 Likes erklären die Merken-Knöpfe statt „…: 0".
 		_lieblinge_label.text = (
-			"%s: %d" % [I18nService.t("radio.lieblinge"), RadioLogic.like_anzahl(_state())]
+			I18nService.t("radio.lieblinge_leer")
+			if anzahl == 0
+			else "%s: %d" % [I18nService.t("radio.lieblinge"), anzahl]
 		)
 	_refresh_titel_liste()
 
@@ -429,8 +474,9 @@ func _titel_zeile(row: Dictionary, m: Dictionary) -> Control:
 		var like := SquishButton.new()
 		like.name = "Like_%s" % str(row["id"])
 		like.theme_type_variation = "GhostButton"
+		# Like-Feedback in der Liste: Lieblinge tragen das ♥ sichtbar.
 		like.text = (
-			I18nService.t("radio.liebling_kurz")
+			"♥ %s" % I18nService.t("radio.liebling_kurz")
 			if bool(row["liked"])
 			else I18nService.t("radio.merken_kurz")
 		)
