@@ -5,10 +5,32 @@ extends RefCounted
 ## weitergeht), RASTPLÄTZE mit Bank + Feuerstelle an langen Strecken,
 ## WEIDEGATTER (fence_gate) an Zonen-Einfahrten und die FURT-Markierung
 ## am Bach. Die PLANUNG ist PURE + headless-testbar (wegweiser_plan,
-## distanz_m); der Bau-Schritt setzt sie in wenige Meshes um — Label3D
-## und Kleinteile mit Sichtweiten-Culling (Budget).
+## distanz_m, rastplatz_deko_plan, wegweiser_deko_plan); der Bau-Schritt
+## setzt sie in wenige Meshes um — Label3D und Kleinteile mit
+## Sichtweiten-Culling (Budget). POLISH (W19): Rastplätze und Wegweiser-
+## Füße tragen die Bestands-CC0-Kits statt nackter Primitive — Kenney
+## Survival Kit (Feuerstelle/Zelt, schon im Repo für den Urlaubs-Berg)
+## und Kenney Nature Kit (Sitzstamm, Stümpfe, Stein/Gras/Blumen). Alle
+## Kit-Requisiten bündeln über RanchBau.baue_multimesh nach GLB-Sorte
+## (EIN Draw-Call je Mesh, egal wie viele Plätze) und sitzen einzeln auf
+## RanchGelaende.hoehe — nichts schwebt am Hang.
 
 const SICHT_M := 170.0
+
+## Bestands-CC0-Kits (Lizenz-Dateien liegen in den Asset-Ordnern).
+const NATUR_KIT := "res://assets/ranch/natur"
+const LAGER_KIT := "res://assets/city/urlaub/survival-kit"
+const FEUER_GLB := LAGER_KIT + "/campfire-pit.glb"
+const ZELT_GLB := LAGER_KIT + "/tent-canvas.glb"
+const STAMM_GLB := NATUR_KIT + "/log.glb"
+const STUMPF_GLB := NATUR_KIT + "/stump_round.glb"
+const STEIN_GLB := NATUR_KIT + "/rock_smallA.glb"
+const GRAS_GLB := NATUR_KIT + "/grass_large.glb"
+const BLUMEN_GLB: Array[String] = [
+	NATUR_KIT + "/flower_redA.glb",
+	NATUR_KIT + "/flower_yellowA.glb",
+	NATUR_KIT + "/flower_purpleA.glb",
+]
 
 ## Rastplätze: [x, z] an langen Wegstrecken (Serpentinen-Fuß, Strandweg,
 ## Feldrand) — Bank, Feuerstelle, Sitzstämme.
@@ -80,23 +102,101 @@ static func wegweiser_plan() -> Array[Dictionary]:
 	return out
 
 
+## Rastplatz-Kit-Deko um Mittelpunkt `p` (Welt-XZ), PURE + deterministisch
+## aus der Position: Feuerstelle + Zelt (Survival Kit), Sitzstamm +
+## Stümpfe ums Feuer, dazu Stein/Gras/Blumen-Streu (Nature Kit).
+## Einträge: {glb, pos: Vector2, yaw, skala}.
+static func rastplatz_deko_plan(p: Vector2) -> Array[Dictionary]:
+	var rng := _rng("rast", p)
+	var yaw := p.x * 0.1
+	var out: Array[Dictionary] = [
+		_deko(FEUER_GLB, p, rng.randf_range(0.0, TAU), 4.5),
+		_deko(
+			STAMM_GLB, p + _lokal(Vector2(2.35, 0.3), yaw), yaw + rng.randf_range(-0.25, 0.25), 3.4
+		),
+		_deko(STUMPF_GLB, p + _lokal(Vector2(-2.1, 0.7), yaw), rng.randf_range(0.0, TAU), 2.6),
+		_deko(STUMPF_GLB, p + _lokal(Vector2(-1.4, 2.0), yaw), rng.randf_range(0.0, TAU), 2.4),
+		_deko(ZELT_GLB, p + _lokal(Vector2(0.8, 5.2), yaw), yaw + PI, 4.4),
+		_deko(STEIN_GLB, p + _lokal(Vector2(3.2, -2.0), yaw), rng.randf_range(0.0, TAU), 2.2),
+	]
+	for _i in 3:
+		var w := rng.randf_range(0.0, TAU)
+		var r := rng.randf_range(2.9, 4.3)
+		out.append(_deko(GRAS_GLB, p + Vector2.from_angle(w) * r, rng.randf_range(0.0, TAU), 2.6))
+	for _i in 2:
+		var w := rng.randf_range(0.0, TAU)
+		var r := rng.randf_range(2.6, 3.9)
+		var blume: String = BLUMEN_GLB[rng.randi_range(0, BLUMEN_GLB.size() - 1)]
+		out.append(_deko(blume, p + Vector2.from_angle(w) * r, rng.randf_range(0.0, TAU), 2.4))
+	return out
+
+
+## Wegweiser-Fuß-Deko um Pfosten `p`, PURE + deterministisch: ein Stein
+## plus Gras-/Blumen-Büschel im engen Ring — der Pfosten wirkt GEPFLANZT
+## statt in die nackte Wiese gesteckt.
+static func wegweiser_deko_plan(p: Vector2) -> Array[Dictionary]:
+	var rng := _rng("wegweiser", p)
+	var out: Array[Dictionary] = [
+		_deko(
+			STEIN_GLB,
+			p + Vector2.from_angle(rng.randf_range(0.0, TAU)) * rng.randf_range(0.55, 0.8),
+			rng.randf_range(0.0, TAU),
+			1.7
+		)
+	]
+	for _i in 2:
+		var w := rng.randf_range(0.0, TAU)
+		var r := rng.randf_range(0.6, 1.1)
+		out.append(_deko(GRAS_GLB, p + Vector2.from_angle(w) * r, rng.randf_range(0.0, TAU), 2.1))
+	for _i in 2:
+		var w := rng.randf_range(0.0, TAU)
+		var r := rng.randf_range(0.7, 1.2)
+		var blume: String = BLUMEN_GLB[rng.randi_range(0, BLUMEN_GLB.size() - 1)]
+		out.append(_deko(blume, p + Vector2.from_angle(w) * r, rng.randf_range(0.0, TAU), 2.0))
+	return out
+
+
 ## ----------------------------------------------------------------- Bau
 
 
 ## Baut Wegweiser, Rastplätze, Gatter und Furt-Stangen unter `wurzel`.
+## Die Kit-Deko ALLER Plätze/Pfosten sammelt sich erst je GLB-Sorte und
+## läuft dann gebündelt durch baue_multimesh (Draw-Call-Budget).
 static func baue(wurzel: Node3D) -> Node3D:
 	var gruppe := Node3D.new()
 	gruppe.name = "Wegenetz"
 	wurzel.add_child(gruppe)
+	var deko: Dictionary = {}
 	for plan: Dictionary in wegweiser_plan():
 		_baue_wegweiser(gruppe, plan)
+		_sammle_deko(deko, wegweiser_deko_plan(plan["pos"]))
 	for platz: Array in RASTPLAETZE:
-		_baue_rastplatz(gruppe, Vector2(float(platz[0]), float(platz[1])))
+		var p := Vector2(float(platz[0]), float(platz[1]))
+		_baue_rastplatz(gruppe, p)
+		_sammle_deko(deko, rastplatz_deko_plan(p))
 	var bau := RanchBau.new(gruppe)
 	for gatter: Dictionary in GATTER:
 		_baue_gatter(gruppe, bau, gatter)
 	_baue_furt_stangen(gruppe)
+	for pfad: String in deko:
+		bau.baue_multimesh(gruppe, pfad, deko[pfad])
 	return gruppe
+
+
+## Deko-Plan → Welt-Transforms je GLB-Pfad in `ziel`: aufrecht (nur Yaw),
+## uniforme Skala, Fuß auf RanchGelaende.hoehe; Wasser-Positionen fallen
+## still weg (Rastplatz am Strandweg).
+static func _sammle_deko(ziel: Dictionary, plaene: Array[Dictionary]) -> void:
+	for eintrag: Dictionary in plaene:
+		var pos: Vector2 = eintrag["pos"]
+		if RanchGelaende.ist_wasser(pos.x, pos.y):
+			continue
+		var basis := Basis(Vector3.UP, float(eintrag["yaw"])).scaled(
+			Vector3.ONE * float(eintrag["skala"])
+		)
+		var origin := Vector3(pos.x, RanchGelaende.hoehe(pos.x, pos.y), pos.y)
+		var liste: Array = ziel.get_or_add(str(eintrag["glb"]), [])
+		liste.append(Transform3D(basis, origin))
 
 
 ## Wegweiser: Pfosten + je Nachbar ein Brett-Arm mit "Name  123 m".
@@ -129,10 +229,15 @@ static func _baue_wegweiser(gruppe: Node3D, plan: Dictionary) -> void:
 		text.position = Vector3(0.09, 0.0, 0.85)
 		text.rotation.y = -PI / 2.0
 		text.visibility_range_end = SICHT_M
+		# Einseitig: von hinten zeigt der Arm sauberes Brett statt
+		# gespiegeltem Geister-Text (W19-Beweisfoto-Befund).
+		text.double_sided = false
 		arm_wurzel.add_child(text)
 
 
-## Rastplatz: Bank, Steinring-Feuerstelle mit Flammen-Quad, Sitzstamm.
+## Rastplatz: Pastell-Bank + Flammen-Quad über der Kit-Feuerstelle.
+## Feuerstelle/Zelt/Sitzstamm/Stümpfe/Streu kommen NICHT mehr als
+## Primitive hierher, sondern gebündelt aus rastplatz_deko_plan.
 static func _baue_rastplatz(gruppe: Node3D, p: Vector2) -> void:
 	var boden := RanchGelaende.hoehe(p.x, p.y)
 	var platz := Node3D.new()
@@ -144,15 +249,6 @@ static func _baue_rastplatz(gruppe: Node3D, p: Vector2) -> void:
 	_quader(platz, Vector3(-0.9, 0.25, -2.6), Vector3(0.16, 0.5, 0.6), HOLZ)
 	_quader(platz, Vector3(0.9, 0.25, -2.6), Vector3(0.16, 0.5, 0.6), HOLZ)
 	_quader(platz, Vector3(0.0, 0.85, -2.92), Vector3(2.4, 0.6, 0.1), HOLZ)
-	for i in 7:
-		var w := float(i) / 7.0 * TAU
-		var sp := Vector2.from_angle(w) * 1.1
-		var stein := _quader(
-			platz, Vector3(sp.x, 0.18, sp.y), Vector3(0.4, 0.36, 0.4), Color(0.6, 0.58, 0.56)
-		)
-		stein.rotation.y = w
-	_quader(platz, Vector3(0.2, 0.16, 0.0), Vector3(0.9, 0.16, 0.18), Color(0.4, 0.3, 0.22))
-	_quader(platz, Vector3(-0.15, 0.16, 0.1), Vector3(0.8, 0.15, 0.17), Color(0.35, 0.26, 0.2))
 	var flamme := MeshInstance3D.new()
 	flamme.name = "Feuer"
 	var quad := QuadMesh.new()
@@ -164,11 +260,10 @@ static func _baue_rastplatz(gruppe: Node3D, p: Vector2) -> void:
 	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	quad.material = mat
 	flamme.mesh = quad
-	flamme.position = Vector3(0.0, 0.75, 0.0)
+	flamme.position = Vector3(0.0, 0.95, 0.0)
 	flamme.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	flamme.visibility_range_end = SICHT_M
 	platz.add_child(flamme)
-	_quader(platz, Vector3(2.4, 0.3, 0.4), Vector3(0.55, 0.55, 2.2), Color(0.5, 0.4, 0.3))
 
 
 ## Weidegatter: Kit-Tor quer über den Weg, an Punkt t der Polyline.
@@ -221,3 +316,24 @@ static func _quader(wurzel: Node3D, pos: Vector3, groesse: Vector3, farbe: Color
 	mi.position = pos
 	wurzel.add_child(mi)
 	return mi
+
+
+## ------------------------------------------------ Deko-Plan-Werkzeuge
+
+
+static func _deko(glb: String, pos: Vector2, yaw: float, skala: float) -> Dictionary:
+	return {"glb": glb, "pos": pos, "yaw": yaw, "skala": skala}
+
+
+## Lokaler Platz-Offset → Welt-Offset unter Platz-Yaw (entspricht
+## Basis(UP, yaw) auf der XZ-Ebene).
+static func _lokal(offset: Vector2, yaw: float) -> Vector2:
+	return offset.rotated(-yaw)
+
+
+## Deterministischer RNG je Zweck + Position (AGENTS-Regel: Zufall
+## injizierbar/reproduzierbar — kein randomize() in Kernlogik).
+static func _rng(zweck: String, p: Vector2) -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("%s:%d:%d" % [zweck, int(round(p.x)), int(round(p.y))])
+	return rng

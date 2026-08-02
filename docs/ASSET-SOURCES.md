@@ -51,7 +51,7 @@ Frisch heruntergeladen und integriert (alle CC0 1.0, Links = Quelle):
 
 | Modell | Pack / Quelle | Eingebaut in |
 |---|---|---|
-| `tent-canvas.glb`, `campfire-pit.glb`, `signpost.glb` | [Kenney Survival Kit](https://kenney.nl/assets/survival-kit) | Urlaubs-Ort BERGE (`urlaubs_ort.gd`) — ersetzt PrismMesh-Zelt + Kugel-Steinkreis |
+| `tent-canvas.glb`, `campfire-pit.glb`, `signpost.glb` | [Kenney Survival Kit](https://kenney.nl/assets/survival-kit) | Urlaubs-Ort BERGE (`urlaubs_ort.gd`) — ersetzt PrismMesh-Zelt + Kugel-Steinkreis; seit W19 nutzt auch das Ranch-Wegenetz (`ranch_wegenetz.gd`) Feuerstelle + Zelt für die drei Rastplätze (statt Quader-Steinring) |
 | `tree_palm.glb`, `tree_palmDetailedTall.glb`, `tree_palmBend.glb` | [Kenney Nature Kit](https://kenney.nl/assets/nature-kit) | Urlaubs-Ort STRAND — Palmen rahmen den Strand |
 | `boat-sail-a.glb`, `boat-row-small.glb`, `buoy.glb`, `buoy-flag.glb` | [Kenney Watercraft Kit](https://kenney.nl/assets/watercraft-kit) (Web-Referenz-Kopie) | Urlaubs-Ort STRAND — Segelboot + Bojen im Meer, Ruderboot im Sand |
 | `Planet_5.gltf`, `Spaceship_FinnTheFrog.gltf` | [Quaternius Ultimate Space Kit](https://quaternius.com/packs/ultimatespacekit.html) | rocket_rescue — echter Planet statt Farbkugel + gestrandetes Häschen-Raumschiff als Kulisse |

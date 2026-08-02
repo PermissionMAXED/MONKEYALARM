@@ -87,6 +87,9 @@ func test_wegweiser_labels_haben_distanz_culling() -> void:
 			0.001,
 			"Label cullt auf Distanz"
 		)
+		assert_false(
+			(label as Label3D).double_sided, "Label einseitig — kein Spiegel-Text von hinten (W19)"
+		)
 	wurzel.free()
 
 
