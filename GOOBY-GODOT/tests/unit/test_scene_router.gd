@@ -1,6 +1,11 @@
 extends TestCase
 ## Unit-Tests der SceneRouter-Statemaschine (W1a) — mit Fake-Veil und
 ## Fixture-Szenen, komplett headless.
+## Dazu die TRANSITIONS-Bypass-Wache (Quelltext-Scan im FB3-Konformitäts-
+## Muster): JEDER Szenenwechsel läuft über SceneRouter.goto()/back() und
+## damit über den Veil-Wipe (COVER→SWAP→WAIT_READY→REVEAL) bzw. dessen
+## Tür-Varianten — direkte SceneTree-Wechsel-APIs tauschen OHNE Abdeckung
+## und an Replace-Queue/History/Preload vorbei (Web-Doppel-Veil-Bug-Klasse).
 
 const ROUTER_SCRIPT := preload("res://scripts/core/scene_router.gd")
 const FAKE_VEIL_SCRIPT := preload("res://tests/fixtures/fake_veil.gd")
@@ -9,6 +14,28 @@ const ROOM_A := "res://tests/fixtures/room_a.tscn"
 const ROOM_B := "res://tests/fixtures/room_b.tscn"
 const ROOM_SLOW := "res://tests/fixtures/room_slow.tscn"
 const ROOM_NEVER := "res://tests/fixtures/room_never.tscn"
+
+## Wurzel des Bypass-Scans (Produktionscode; Tests/Werkzeuge dürfen in
+## Fixtures tricksen, ausgeliefert wird nur scripts/).
+const SCRIPTS_ROOT := "res://scripts"
+## Verbotene Direkt-Wechsel-APIs (Substring-Match je Quelldatei).
+const VERBOTENE_WECHSEL_API: Array[String] = [
+	"change_scene_to_file(",
+	"change_scene_to_packed(",
+	".change_scene(",  # Godot-3-Altlast — defensiv mitverboten.
+	"reload_current_scene(",
+	".unload_current_scene(",
+	".current_scene = ",  # current_scene direkt umbiegen = Swap ohne Wipe.
+]
+## Dokumentierte Rest-Bypässe: Datei → erlaubte Marker. EINZIGER Eintrag:
+## SoftRestart lädt nach Pack-Remount + Registry-Reload die BOOT-Szene neu
+## (FROZEN-Sequenz docs/UPDATES.md §5.5) — das ist ein Reboot von main.tscn
+## selbst und KEINE Reise (der Router wird darin frisch geboren, seine
+## History zuvor geleert); das Boot-Cover übernimmt die Abdeck-Rolle des
+## Veils. Neue Einträge brauchen dieselbe Begründung an dieser Stelle.
+const ERLAUBTE_BYPAESSE: Dictionary = {
+	"res://scripts/updates/soft_restart.gd": ["reload_current_scene("],
+}
 
 
 func test_full_cycle_states_mount_and_signals() -> void:
@@ -167,6 +194,62 @@ func test_min_shown_ms_is_respected() -> void:
 	var elapsed := Time.get_ticks_msec() - started_ms
 	assert_true(elapsed >= 200, "min_shown_ms nicht eingehalten (%d ms)." % elapsed)
 	await _cleanup(ctx)
+
+
+## GOOBY TRANSITIONS — Bypass-Wache: kein Produktionsskript ruft die
+## SceneTree-Wechsel-APIs direkt; Szenenwechsel NUR über den Router (und
+## damit den Wipe). Sanktionierte Ausnahmen stehen begründet in
+## ERLAUBTE_BYPAESSE — alles andere ist ein Regressions-FAIL.
+func test_keine_szenenwechsel_am_router_vorbei() -> void:
+	var dateien := _gd_dateien(SCRIPTS_ROOT)
+	assert_true(dateien.size() > 500, "Scan sieht den Skript-Baum (%d Dateien)" % dateien.size())
+	for pfad: String in dateien:
+		var erlaubt: Array = ERLAUBTE_BYPAESSE.get(pfad, [])
+		var quelle := FileAccess.get_file_as_string(pfad)
+		assert_true(not quelle.is_empty(), "%s lesbar" % pfad)
+		for marker: String in VERBOTENE_WECHSEL_API:
+			if marker in erlaubt:
+				continue
+			assert_false(
+				quelle.contains(marker),
+				(
+					"%s nutzt '%s' — Szenenwechsel NUR über SceneRouter.goto()/" % [pfad, marker]
+					+ "back() (Veil-Wipe); Ausnahmen begründet in ERLAUBTE_BYPAESSE."
+				)
+			)
+
+
+## Die Allowlist bleibt minimal UND ehrlich: jeder Eintrag existiert und
+## braucht seinen Marker noch — veraltete Ausnahmen fliegen raus.
+func test_erlaubte_bypaesse_bleiben_dokumentiert_und_minimal() -> void:
+	assert_eq(ERLAUBTE_BYPAESSE.size(), 1, "Genau EIN sanktionierter Bypass (SoftRestart).")
+	for pfad: String in ERLAUBTE_BYPAESSE:
+		var quelle := FileAccess.get_file_as_string(pfad)
+		assert_true(not quelle.is_empty(), "Allowlist-Datei existiert: %s" % pfad)
+		for marker: String in ERLAUBTE_BYPAESSE[pfad]:
+			assert_true(
+				quelle.contains(marker),
+				"Allowlist-Eintrag veraltet: %s braucht '%s' nicht mehr." % [pfad, marker]
+			)
+
+
+func _gd_dateien(root: String) -> Array[String]:
+	var found: Array[String] = []
+	var dir := DirAccess.open(root)
+	if dir == null:
+		return found
+	dir.list_dir_begin()
+	var eintrag := dir.get_next()
+	while eintrag != "":
+		var pfad := root + "/" + eintrag
+		if dir.current_is_dir():
+			if not eintrag.begins_with("."):
+				found.append_array(_gd_dateien(pfad))
+		elif eintrag.ends_with(".gd"):
+			found.append(pfad)
+		eintrag = dir.get_next()
+	dir.list_dir_end()
+	return found
 
 
 func _make_router() -> Dictionary:

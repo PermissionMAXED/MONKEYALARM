@@ -122,6 +122,16 @@ LoadingVeil (CanvasLayer, layer=100)
 └── AnimationPlayer                 # iris_in / iris_out / fade_in / fade_out
 ```
 
+**Bypass-Audit (GOOBY TRANSITIONS, W18):** Projektweit gibt es **keine** direkten
+`change_scene_to_file/packed`-Aufrufe — jede Reise läuft über `SceneRouter.goto()/back()`
+und damit über den Veil-Wipe bzw. die Tür-Varianten. Einzige sanktionierte Ausnahme:
+`SoftRestart._reboot()` nutzt `get_tree().reload_current_scene()` (FROZEN-Sequenz
+`docs/UPDATES.md` §5.5) — das ist ein Reboot der Boot-Szene `main.tscn` selbst nach
+Pack-Remount + Registry-Reload, keine Reise (der Router wird darin frisch geboren, seine
+History zuvor geleert); das Boot-Cover übernimmt die Abdeck-Rolle des Veils. Wache gegen
+Rückbau: `tests/unit/test_scene_router.gd::test_keine_szenenwechsel_am_router_vorbei`
+(Quelltext-Scan über `scripts/`, Allowlist `ERLAUBTE_BYPAESSE` dort begründet).
+
 ### 1.5 RoomBase-Contract (jeder Raum erbt)
 
 ```
