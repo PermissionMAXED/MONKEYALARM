@@ -496,11 +496,14 @@ func _maus_knopf(px: Vector2, gedrueckt: bool) -> void:
 	Input.parse_input_event(ev)
 
 
-func _maus_bewegung(px: Vector2, rel: Vector2, ziehend: bool) -> void:
+func _maus_bewegung(px: Vector2, rel: Vector2, ziehend: bool, velocity := Vector2.ZERO) -> void:
 	var ev := InputEventMouseMotion.new()
 	ev.position = px
 	ev.global_position = px
 	ev.relative = rel
+	# Echte Geräte füllen velocity (px/s) — Flick-Gesten (z. B. WurfBall)
+	# lesen genau das; synthetische Wische liefern es seit W17 mit.
+	ev.velocity = velocity
 	ev.button_mask = MOUSE_BUTTON_MASK_LEFT if ziehend else 0
 	Input.parse_input_event(ev)
 
@@ -523,14 +526,18 @@ func _wische(von: Vector2, nach: Vector2, dauer: float) -> void:
 	_maus_knopf(von_px, true)
 	var t0 := Time.get_ticks_msec()
 	var letzte := von_px
+	var letzte_ms := t0
 	var k := 0.0
 	while k < 1.0 and not _global_deadline_erreicht():
 		await process_frame
 		k = clampf((Time.get_ticks_msec() - t0) / (maxf(dauer, 0.05) * 1000.0), 0.0, 1.0)
 		var eased := k * k * (3.0 - 2.0 * k)
 		var pos := von_px.lerp(nach_px, eased)
-		_maus_bewegung(pos, pos - letzte, true)
+		var jetzt_ms := Time.get_ticks_msec()
+		var dt_s := maxf(0.001, float(jetzt_ms - letzte_ms) / 1000.0)
+		_maus_bewegung(pos, pos - letzte, true, (pos - letzte) / dt_s)
 		letzte = pos
+		letzte_ms = jetzt_ms
 	_maus_knopf(letzte, false)
 	await _warte_frames(TAP_FRAMES)
 

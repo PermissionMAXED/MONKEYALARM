@@ -21,6 +21,9 @@ extends Node3D
 signal arrived
 
 const SPEED := 1.15
+## W17/BALL-POLISH: Deckel für den Ein-Lauf-Flitz (dash_for_next_walk) —
+## der Apport rennt mit ~2,2 m/s (Web maybeFetch: Dauer dist/2.2), nie mehr.
+const DASH_MAX := 2.0
 const WANDER_WAIT_MIN := 4.0
 const WANDER_WAIT_MAX := 9.0
 const IDLE_SPOT_SAMPLES := 12
@@ -71,6 +74,9 @@ var _wander_enabled := true
 var _wander_timer := 0.0
 var _walking := false
 var _scripted := false
+## Ein-Lauf-Flitz (W17/BALL-POLISH): wirkt auf den laufenden/nächsten Lauf
+## und wird in _stop_walking() selbst abgeräumt — nie dauerhaft schneller.
+var _dash_mult := 1.0
 var _last_cell := Vector2i(-99, -99)
 var _rng := RandomNumberGenerator.new()
 var _target := Vector3.ZERO
@@ -135,6 +141,25 @@ func set_wander_enabled(enabled: bool) -> void:
 ## „Wo ist mein Gooby?"-Chips (W13/HUD-WIRES).
 func is_walking() -> bool:
 	return _walking
+
+
+## PURE (W17/BALL-POLISH): Flitz-Klemme — nie langsamer als das normale
+## Tempo, nie über DASH_MAX (der Apport-Faktor 2,2/1,15 ≈ 1,91 passt drunter).
+static func dash_clamped(factor: float) -> float:
+	return clampf(factor, 1.0, DASH_MAX)
+
+
+## Kurzzeit-Flitz für genau EINEN Lauf (Apport rennt wie die Web-Referenz
+## maybeFetch mit ~2,2 m/s statt Schlendertempo). Vor walk_to() setzen;
+## _stop_walking() räumt den Faktor am Laufende selbst zurück.
+func dash_for_next_walk(factor: float) -> void:
+	_dash_mult = dash_clamped(factor)
+
+
+## Läuft gerade ein SKRIPT-Lauf (walk_to: Tür-Reise, Fütter-Anmarsch …)?
+## Web-Pendant: der goobyBusy-Riegel — der Apport kapert solche Läufe nie.
+func is_scripted_walk() -> bool:
+	return _scripted and _walking
 
 
 # ── „Wo ist mein Gooby?" (W13/HUD-WIRES, Doc F §4.2) ─────────────────────────
@@ -431,6 +456,7 @@ func _start_walking(world_pos: Vector3) -> void:
 
 func _stop_walking() -> void:
 	_walking = false
+	_dash_mult = 1.0
 	rig.set_locomotion(0.0)
 
 
@@ -582,7 +608,8 @@ func _step_walk(delta: float) -> void:
 		# abgeschnitten): hier stehen bleiben statt Möbel zu pflügen.
 		_stop_walking()
 		return
-	var step := to_next.normalized() * SPEED * clampf(speed_mult, 0.25, 1.0) * delta
+	var tempo := SPEED * clampf(speed_mult, 0.25, 1.0) * _dash_mult
+	var step := to_next.normalized() * tempo * delta
 	if step.length() > to_next.length():
 		step = to_next
 	global_position += step

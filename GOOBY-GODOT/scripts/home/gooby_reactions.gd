@@ -58,6 +58,12 @@ const PET_BONUS_COINS := 1
 ## wehrt EINMAL knuffig ab (refuse-Clip aus W13C) und bittet um eine Pause;
 ## danach hält eine Abkühlzeit den Gag still (kein Dauer-Meckern).
 const UEBERMUT_LINE_KEY := "soul.linie.uebermut.pause"
+## W17/BALL-POLISH: Web maybeFetch rennt den Apport-Lauf in dist/2.2 s —
+## 2,2 m/s statt Schlendertempo; der Ein-Lauf-Faktor entsteht zur Laufzeit
+## (2,2 / GoobyHome.SPEED ≈ 1,91) und bleibt unter GoobyHome.DASH_MAX.
+const APPORT_TEMPO_WEB := 2.2
+## Wie lange der Blick beim Flitzen am Ballplatz klebt (Web: lookAt(target)).
+const APPORT_BLICK_S := 4.0
 
 var room: Node = null
 var gs: Object = null
@@ -888,15 +894,21 @@ func _book_ambient(ctx: Dictionary) -> void:
 ## Web maybeFetch: lerp auf 0,28 m Abstand), fängt ihn mit Wackel-Ohren
 ## (ecstatic, W12-Emotion-API) + Hopser und meldet die Ankunft über
 ## `bei_ankunft` (der Ball macht daraus Kopfstoß + Belohnung).
-## false = Gooby ist gerade beschäftigt (Baumodus/kein GameState).
+## false = Gooby ist gerade beschäftigt (Baumodus/Skript-Lauf/kein GameState).
 func apportiere(ziel: Vector3, bei_ankunft: Callable) -> bool:
 	if gooby == null or _busy():
+		return false
+	# W17/BALL-POLISH (Web goobyBusy-Riegel): ein SKRIPT-Lauf (Tür-Reise,
+	# Fütter-Anmarsch) wird nie gekapert — der Ball bleibt einfach liegen.
+	if gooby.has_method("is_scripted_walk") and gooby.is_scripted_walk():
 		return false
 	_apport_lauf(ziel, bei_ankunft)
 	return true
 
 
-## Der eigentliche Lauf (async): hin, fangen, melden, kurz freuen, weiter.
+## Der eigentliche Lauf (async): hinFLITZEN (Web-Tempo 2,2 m/s, Blick zum
+## Ball, Antritts-Hopser), fangen, melden, kurz freuen, zurück auf den
+## Ausgangsplatz traben (Web: moveGooby heim nach 650 ms), weiterleben.
 func _apport_lauf(ziel: Vector3, bei_ankunft: Callable) -> void:
 	gooby.set_wander_enabled(false)
 	var von := gooby.global_position
@@ -904,6 +916,10 @@ func _apport_lauf(ziel: Vector3, bei_ankunft: Callable) -> void:
 	var stopp := von.lerp(ziel, maxf(0.0, 1.0 - 0.28 / maxf(dist, 0.28)))
 	stopp.y = von.y
 	if visuals_enabled:
+		_apport_blick(ziel)
+		if gooby.get("rig") != null:
+			gooby.rig.play_clip("hop")
+		gooby.dash_for_next_walk(APPORT_TEMPO_WEB / GoobyHome.SPEED)
 		await gooby.walk_to(stopp, 5.0)
 	if gooby == null or not is_instance_valid(gooby):
 		return
@@ -916,8 +932,24 @@ func _apport_lauf(ziel: Vector3, bei_ankunft: Callable) -> void:
 	bei_ankunft.call()
 	if is_inside_tree():
 		await get_tree().create_timer(0.65).timeout
+	if gooby == null or not is_instance_valid(gooby):
+		return
+	# Web maybeFetch: nach dem Freuen hüpft Gooby zurück auf seinen Platz
+	# (goobyIdle-Anker) — hier: zurück zum Ausgangspunkt, dann Wandern an.
+	if visuals_enabled:
+		gooby.dash_for_next_walk(APPORT_TEMPO_WEB / GoobyHome.SPEED)
+		await gooby.walk_to(von, 4.0)
 	if gooby != null and is_instance_valid(gooby):
 		gooby.set_wander_enabled(true)
+
+
+## Blick zum Ballplatz während des Flitzes (Web: gooby.lookAt(target)) —
+## über die vorhandene Ausdrucks-Schicht, damit nichts anderes gestampft wird.
+func _apport_blick(ziel: Vector3) -> void:
+	if not (gooby.get("rig") is GoobyRig):
+		return
+	var ausdruck := GoobyExpressions.attach_to(gooby.get("rig") as GoobyRig)
+	ausdruck.blick_auf_punkt(ziel + Vector3(0.0, 0.2, 0.0), APPORT_BLICK_S)
 
 
 ## Snapshot der Futter-Bestände (inventory.food) — Abnahme = Fütterung.

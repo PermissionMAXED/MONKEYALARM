@@ -5,10 +5,12 @@ extends Node3D
 ## (setupBall/maybeFetch). Der Node ist NUR Verdrahtung + Visuals; die
 ## komplette Physik/Zustandsmaschine lebt PUR in BallLogic (ball_logic.gd).
 ##
-## Ablauf: Flick über dem Ball → ballistischer Flug mit Bounce → Gooby
-## flitzt hin (GoobyReactions.apportiere, Wackel-Ohren beim Fangen) →
-## Kopfstoß zurück Richtung Spawn → +3 Spaß, Gewicht −0.2, `balls`-Counter
-## +1 (Profil-Statistik), Herzchen + „+3“-Float, 15 s Apport-Cooldown.
+## Ablauf: Flick über dem Ball → ballistischer Flug mit Bounce (Goobys
+## Blick folgt dem Ball live — Web: lookAt beim Launch) → Gooby flitzt hin
+## (GoobyReactions.apportiere, Web-Tempo 2,2 m/s, Wackel-Ohren beim Fangen)
+## → Kopfstoß zurück Richtung Spawn (mit Aufprall-Ton, Web 'ball.bounce')
+## → +3 Spaß, Gewicht −0.2, `balls`-Counter +1 (Profil-Statistik),
+## Herzchen + „+3“-Float, 15 s Apport-Cooldown.
 ##
 ## Einhängen: liegt als Kind der Wohnzimmer-Szene (scenes/home/wohnzimmer.tscn)
 ## und wartet auf `ready_for_reveal` des Raums — dann steht das Grid und der
@@ -23,6 +25,11 @@ const FLICK_PROBEN := 3
 ## Web-Optik: Ball dreht beim Rollen mit (mesh.rotation += vel * dt * 6).
 const ROLL_FAKTOR := 6.0
 const HERZ_TEILE := 3
+## Blick-Dauern (W17/BALL-POLISH): Gooby schaut dem geworfenen Ball nach
+## (Web launch: lookAt(mesh)) und dem zurückgestoßenen hinterher — beides
+## läuft über GoobyExpressions und klingt von selbst aus (nie klemmen).
+const BLICK_FLUG_S := 4.0
+const BLICK_RUECKFLUG_S := 2.5
 
 ## Tests/Screenshots: Zeit injizierbar (< 0 = echte Systemzeit).
 var now_ms_override := -1
@@ -169,6 +176,9 @@ func _wirf(flick_px: Vector2) -> void:
 	if _room_busy() or not logic.werfen(flick_px):
 		return
 	AudioDirector.try_play(self, "gvz_pop", 1.15)
+	# Web setupBall.launch: Gooby schaut dem Wurf nach (lookAt(mesh)) —
+	# hier sogar live: der Blick folgt dem fliegenden Ball-Mount.
+	_blick_zum_ball(BLICK_FLUG_S)
 
 
 # ── Flug-Takt ─────────────────────────────────────────────────────────────────
@@ -239,6 +249,10 @@ func _on_gooby_faengt() -> void:
 	if logic.kopfstoss(_now_ms()) == Vector3.ZERO:
 		return
 	AudioDirector.try_play(self, "pet_squish")
+	# Web maybeFetch: der Kopfstoß klingt als Aufprall ('ball.bounce') —
+	# und Gooby schaut dem zurückfliegenden Ball hinterher.
+	AudioDirector.try_play(self, "mg_good", 0.9)
+	_blick_zum_ball(BLICK_RUECKFLUG_S)
 	var result := {}
 	if _gs != null:
 		_gs.update(
@@ -265,6 +279,15 @@ func _feiere(result: Dictionary) -> void:
 
 
 # ── Helfer ────────────────────────────────────────────────────────────────────
+
+
+## Goobys Blick folgt dem Ball-Mount (GoobyExpressions.blick_auf trackt den
+## Node LIVE — Web lookAt kopiert nur den Startpunkt). Läuft per Dauer aus.
+func _blick_zum_ball(dauer_s: float) -> void:
+	var gooby := _gooby()
+	if gooby == null or _mount == null or not (gooby.get("rig") is GoobyRig):
+		return
+	GoobyExpressions.attach_to(gooby.get("rig") as GoobyRig).blick_auf(_mount, dauer_s)
 
 
 func _gooby() -> Node:

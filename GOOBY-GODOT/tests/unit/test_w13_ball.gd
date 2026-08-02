@@ -162,6 +162,21 @@ func test_counter_inkrementiert_auch_ohne_vorbereiteten_slice() -> void:
 	assert_almost(float(state["gooby"]["weight"]), 79.6, 1e-6, "2 × −0.2 Gewicht")
 
 
+func test_apport_flitz_trifft_web_tempo() -> void:
+	# W17/BALL-POLISH: Web maybeFetch rennt den Lauf in dist/2.2 s — der
+	# Ein-Lauf-Flitz-Faktor (GoobyHome.dash_clamped) muss GENAU dieses Tempo
+	# ergeben und darf weder unter Normaltempo fallen noch den Deckel reißen.
+	var faktor := GoobyReactions.APPORT_TEMPO_WEB / GoobyHome.SPEED
+	assert_almost(
+		GoobyHome.dash_clamped(faktor) * GoobyHome.SPEED,
+		GoobyReactions.APPORT_TEMPO_WEB,
+		1e-6,
+		"Flitz = Web-Tempo 2,2 m/s (Klemme greift nicht)"
+	)
+	assert_almost(GoobyHome.dash_clamped(0.5), 1.0, 1e-6, "nie langsamer als normal")
+	assert_almost(GoobyHome.dash_clamped(99.0), GoobyHome.DASH_MAX, 1e-6, "Deckel hält")
+
+
 func test_spruch_key_deterministisch_und_uebersetzt() -> void:
 	# Injektions-RNG (AGENTS-Regel): gleicher Seed ⇒ gleicher Spruch.
 	var a := RandomNumberGenerator.new()
