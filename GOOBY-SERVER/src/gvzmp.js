@@ -40,7 +40,15 @@ const SIDE_ZOMBIE = 'zombie'; // Annehmender — schickt die Wellen
 // dieselben Werte fahren (GvzPvpLockstep.INPUT_DELAY/HASH_TICKS).
 const INPUT_DELAY_TICKS = 4; // Standard-Lockstep-Fenster (3–5 Ticks)
 const HASH_EVERY_TICKS = 60; // Desync-Check alle 3 s (20-Hz-Sim)
+// Speicher-Deckel für offene (einseitig gemeldete) Hash-Ticks: legitime
+// Clients haben höchstens 1–2 offen (alle 3 s einer) — eine Flut verdrängt
+// nur den ÄLTESTEN offenen Tick (kein Abbruch, kein falscher Desync).
+const MAX_PENDING_HASHES = 32;
 const MAX_ACTIONS_PER_FRAME = 16;
+// Erlaubte Felder pro Aktion (exakt was GvzPvpLockstep._schedule baut) —
+// fremde Felder weist der Server ab, damit das Input-Relay kein
+// Schmuggel-Seitenkanal für beliebige Daten wird.
+const ACTION_KEYS = new Set(['t', 'do', 'type', 'lane', 'col', 'id']);
 // Aktions-Whitelist der PvP-Sim (GvzPvpLockstep._dispatch): Gooby pflanzt/
 // schaufelt/sammelt, Zombie beschwört — das Seiten-Gate sitzt im Client-
 // Dispatch (deterministisch), der Server prüft nur die Form.
@@ -66,6 +74,16 @@ export function register(ctx) {
   const invites = new Map();
 
   const now = () => ctx.clock.now();
+
+  // Abgelaufene Einladungen lazy wegräumen (Memory-Hygiene): GVZ_ACCEPT
+  // prüft die TTL ohnehin, aber nie beantwortete Einträge sollen die Map
+  // nicht ewig füllen (Sweep-Muster wie Buckets._sweep).
+  function pruneInvites() {
+    for (const [key, invite] of invites) {
+      if (now() - invite.at > INVITE_TTL_MS) invites.delete(key);
+    }
+  }
+
   const playerInfo = (code, side) => {
     const device = ctx.byCode.get(code);
     const player = device ? ctx.players[device] : null;
@@ -159,6 +177,7 @@ export function register(ctx) {
     if (!ctx.buckets.take(`gvzinv:${conn.deviceId}`, LIMITS.rmpInvite)) {
       return hub.sendError(conn, 'RATE_LIMIT', { re: msg.seq });
     }
+    pruneInvites();
     const target = typeof msg.d.target === 'string' ? msg.d.target.toUpperCase() : '';
     if (!FRIEND_CODE_RE.test(target) || !ctx.byCode.has(target)) {
       return hub.sendError(conn, 'NOT_FOUND', { re: msg.seq });
@@ -253,6 +272,8 @@ export function register(ctx) {
       (a) =>
         a !== null &&
         typeof a === 'object' &&
+        !Array.isArray(a) &&
+        Object.keys(a).every((key) => ACTION_KEYS.has(key)) &&
         Number.isInteger(a.t) &&
         a.t >= 0 &&
         ACTION_DOS.has(a.do) &&
@@ -289,6 +310,10 @@ export function register(ctx) {
     const side = session.sides.get(conn.friendCode);
     const entry = session.hashes.get(tick) ?? {};
     entry[side] = body.h;
+    if (!session.hashes.has(tick) && session.hashes.size >= MAX_PENDING_HASHES) {
+      // Flut-Deckel: den ältesten offenen Tick opfern (Map = Einfüge-Ordnung).
+      session.hashes.delete(session.hashes.keys().next().value);
+    }
     session.hashes.set(tick, entry);
     if (entry[SIDE_GOOBY] !== undefined && entry[SIDE_ZOMBIE] !== undefined) {
       if (entry[SIDE_GOOBY] !== entry[SIDE_ZOMBIE]) {
@@ -331,7 +356,8 @@ export function register(ctx) {
       session.result = {
         matchId,
         winner,
-        tick: Number.isInteger(msg.d.tick) ? msg.d.tick : 0,
+        // Klemme wie gobnommp.jars: kaputte Ticks (negativ/kein Integer) → 0.
+        tick: Number.isInteger(msg.d.tick) && msg.d.tick >= 0 ? msg.d.tick : 0,
         at: now(),
       };
       session.phase = 'done';
@@ -428,6 +454,19 @@ export function register(ctx) {
     }, cfg.boardRejoinMs);
     if (timer.unref) timer.unref();
     session.rejoinTimers.set(code, timer);
+  });
+
+  // Lobby-Leck: Wer nach dem Accept offline geht, OHNE je den gvz:-Raum
+  // betreten zu haben, würde die Session für immer stehen lassen — der
+  // Raum-Leave-Pfad (oben) feuert dann nie, und BEIDE Spieler blieben auf
+  // GAME_RUNNING gesperrt. Echte Raum-Mitglieder laufen über onLeave
+  // (rooms.js registriert seinen Disconnect-Hook VOR diesem hier) und
+  // stehen danach in `disconnected` — für sie gilt die Warte-Frist.
+  hub.onDisconnect((conn) => {
+    const session = sessionFor(conn.friendCode);
+    if (!session || session.phase !== 'lobby') return;
+    if (session.disconnected.has(conn.friendCode)) return; // Frist läuft schon
+    abort(session, 'offline', conn.friendCode);
   });
 
   // ---- REST: offene Ergebnisse (Debug/Panel) --------------------------------

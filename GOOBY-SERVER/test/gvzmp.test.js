@@ -284,3 +284,118 @@ test('Doppel-Session verhindert: wer schon spielt, kann nicht neu einladen/anneh
   assert.equal((await a.request('GVZ_INVITE', { target: codeB })).d.code, 'GAME_RUNNING');
   assert.equal((await b.request('GVZ_INVITE', { target: codeA })).d.code, 'GAME_RUNNING');
 });
+
+test('Einladung verfällt: nach der TTL ist Annehmen NOT_FOUND, frisch geht wieder', async (t) => {
+  let nowMs = Date.now();
+  const { a, b, codeA, codeB } = await twoFriends(t, { clock: { now: () => nowMs } });
+  assert.equal((await a.request('GVZ_INVITE', { target: codeB })).t, 'OK');
+  const invited = await b.next('GVZ_INVITED');
+  assert.equal(invited.d.expiresInMs, 30_000);
+  nowMs += 30_001; // TTL vorbei
+  assert.equal((await b.request('GVZ_ACCEPT', { from: codeA })).d.code, 'NOT_FOUND');
+  // Neue Einladung derselben Paarung klappt sofort (kein Alt-Eintrag im Weg).
+  assert.equal((await a.request('GVZ_INVITE', { target: codeB })).t, 'OK');
+  await b.next('GVZ_INVITED');
+  assert.equal((await b.request('GVZ_ACCEPT', { from: codeA })).t, 'GVZ_READY');
+});
+
+test('Lobby-Leck: Offline OHNE Raum-Beitritt → GVZ_ABORTED (offline), beide wieder frei', async (t) => {
+  const { server, a, b, codeA, codeB, idB } = await twoFriends(t);
+  assert.equal((await a.request('GVZ_INVITE', { target: codeB })).t, 'OK');
+  await b.next('GVZ_INVITED');
+  assert.equal((await b.request('GVZ_ACCEPT', { from: codeA })).t, 'GVZ_READY');
+  await a.next('GVZ_READY');
+  // B verschwindet, BEVOR irgendwer den gvz:-Raum betreten hat — ohne den
+  // Disconnect-Wächter bliebe die Session (und GAME_RUNNING) für immer.
+  b.ws.terminate();
+  const aborted = await a.next('GVZ_ABORTED');
+  assert.equal(aborted.d.reason, 'offline');
+  assert.equal(aborted.d.by, codeB);
+  assert.equal(server.ctx.gvzSessions.size, 0, 'Session ist wirklich weg');
+  // Dieselbe Paarung kann sofort neu starten.
+  const b2 = await WsClient.connect(server.wsUrl);
+  await b2.hello(idB);
+  t.after(() => b2.close());
+  assert.equal((await a.request('GVZ_INVITE', { target: codeB })).t, 'OK');
+  await b2.next('GVZ_INVITED');
+  assert.equal((await b2.request('GVZ_ACCEPT', { from: codeA })).t, 'GVZ_READY');
+});
+
+test('Hash-Flut gedeckelt: einseitige Ticks verdrängen nur den ältesten, Wächter bleibt scharf', async (t) => {
+  const { server, a, b, room } = await startPvp(t);
+  await startMatch(a, b, room);
+  const session = server.ctx.gvzSessions.get(room);
+  // A meldet 40 Ticks ohne Antwort von B → Puffer bleibt beim Deckel (32).
+  for (let tick = 1; tick <= 40; tick += 1) {
+    a.send('ROOM_MSG', { room, kind: 'GP_HASH', body: { t: tick, h: `h-${tick}` } });
+  }
+  await a.request('PING'); // Reihenfolge-Fence: alle GP_HASH sind verarbeitet
+  assert.equal(session.hashes.size, 32, 'Deckel hält');
+  assert.equal(session.hashes.has(1), false, 'ältester offener Tick geopfert');
+  assert.equal(session.hashes.has(40), true, 'neuester Tick lebt');
+  assert.equal(a.inbox.filter((m) => m.t === 'GVZ_DESYNC').length, 0, 'Flut allein ist kein Desync');
+  // Der Wächter funktioniert weiter: B beantwortet Tick 40 identisch …
+  b.send('ROOM_MSG', { room, kind: 'GP_HASH', body: { t: 40, h: 'h-40' } });
+  await a.next((m) => m.t === 'ROOM_MSG' && m.d.kind === 'GP_HASH');
+  assert.equal(session.hashes.has(40), false, 'verglichen und geräumt');
+  // … und ein divergenter Tick knallt immer noch.
+  a.send('ROOM_MSG', { room, kind: 'GP_HASH', body: { t: 60, h: 'links' } });
+  b.send('ROOM_MSG', { room, kind: 'GP_HASH', body: { t: 60, h: 'rechts' } });
+  const desync = await a.next('GVZ_DESYNC');
+  assert.equal(desync.d.tick, 60);
+});
+
+test('Frame-Form strikt: fremde Felder, Nicht-Objekte und Überlänge → BAD_MESSAGE', async (t) => {
+  const { a, b, room } = await startPvp(t);
+  await startMatch(a, b, room);
+  // Fremdes Feld in der Aktion → abgelehnt (kein Schmuggel-Seitenkanal).
+  const smuggle = await a.request('ROOM_MSG', {
+    room,
+    kind: 'GP_INPUT',
+    body: { n: 1, upTo: 6, a: [{ t: 5, do: 'place', type: 'x', lane: 0, col: 0, note: 'hi' }] },
+  });
+  assert.equal(smuggle.d.code, 'BAD_MESSAGE');
+  // Aktion ist kein Objekt → abgelehnt.
+  const notObject = await a.request('ROOM_MSG', {
+    room,
+    kind: 'GP_INPUT',
+    body: { n: 1, upTo: 6, a: ['place'] },
+  });
+  assert.equal(notObject.d.code, 'BAD_MESSAGE');
+  // 17 Aktionen im Frame (Deckel 16) → abgelehnt.
+  const seventeen = Array.from({ length: 17 }, (_, i) => ({ t: i, do: 'collect', id: i }));
+  const tooMany = await a.request('ROOM_MSG', {
+    room,
+    kind: 'GP_INPUT',
+    body: { n: 1, upTo: 6, a: seventeen },
+  });
+  assert.equal(tooMany.d.code, 'BAD_MESSAGE');
+  // Abgelehnte Frames verbrennen die Frame-Nummer NICHT: n=1 geht danach noch
+  // (Relay ist fire-and-forget — der Beweis ist die Zustellung bei B).
+  a.send('ROOM_MSG', {
+    room,
+    kind: 'GP_INPUT',
+    body: { n: 1, upTo: 6, a: [{ t: 5, do: 'place', type: 'x', lane: 0, col: 0 }] },
+  });
+  const relayed = await b.next((m) => m.t === 'ROOM_MSG' && m.d.kind === 'GP_INPUT');
+  assert.equal(relayed.d.body.n, 1);
+});
+
+test('Ergebnis-Härte: kaputter tick wird 0 geklemmt; nach Desync gibt es KEIN Ergebnis', async (t) => {
+  const { a, b, room } = await startPvp(t);
+  await startMatch(a, b, room);
+  const res = await a.request('GVZ_RESULT', { room, winner: 'zombie', tick: -77 });
+  assert.equal(res.t, 'OK');
+  assert.equal(res.d.tick, 0, 'negativer Tick wird geklemmt');
+  assert.equal((await b.next('GVZ_RESULT')).d.tick, 0);
+});
+
+test('Nach Desync ist die Ergebnis-Tür zu (keine Münzen aus kaputten Matches)', async (t) => {
+  const { a, b, room } = await startPvp(t);
+  await startMatch(a, b, room);
+  a.send('ROOM_MSG', { room, kind: 'GP_HASH', body: { t: 60, h: 'x' } });
+  b.send('ROOM_MSG', { room, kind: 'GP_HASH', body: { t: 60, h: 'y' } });
+  await a.next('GVZ_DESYNC');
+  const res = await a.request('GVZ_RESULT', { room, winner: 'gooby', tick: 100 });
+  assert.equal(res.d.code, 'NOT_RUNNING');
+});
