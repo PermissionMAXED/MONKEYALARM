@@ -250,7 +250,10 @@ func _baue_aussicht_see(gruppe: Node3D) -> void:
 	for i in 5:
 		var quer := Vector2(richtung.y, -richtung.x) * (float(i) - 2.0) * 2.4
 		var lp := p + richtung * 4.0 + quer
-		var basis := Basis(Vector3.UP, rot + PI / 2.0).scaled(Vector3.ONE * 2.6)
+		# Geländer-Linie läuft QUER zur Blickrichtung: Zaun-Längsachse (X)
+		# folgt bei Yaw `rot` genau `quer` — mit +PI/2 stünden die Latten
+		# wie ein Kamm einzeln in Blickrichtung.
+		var basis := Basis(Vector3.UP, rot).scaled(Vector3.ONE * 2.6)
 		latten.append(Transform3D(basis, Vector3(lp.x, RanchGelaende.hoehe(lp.x, lp.y), lp.y)))
 	_bau.baue_multimesh(gruppe, "%s/natur/fence_simple.glb" % ASSETS, latten)
 	var stamm := _bau.lade_glb("%s/natur/log.glb" % ASSETS, 4.0)

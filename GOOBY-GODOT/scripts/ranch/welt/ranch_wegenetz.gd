@@ -185,7 +185,10 @@ static func _baue_gatter(gruppe: Node3D, bau: RanchBau, gatter: Dictionary) -> v
 		return
 	tor.name = "Gatter_%s_%s" % [str(gatter["von"]), str(gatter["nach"])]
 	tor.position = Vector3(p.x, RanchGelaende.hoehe(p.x, p.z), p.z)
-	tor.rotation.y = atan2(richtung.x, richtung.z) + PI / 2.0
+	# QUER über den Weg (Doku oben): Yaw = Weg-Heading stellt die Tor-
+	# Längsachse (X) senkrecht zur Wegrichtung; +PI/2 legte es parallel
+	# NEBEN den Weg.
+	tor.rotation.y = atan2(richtung.x, richtung.z)
 	gruppe.add_child(tor)
 
 

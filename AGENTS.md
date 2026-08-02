@@ -54,3 +54,11 @@ Arbeitsregeln für Agents in diesem Repo (GOOBY Godot-Rewrite).
   `GOOBY-godot-unsigned-ipa`, Job `ios-ipa` auf macos-15, ~10-12 min).
   Versionierte GitHub-Releases: Tag `ipa-v<semver>` pushen (Job `release`).
   `gh` nur lesend nutzen (`gh run list/view`).
+- **Headless ist MultiMesh WRITE-ONLY** (Dummy-Renderer):
+  `MultiMesh.get_instance_transform()` liefert Identity, `buffer` ist leer —
+  gebaute Platzierungen lassen sich headless NICHT aus MultiMeshes
+  zurücklesen. Stattdessen den Testhaken `RanchBau.log_transforms` nutzen
+  (Muster: `tests/unit/test_orientierung.gd`, die Orientierungs-Probe zu
+  UserFeedback §1). Render-Beweise (Screenshots) gehen ohne `--headless`
+  über `tools/ci/run_godot_isolated.sh xvfb-run -a godot --path GOOBY-GODOT
+  --script <werkzeug>`.

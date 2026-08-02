@@ -191,7 +191,9 @@ func _baue_huegelkamm(wurzel: Node3D) -> Node3D:
 	for i in 9:
 		var winkel := PI * 0.75 + float(i) / 8.0 * PI * 0.5
 		var p := mitte + Vector2.from_angle(winkel) * 7.5
-		var basis := Basis(Vector3.UP, -winkel).scaled(Vector3.ONE * 2.6)
+		# Latte TANGENTIAL zum Ring (Zaun-X = Längsachse; wie Weidetal) —
+		# ohne +PI/2 stünden alle Latten radial wie Speichen.
+		var basis := Basis(Vector3.UP, -winkel + PI / 2.0).scaled(Vector3.ONE * 2.6)
 		zaun.append(Transform3D(basis, Vector3(p.x, RanchGelaende.hoehe(p.x, p.y), p.y)))
 	_multimesh(gruppe, "natur/fence_simple.glb", zaun)
 	var mast := _quader(

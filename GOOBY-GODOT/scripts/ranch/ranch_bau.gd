@@ -27,6 +27,13 @@ const SCHILD_INK := Color(0.24, 0.2, 0.16)
 ## Kleinteile (Gras/Blumen/Feldfrüchte) blenden ab dieser Distanz aus.
 const KLEINTEIL_SICHT_M := 180.0
 
+## Test-Haken der Orientierungs-Probe (test_orientierung): headless ist
+## MultiMesh WRITE-ONLY (Dummy-Renderer liest Instanz-Transforms nicht
+## zurück) — wenn `log_transforms` an ist, protokolliert baue_multimesh
+## hier je GLB-Pfad die Platzierungs-Transform-Arrays (eine Liste je Call).
+static var log_transforms := false
+static var transform_log: Dictionary = {}
+
 ## Auto-Kollisions-AABBs {min_x, max_x, min_z, max_z} (Bau-Ergebnis).
 var colliders: Array[Dictionary] = []
 
@@ -143,6 +150,9 @@ func baue_multimesh(
 ) -> void:
 	if transforms.is_empty():
 		return
+	if log_transforms:
+		var protokoll: Array = transform_log.get_or_add(pfad, [])
+		protokoll.append(transforms.duplicate())
 	var teile := _glb_meshes(pfad)
 	if teile.is_empty():
 		return

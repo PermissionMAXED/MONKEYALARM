@@ -28,7 +28,22 @@ mit komplettem Verlauf. Alle Updates/Builds laufen ab jetzt über dieses Repo.
 Diese Datei bleibt dein direkter Draht: einfach unten reinschreiben.)_
 
 
-Du musst mal sicher stellen das alle Assets immer richtig rotiert und richtig rum alles steht
+- [x] **„Alle Assets immer richtig rotiert und richtig rum"** → Orientierungs-
+      Audit über alle 674 GLB/GLTF-Modelle (headless vermessen: Fuß-Ursprung,
+      nichts versenkt/schwebt/liegt falsch) UND über die Platzierungs-Systeme
+      (Stadt-Kulisse, Home-Deko/Girlanden, Ranch-Welt, Funkelpark). Die
+      Modelle selbst waren alle richtig herum (Kits nutzen Fuß-Ursprung;
+      Ausnahmen wie Räder/Wandhalter sind Absicht) — aber DREI echte
+      Dreh-Fehler steckten in der Ranch-Welt und sind gefixt: (a) der
+      Aussichtszaun am Hügelkamm stand als radiale SPEICHEN statt als
+      geschlossener Ring, (b) das Geländer der See-Aussicht stand als „Kamm"
+      (jede Latte einzeln Richtung See gedreht) statt durchgehend quer,
+      (c) alle 3 Weidegatter lagen PARALLEL neben dem Weg statt quer über
+      ihm. Damit das nie wieder passiert, wacht jetzt eine dauerhafte
+      **Orientierungs-Probe** (tests/unit/test_orientierung.gd): Boden-
+      Modelle stehen auf dem Fuß, die Stadt-Kulisse steht aufrecht (kein
+      Kippen/Scheren/Spiegeln), Zaun-KETTEN laufen längs ihrer Linie
+      (fängt „Speichen"/„Kamm" sofort), Gatter stehen quer zum Weg.
 
 und nutze / downloade dir endlich mal mehr Modelle
 aber nur wenn der Stil zu unserem Spiel passt!!
