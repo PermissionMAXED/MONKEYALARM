@@ -51,9 +51,18 @@ func test_isolated_process_maps_user_dir_into_fresh_root() -> void:
 
 func test_ios_build_is_not_suppressed_by_failed_linux_tests() -> void:
 	var workflow := _read(".github/workflows/gooby-godot.yml")
+	# Geprüft wird die INTENTION statt des exakten if-Ausdrucks: CI-38 hat
+	# zusätzlich `github.event_name != 'schedule'` ins Gate geschoben — der
+	# alte Wortlaut-Vergleich machte dadurch fälschlich rot. Kern-Invariante:
+	# always()-Gate (läuft auch nach roten Linux-Tests) + einzige Ausnahme
+	# ist ein ABGEBROCHENER Linux-Vorlauf.
 	assert_true(
-		workflow.contains("always() && needs.linux-checks.result != 'cancelled'"),
-		"iOS-Job läuft nach roten Linux-Tests weiter",
+		workflow.contains("if: ${{ always()"),
+		"iOS-Job läuft nach roten Linux-Tests weiter (always()-Gate)",
+	)
+	assert_true(
+		workflow.contains("needs.linux-checks.result != 'cancelled'"),
+		"iOS-Job entfällt nur bei abgebrochenem Linux-Vorlauf",
 	)
 	assert_true(
 		workflow.contains("GOOBY-godot-unsigned-ipa-UNVERIFIED-linux-"),
