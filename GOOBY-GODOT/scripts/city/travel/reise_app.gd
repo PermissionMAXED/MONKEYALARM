@@ -49,6 +49,10 @@ var _box: VBoxContainer
 var _tick_akku := 0.0
 ## Aktive Bestätigungs-Ansicht ("" = keine) — überlebt ein Resize-Rerender.
 var _confirm_ziel := ""
+## Zuletzt gebaute Ansicht (F3 PT-stadt): nur ein ECHTER Ansichtswechsel
+## scrollt das Sheet nach oben — Re-Renders derselben Ansicht (Taxi-
+## Countdown-Tick, Rotation) lassen die Scroll-Position des Nutzers in Ruhe.
+var _ansicht := ""
 
 
 ## Reise-Sheet öffnen (Host = beliebige Szene; eigener CanvasLayer).
@@ -193,6 +197,7 @@ func _render() -> void:
 
 
 func _render_ziele() -> void:
+	_starte_oben("ziele")
 	var coins := int(gs.get_value("economy.coins", 0))
 	# G4/P16 (ui-reisen MITTEL 10): kleine Fortschritts-Kapsel über der
 	# Tafel — die 9/9-Weltengooby-Jagd ist am Buchungsort sichtbar.
@@ -275,6 +280,7 @@ func _on_ziel_gewaehlt(ziel_id: String) -> void:
 
 
 func _render_confirm(ziel_id: String) -> void:
+	_starte_oben("confirm:" + ziel_id)
 	_confirm_ziel = ziel_id
 	for kind in _box.get_children():
 		kind.queue_free()
@@ -306,6 +312,7 @@ func _on_doch_nicht() -> void:
 
 
 func _render_taxi_wartet(taxi: Dictionary) -> void:
+	_starte_oben("taxi_gerufen")
 	var rest := TaxiLogic.warte_rest_s(taxi, now_ms())
 	_label(I18nService.t("travel.taxi.gerufen"), "HeadlineLabel")
 	_label(
@@ -320,6 +327,7 @@ func _render_taxi_wartet(taxi: Dictionary) -> void:
 
 
 func _render_taxi_da(taxi: Dictionary) -> void:
+	_starte_oben("taxi_da")
 	_label(I18nService.t("travel.taxi.da"), "HeadlineLabel")
 	var rest := TaxiLogic.fenster_rest_s(taxi, now_ms())
 	_label(I18nService.t("travel.taxi.fenster").format({"s": rest}), "")
@@ -329,6 +337,7 @@ func _render_taxi_da(taxi: Dictionary) -> void:
 
 
 func _render_weg(vac: Dictionary) -> void:
+	_starte_oben("weg")
 	var rest_ms := maxi(0, int(vac["returnAt"]) - now_ms())
 	_label(I18nService.t("travel.weg.titel"), "HeadlineLabel")
 	_label(I18nService.t("travel.weg.rest").format({"tage": ceili(rest_ms / 86400000.0)}), "")
@@ -342,6 +351,7 @@ func _render_weg(vac: Dictionary) -> void:
 
 
 func _render_abholen(overdue: bool) -> void:
+	_starte_oben("abholen")
 	_label(I18nService.t("travel.abholen.titel"), "HeadlineLabel")
 	if overdue:
 		_label(I18nService.t("travel.abholen.overdue"), "CaptionLabel")
@@ -486,6 +496,19 @@ func _on_abholen(overdue: bool) -> void:
 
 
 ## ---------------------------------------------------------------- Helfer
+
+
+## F3 (Playtest PT-stadt): ein ANSICHTSWECHSEL im offenen Sheet startet
+## wieder oben — der Scroll-Rest der Ziel-Liste wurde sonst nur an der
+## kürzeren Bestätigungs-Höhe geklemmt und schnitt „Gooby fliegt für
+## 3 Tage: …“ am oberen Scroll-Rand an. Dieselbe Ansicht (Countdown-Tick,
+## Rotation) behält die Scroll-Position des Nutzers.
+func _starte_oben(ansicht: String) -> void:
+	if ansicht == _ansicht:
+		return
+	_ansicht = ansicht
+	if sheet != null and is_instance_valid(sheet):
+		sheet.scroll_nach_oben()
 
 
 ## Aktions-Knopf im AC-Look: SquishButton (Squish + Tap-Haptik zentral),

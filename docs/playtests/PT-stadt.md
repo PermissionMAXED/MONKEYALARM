@@ -68,11 +68,22 @@ ALLE ScrollContainer-Vorfahren (`ensure_control_visible`), und der
 Buchen-Knopf der Bestätigungsseite heißt jetzt `BuchenKnopf`
 (`reise_app.gd`, ein Zeilen-Fix) — `tipp_text("Buchen")` war doppeldeutig.
 
-### F3 — Bestätigungsseite: Überschrift oben angeschnitten (Optik, klein)
+### F3 — Bestätigungsseite: Überschrift oben angeschnitten (Optik, klein) — GEFIXT (W19)
 
 „Gooby fliegt für 3 Tage: Glitzermeer“ wird auf der Buchungs-Bestätigung am
 oberen Scroll-Rand angeschnitten (Beleg: `pt_city_lauf3/038_ziel_glitzermeer.png`).
-Rein optisch, alles bleibt lesbar/bedienbar — an die UI-Welle.
+Rein optisch, alles bleibt lesbar/bedienbar — ursprünglich »an die UI-Welle«.
+
+**Fix (W19, `scripts/city/travel/reise_app.gd` + `scripts/ui/panel_sheet.gd`):**
+Wurzel war der Scroll-Rest der Ziel-Liste — der ScrollContainer kennt keine
+Ansichten und KLEMMT den alten Offset nur an der neuen (kürzeren)
+Bestätigungs-Höhe fest, statt oben zu starten (xvfb-Messung im Leitformat:
+Offset 1032 → geklemmt 187, Überschrift 175 px überm Fenster). Jetzt merkt
+sich die Reise-App die zuletzt gebaute Ansicht und scrollt das Sheet bei
+einem ECHTEN Ansichtswechsel über das neue `PanelSheet.scroll_nach_oben()`
+an den Anfang; Re-Renders derselben Ansicht (Taxi-Countdown-Tick, Rotation)
+behalten die Scroll-Position des Nutzers. Wache:
+`test_w13b_reisepass.gd::test_ansichtswechsel_startet_oben_statt_titel_anzuschneiden`.
 
 ### F4 — Laden-Schilder überlappen sich in flachen Kamerawinkeln (Optik, klein) — GEFIXT (W19)
 

@@ -505,3 +505,43 @@ func test_cutscene_abschluss_ueberlebt_sheet_aufraeumen() -> void:
 	)
 	assert_true(cutscene.is_queued_for_deletion(), "Cutscene räumt sich weg")
 	await wait_frames(1)
+
+
+## BUG-WÄCHTER (Playtest PT-stadt F3): der Scroll-Rest der Ziel-Liste wurde
+## beim Wechsel zur Buchungs-Bestätigung nur an der NEUEN Inhaltshöhe
+## geklemmt — „Gooby fliegt für 3 Tage: …“ war am oberen Scroll-Rand
+## angeschnitten. Ein ANSICHTSWECHSEL im Reise-Sheet startet jetzt oben;
+## ein Re-Render DERSELBEN Ansicht (Taxi-Countdown-Tick, Rotation) lässt
+## die Scroll-Position des Nutzers in Ruhe.
+func test_ansichtswechsel_startet_oben_statt_titel_anzuschneiden() -> void:
+	PanelStack.clear()
+	var gs := FakeGameState.new()
+	gs.set_value("economy.coins", 500)
+	var host := Control.new()
+	host.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tree.root.add_child(host)
+	var app := ReiseApp.oeffne(host, gs)
+	await wait_frames(3)
+	var scroll := app.sheet.get_node("%SheetScroll") as ScrollContainer
+	# Wie Spieler/Playtest-Flow: die Ziel-Liste ans Ende scrollen.
+	scroll.scroll_vertical = 999999
+	await wait_frames(1)
+	assert_true(scroll.scroll_vertical > 0, "Ziel-Liste ist gescrollt (Testaufbau)")
+	# Re-Render DERSELBEN Ansicht (wie der Sekunden-Tick): Scroll bleibt.
+	var vorher := int(scroll.scroll_vertical)
+	app._render()
+	await wait_frames(2)
+	assert_eq(int(scroll.scroll_vertical), vorher, "Re-Render derselben Ansicht behält den Scroll")
+	# Ansichtswechsel Liste → Bestätigung: startet oben (F3).
+	app._on_ziel_gewaehlt("beach")
+	await wait_frames(2)
+	assert_eq(int(scroll.scroll_vertical), 0, "Bestätigung startet oben statt Titel anzuschneiden")
+	# Zurück zur Liste = wieder ein echter Wechsel → wieder oben.
+	scroll.scroll_vertical = 999999
+	await wait_frames(1)
+	app._on_doch_nicht()
+	await wait_frames(2)
+	assert_eq(int(scroll.scroll_vertical), 0, "Zurück zur Liste startet oben")
+	host.queue_free()
+	await wait_frames(2)
+	PanelStack.clear()

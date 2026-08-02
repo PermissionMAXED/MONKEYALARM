@@ -145,6 +145,17 @@ func set_title(text: String) -> void:
 	_title_label.visible = not text.is_empty()
 
 
+## Scroll-Fenster an den Anfang setzen (F3 Playtest PT-stadt): Inhalte,
+## die im OFFENEN Blatt ihre komplette Ansicht wechseln (z. B. Reise-App
+## Ziel-Liste → Buchungs-Bestätigung), rufen das beim Wechsel — der
+## Scroll-Rest der Vorgänger-Ansicht wird sonst nur an der neuen
+## Inhaltshöhe GEKLEMMT und schneidet die frische Überschrift am oberen
+## Scroll-Rand an (der ScrollContainer kennt keine Ansichten).
+func scroll_nach_oben() -> void:
+	if _scroll != null:
+		_scroll.scroll_vertical = 0
+
+
 ## Inhalt einhängen (ersetzt vorherigen Inhalt).
 ## G4/P21 (P17-Befund): Alt-Inhalt wird SOFORT abgehängt statt nur
 ## queue_free-pendent zu bleiben — ein pendentes Kind zählt sonst weiter in
