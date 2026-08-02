@@ -7,6 +7,7 @@
 		"geheim": "???",
 		"fortschritt": "{current}/{target}",
 		"belohnung": "+{coins} coins",
+		"leer": "No achievement lives here yet — check back soon!",
 		"unlock_toast": "Achievement: {name} — +{coins} coins!",
 		"kategorie": {
 			"alle": "All",

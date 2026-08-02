@@ -172,6 +172,138 @@ func test_service_schaltet_einmalig_frei_und_zahlt_einmal() -> void:
 	gs.free()
 
 
+## LOOP-ERFOLGE Politur: die Hub-Feier animiert die ZEILE in place (Name
+## lüftet sich, Balken GLEITET auf voll, Badge erscheint) statt die Liste
+## neu zu bauen — die Karte bleibt dieselbe Instanz (Scrollposition steht).
+func test_screen_feier_gleitet_in_der_zeile_statt_neu_zu_bauen() -> void:
+	var gs := _fresh_gs()
+	tree.root.add_child(gs)
+	var theme_svc := tree.root.get_node_or_null("/root/UiTheme")
+	var rm_vorher := false
+	if theme_svc != null:
+		rm_vorher = bool(theme_svc.reduced_motion)
+		theme_svc.reduced_motion = false
+	var screen := AchievementsScreen.new()
+	screen.auto_navigate = false
+	screen.gs_override = gs
+	tree.root.add_child(screen)
+	await wait_frames(2)
+	var karte := screen.find_child("Erfolg_feed100", true, false)
+	assert_true(karte != null, "feed100-Zeile da")
+	var name_label := karte.find_child("Name", true, false) as Label
+	assert_eq(name_label.text, I18nService.t("achievements.geheim"), "vorher: Mystery-???")
+	var bar := karte.find_child("Fortschritt", true, false) as ProgressBar
+	# Freischalten wie der Service (Stempel in den Save), dann die Hub-Feier:
+	gs.update(
+		func(state: Dictionary) -> void:
+			state["achievements"]["counters"]["feeds"] = 100
+			state["achievements"]["unlocked"]["feed100"] = NOW_MS
+	)
+	screen.celebrate(AchievementsCatalog.by_id(AchievementsCatalog.all(), "feed100"))
+	assert_true(
+		is_instance_valid(karte) and karte.is_inside_tree(),
+		"IN PLACE: dieselbe Karte bleibt im Baum (kein Listen-Neubau)"
+	)
+	assert_eq(name_label.text, I18nService.t("achievements.defs.feed100.name"), "Name lüftet sich")
+	assert_true(bar.value < bar.max_value - 1e-3, "Balken GLEITET (springt nicht sofort)")
+	var voll := await wait_until(func() -> bool: return bar.value >= bar.max_value - 1e-3)
+	assert_true(voll, "Balken kommt am vollen Ziel an")
+	assert_true(karte.find_child("Freigeschaltet", true, false) != null, "Badge poppt auf")
+	var text := karte.find_child("FortschrittText", true, false) as Label
+	assert_eq(
+		text.text,
+		I18nService.t("achievements.fortschritt", {"current": 100, "target": 100}),
+		"Zieltext wird n/n"
+	)
+	assert_eq(screen.unlocked_count(), 1, "Zähler zählt die Feier mit")
+	# Quellen-Wache (Muster test_g4_flow): Hüpfer + Gleit-Balken + Glitzer.
+	var src := FileAccess.get_file_as_string("res://scripts/ui/profil/achievements_screen.gd")
+	assert_true(src.contains("UiMotion.bar_to(bar, bar.max_value)"), "Balken gleitet per bar_to")
+	assert_true(src.contains("UiMotion.bounce("), "Karte/Kapsel hüpfen (bounce)")
+	assert_true(src.contains("UiMotion.sparkle("), "Gold-Glitzer auf der Karte")
+	if theme_svc != null:
+		theme_svc.reduced_motion = rm_vorher
+	tree.root.remove_child(screen)
+	screen.free()
+	tree.root.remove_child(gs)
+	gs.free()
+
+
+## Balken-Politur: echtes Ziel statt „1/1“ bei freigeschalteten Zeilen,
+## Kategorie-Identitätsfarbe als Fill (Tokens-only) und f-skalierte Höhe.
+func test_screen_balken_echtes_ziel_und_kategoriefarbe() -> void:
+	var gs := _fresh_gs()
+	tree.root.add_child(gs)
+	gs.update(
+		func(state: Dictionary) -> void:
+			state["achievements"]["counters"]["feeds"] = 100
+			state["achievements"]["unlocked"]["feed100"] = NOW_MS
+	)
+	var screen := AchievementsScreen.new()
+	screen.auto_navigate = false
+	screen.gs_override = gs
+	tree.root.add_child(screen)
+	await wait_frames(2)
+	var frei := screen.find_child("Erfolg_feed100", true, false)
+	var bar := frei.find_child("Fortschritt", true, false) as ProgressBar
+	assert_eq(int(bar.max_value), 100, "freigeschaltet trägt das ECHTE Ziel (nicht 1)")
+	assert_eq(int(bar.value), 100, "voll am echten Ziel")
+	var text := frei.find_child("FortschrittText", true, false) as Label
+	assert_eq(
+		text.text,
+		I18nService.t("achievements.fortschritt", {"current": 100, "target": 100}),
+		"„100/100“ statt „1/1“"
+	)
+	var fill := bar.get_theme_stylebox("fill") as StyleBoxFlat
+	assert_eq(fill.bg_color, AcTokens.PINK, "Pflege-Balken trägt PINK (Kategorie-Farbwelt)")
+	assert_true(bar.custom_minimum_size.y >= 10.0, "Balkenhöhe nie unter der Design-Basis")
+	screen.show_category("reisen")
+	await wait_frames(1)
+	var reise_defs := AchievementsCatalog.by_category(AchievementsCatalog.all(), "reisen")
+	assert_false(reise_defs.is_empty(), "Katalog hat Reise-Erfolge")
+	var reise := screen.find_child(
+		"Erfolg_%s" % str((reise_defs[0] as Dictionary)["id"]), true, false
+	)
+	var reise_bar := reise.find_child("Fortschritt", true, false) as ProgressBar
+	var reise_fill := reise_bar.get_theme_stylebox("fill") as StyleBoxFlat
+	assert_eq(reise_fill.bg_color, AcTokens.STAT_HYGIENE, "Reise-Balken trägt Himmelblau")
+	tree.root.remove_child(screen)
+	screen.free()
+	tree.root.remove_child(gs)
+	gs.free()
+
+
+## Leere Kategorie (künftige Content-Packs / Overrides) zeigt den
+## illustrierten Leerzustand statt nackter Scroll-Fläche.
+func test_screen_leerzustand_bei_leerer_kategorie() -> void:
+	var gs := _fresh_gs()
+	tree.root.add_child(gs)
+	var screen := AchievementsScreen.new()
+	screen.auto_navigate = false
+	screen.gs_override = gs
+	screen.catalog_override = [AchievementsCatalog.by_id(AchievementsCatalog.all(), "firstFeed")]
+	tree.root.add_child(screen)
+	await wait_frames(2)
+	screen.show_category("garten")
+	await wait_frames(1)
+	assert_true(
+		screen.find_child("EmptyState", true, false) != null,
+		"leere Kategorie → illustrierter Leerzustand"
+	)
+	assert_true(screen.find_child("Erfolg_*", true, false) == null, "…und keine Erfolgs-Zeilen")
+	screen.show_category("pflege")
+	await wait_frames(1)
+	assert_true(
+		screen.find_child("Erfolg_firstFeed", true, false) != null,
+		"gefüllte Kategorie zeigt wieder Zeilen"
+	)
+	assert_true(screen.find_child("EmptyState", true, false) == null, "…ohne Leerzustand")
+	tree.root.remove_child(screen)
+	screen.free()
+	tree.root.remove_child(gs)
+	gs.free()
+
+
 func test_service_belohnung_kann_folgeerfolg_ausloesen() -> void:
 	var gs := _fresh_gs()
 	tree.root.add_child(gs)

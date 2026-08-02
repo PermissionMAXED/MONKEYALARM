@@ -8,8 +8,13 @@ extends Control
 ## „???“, die Bedingung bleibt als Hinweis lesbar (Album-Mystery-Muster).
 ## Freigeschaltete Zeilen zeigen Name, „Freigeschaltet!“ und die Belohnung.
 ##
-## Feier kommt IMMER vom RewardHub (achievement_celebrated) — dieser Screen
-## refresht dann nur die Zeilen (Album-Muster, keine Doppel-Feier).
+## Feier kommt IMMER vom RewardHub (achievement_celebrated: Konfetti/Toast/
+## Sound laufen dort) — dieser Screen feiert die ZEILE dazu in place
+## (LOOP-QUESTS-Muster mark_claimed): Name lüftet sich, Balken GLEITET auf
+## voll (UiMotion.bar_to), das „Freigeschaltet!“-Badge poppt auf, die Karte
+## hüpft mit Gold-Glitzer und die Zähler-Kapsel hüpft mit — OHNE Listen-
+## Neubau, die Scrollposition bleibt stehen. Nur wenn die Zeile nicht im
+## aktuellen Filter hängt, wird wie früher neu gebaut.
 ##
 ## Geometrie: ScreenShell (UiScale + Safe-Area + Touch-Floor), 0-Befund-Regel.
 
@@ -18,6 +23,20 @@ signal ready_for_reveal
 const ROUTE := &"erfolge"
 const ROUTES := {ROUTE: "res://scripts/ui/profil/achievements_screen.tscn"}
 const ROW_SEPARATION := 10
+## Balken-Höhe in Design-px (skaliert ×f — vorher fix 10 px, auf dem
+## Leitformat quasi ein Haarstrich neben der f≈3-Schrift).
+const BAR_HEIGHT := 10.0
+## Kategorie → Balken-Identitätsfarbe (Tokens-only; Muster
+## DailyQuestPanel.KATEGORIE_STYLE — die AC-Kategorien-Farbwelt statt
+## sechsmal demselben Theme-Grün).
+const KATEGORIE_FARBE := {
+	"pflege": AcTokens.PINK,
+	"spiel": AcTokens.TEAL,
+	"garten": AcTokens.LEAF_DARK,
+	"sammeln": AcTokens.GOLD,
+	"reisen": AcTokens.STAT_HYGIENE,
+	"fortschritt": AcTokens.STAT_HUNGER,
+}
 
 ## Tests: Navigation abschaltbar; GameState/Katalog injizierbar.
 var auto_navigate := true
@@ -30,8 +49,12 @@ var _current_cat := "alle"
 var _rows_box: VBoxContainer
 var _list_box: VBoxContainer
 var _chip_row: HFlowContainer
+var _count_chip: PanelContainer
 var _count_label: Label
 var _back_btn: Button
+## id → Zeilen-Referenzen {card, name, bar, fortschritt, belohnung, seite}
+## für die In-place-Feier + f-Nachskalierung (wird pro Filter neu gefüllt).
+var _row_refs: Dictionary = {}
 
 
 ## Route am SceneRouter anmelden (idempotent) — der Profil-Screen springt her.
@@ -107,12 +130,12 @@ func _build_header() -> Control:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_child(title)
-	var chip := PanelContainer.new()
-	chip.theme_type_variation = &"StatusCapsule"
+	_count_chip = PanelContainer.new()
+	_count_chip.theme_type_variation = &"StatusCapsule"
 	_count_label = Label.new()
 	_count_label.theme_type_variation = &"SoftLabel"
-	chip.add_child(_count_label)
-	header.add_child(chip)
+	_count_chip.add_child(_count_label)
+	header.add_child(_count_chip)
 	_refresh_count()
 	return header
 
@@ -139,6 +162,7 @@ func _show_category(cat: String) -> void:
 	_mark_active_chip()
 	if _list_box == null:
 		return
+	_row_refs.clear()
 	for child in _list_box.get_children():
 		_list_box.remove_child(child)
 		child.queue_free()
@@ -146,6 +170,15 @@ func _show_category(cat: String) -> void:
 	for def: Variant in defs:
 		if def is Dictionary:
 			_list_box.add_child(_build_row(def))
+	if _list_box.get_child_count() == 0:
+		# Illustrierter Leerzustand (UIFINAL-Muster: winkender Gooby) statt
+		# nackter Scroll-Fläche — greift bei leer gefilterten Katalogen
+		# (z. B. künftige Content-Packs), nie beim eingebauten 44er-Set.
+		var empty := FriendListUi.build_empty_state(
+			"achievements.leer_art", "achievements.leer", _f()
+		)
+		empty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_list_box.add_child(empty)
 	# W14: Zeilen federn beim Kategorie-Wechsel gestaffelt ein (ACNH-Muster;
 	# UiMotion beachtet Reduced Motion selbst).
 	UiMotion.stagger_in(_list_box.get_children(), 0.02)
@@ -195,19 +228,15 @@ func _build_row(def: Dictionary) -> Control:
 	desc.text = I18nService.t("achievements.defs.%s.desc" % id)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_child(desc)
-	body.add_child(_build_progress(def, unlocked))
+	var refs := {"card": card, "name": name_label}
+	body.add_child(_build_progress(def, unlocked, refs))
 
 	var side := VBoxContainer.new()
 	side.alignment = BoxContainer.ALIGNMENT_CENTER
 	side.add_theme_constant_override("separation", 4)
 	row.add_child(side)
 	if unlocked:
-		var badge := Label.new()
-		badge.name = "Freigeschaltet"
-		badge.theme_type_variation = &"SoftLabel"
-		badge.text = I18nService.t("achievements.freigeschaltet")
-		badge.add_theme_color_override("font_color", AcTokens.LEAF_DARK)
-		side.add_child(badge)
+		side.add_child(_build_badge())
 	var coins := Label.new()
 	coins.name = "Belohnung"
 	coins.theme_type_variation = &"SoftLabel"
@@ -216,34 +245,57 @@ func _build_row(def: Dictionary) -> Control:
 		"font_color", AcTokens.YELLOW_DARK if unlocked else AcTokens.INK_FAINT
 	)
 	side.add_child(coins)
+	refs["seite"] = side
+	refs["belohnung"] = coins
+	_row_refs[id] = refs
 	return card
 
 
-func _build_progress(def: Dictionary, unlocked: bool) -> Control:
+## „Freigeschaltet!“-Badge (Zeilen-Bau + In-place-Feier teilen den Bauplan).
+func _build_badge() -> Label:
+	var badge := Label.new()
+	badge.name = "Freigeschaltet"
+	badge.theme_type_variation = &"SoftLabel"
+	badge.text = I18nService.t("achievements.freigeschaltet")
+	badge.add_theme_color_override("font_color", AcTokens.LEAF_DARK)
+	return badge
+
+
+func _build_progress(def: Dictionary, unlocked: bool, refs: Dictionary) -> Control:
 	var wrap := HBoxContainer.new()
 	wrap.add_theme_constant_override("separation", 8)
-	var progress := (
-		{"current": 1, "target": 1}
-		if unlocked or _gs == null
-		else AchievementsEngine.progress_of(def, _gs.state())
-	)
+	# Immer der ECHTE Zielwert aus der Bedingung: freigeschaltete Zeilen
+	# lasen sich vorher als „1/1“, obwohl der Erfolg z. B. 100 Fütterungen
+	# verlangte — jetzt steht dort verdient „100/100“.
+	var progress := AchievementsEngine.progress_of(def, _gs.state() if _gs != null else {})
+	if unlocked:
+		progress["current"] = progress["target"]
 	var bar := ProgressBar.new()
 	bar.name = "Fortschritt"
 	bar.min_value = 0.0
 	bar.max_value = float(progress["target"])
 	bar.value = float(progress["current"])
 	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(0.0, 10.0)
+	bar.custom_minimum_size = Vector2(0.0, roundf(BAR_HEIGHT * _f()))
 	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# Kategorie-Identitätsfarbe als Pill-Fill (Tokens-only, Theme-Track
+	# bleibt) — die Farbwelt der Chips zieht in die Balken ein.
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = KATEGORIE_FARBE.get(str(def.get("cat", "")), AcTokens.LEAF)
+	fill.set_corner_radius_all(AcTokens.RADIUS_PILL)
+	bar.add_theme_stylebox_override("fill", fill)
 	wrap.add_child(bar)
 	var label := Label.new()
+	label.name = "FortschrittText"
 	label.theme_type_variation = &"SoftLabel"
 	label.text = (I18nService.t(
 		"achievements.fortschritt",
 		{"current": int(progress["current"]), "target": int(progress["target"])}
 	))
 	wrap.add_child(label)
+	refs["bar"] = bar
+	refs["fortschritt"] = label
 	return wrap
 
 
@@ -255,16 +307,52 @@ func _refresh_count() -> void:
 	))
 
 
-## RewardHub feiert — dieser Screen refresht nur Zeilen + Zähler.
+## RewardHub feiert (Konfetti/Toast/Sound dort) — dieser Screen zieht die
+## Zeile + den Zähler nach.
 func _attach_hub() -> void:
 	var hub := RewardHub.find(self)
 	if hub != null and hub.has_signal("achievement_celebrated"):
-		hub.achievement_celebrated.connect(_on_hub_achievement)
+		hub.achievement_celebrated.connect(celebrate)
 
 
-func _on_hub_achievement(_def: Dictionary) -> void:
+## Feier-Moment am Screen: Zähler-Kapsel hüpft mit dem neuen Stand, die
+## betroffene Zeile feiert IN PLACE (kein Listen-Neubau → Scrollposition
+## bleibt). Hängt die Zeile nicht im aktuellen Filter, baut der Altweg um.
+func celebrate(def: Dictionary) -> void:
 	_refresh_count()
-	_show_category(_current_cat)
+	if _count_chip != null and is_instance_valid(_count_chip):
+		UiMotion.bounce(_count_chip)
+	if not _celebrate_row(str(def.get("id", ""))):
+		_show_category(_current_cat)
+
+
+## LOOP-QUESTS-Muster mark_claimed: Name lüftet sich („???“ → echter Name),
+## Balken GLEITET auf voll (UiMotion.bar_to statt Wertesprung), Zieltext
+## wird „n/n“, das Badge poppt auf, die Belohnung färbt sich gold und die
+## Karte hüpft mit Gold-Glitzer. Alles Reduced-Motion-gegated in UiMotion.
+func _celebrate_row(id: String) -> bool:
+	var refs: Dictionary = _row_refs.get(id, {})
+	if refs.is_empty() or not is_instance_valid(refs.get("card")):
+		return false
+	var name_label := refs["name"] as Label
+	name_label.text = I18nService.t("achievements.defs.%s.name" % id)
+	name_label.remove_theme_color_override("font_color")
+	var bar := refs["bar"] as ProgressBar
+	UiMotion.bar_to(bar, bar.max_value)
+	(refs["fortschritt"] as Label).text = (I18nService.t(
+		"achievements.fortschritt", {"current": int(bar.max_value), "target": int(bar.max_value)}
+	))
+	(refs["belohnung"] as Label).add_theme_color_override("font_color", AcTokens.YELLOW_DARK)
+	var side := refs["seite"] as Container
+	if side.get_node_or_null("Freigeschaltet") == null:
+		var badge := _build_badge()
+		side.add_child(badge)
+		side.move_child(badge, 0)
+		UiMotion.pop_in(badge)
+	var card := refs["card"] as Control
+	UiMotion.bounce(card)
+	UiMotion.sparkle(card, AcTokens.GOLD)
+	return true
 
 
 func _on_viewport_resized() -> void:
@@ -283,6 +371,19 @@ func _apply_metrics() -> void:
 		for chip in _chip_row.get_children():
 			if chip is Control:
 				ScreenShell.touch_target(chip, m)
+	# Balken-Höhe wächst mit f (Rotation/Resize ohne Listen-Neubau) — fix
+	# 10 px war neben f≈3-Schrift auf dem Leitformat ein Haarstrich.
+	for refs: Dictionary in _row_refs.values():
+		var bar: Variant = refs.get("bar")
+		if bar is ProgressBar and is_instance_valid(bar):
+			(bar as ProgressBar).custom_minimum_size.y = roundf(BAR_HEIGHT * float(m["f"]))
+
+
+## UiScale-f für Bauzeit-Maße (außerhalb des Baums: Design-Basis 1.0).
+func _f() -> float:
+	if not is_inside_tree():
+		return 1.0
+	return float(ScreenShell.metrics(get_viewport())["f"])
 
 
 func _on_back_pressed() -> void:

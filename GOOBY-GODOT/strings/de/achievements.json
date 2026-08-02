@@ -7,6 +7,7 @@
 		"geheim": "???",
 		"fortschritt": "{current}/{target}",
 		"belohnung": "+{coins} Münzen",
+		"leer": "Hier wohnt noch kein Erfolg — schau bald wieder vorbei!",
 		"unlock_toast": "Erfolg: {name} — +{coins} Münzen!",
 		"kategorie": {
 			"alle": "Alle",
