@@ -177,6 +177,14 @@ func _build_sky_props() -> void:
 
 
 func _build_planet() -> void:
+	# W17/ASSETS: echter Low-Poly-Planet (Quaternius Ultimate Space Kit,
+	# CC0) statt der einfarbigen Kugel; Position/Größe wie vorher. Fällt
+	# ohne Modell auf die alte Kugel zurück.
+	var modell := Models.node(DIR + "quaternius/Planet_5.gltf", 18.0, false)
+	if modell.get_child_count() > 0:
+		modell.position = Vector3(16.0, 22.0, -50.0)
+		add_child(modell)
+		return
 	var planet := MeshInstance3D.new()
 	var ball := SphereMesh.new()
 	ball.radius = 9.0
@@ -233,6 +241,20 @@ func _build_ground() -> void:
 	_build_ridge()
 	_build_craters()
 	_build_rocks()
+	_build_wreck()
+
+
+## W17/ASSETS: das gestrandete Häschen-Raumschiff (Quaternius Ultimate
+## Space Kit, CC0) liegt schief auf der Mondebene hinter dem Spielfeld —
+## reine Kulisse (weit hinter z = 0), erzählt aber, WARUM hier Häschen
+## auf Rettung warten.
+func _build_wreck() -> void:
+	var wrack := Models.node(DIR + "quaternius/Spaceship_FinnTheFrog.gltf", 9.0, true)
+	if wrack.get_child_count() == 0:
+		return
+	wrack.position = Vector3(-17.0, 0.0, -19.0)
+	wrack.rotation_degrees = Vector3(0.0, 38.0, -5.0)
+	add_child(wrack)
 
 
 ## Bergkamm am hinteren Plattenrand: ohne ihn stößt der Mondboden als knallharte

@@ -32,6 +32,9 @@ const WASSER_SHADER := "res://scripts/ranch/welt/wasser.gdshader"
 const NATUR := "res://assets/ranch/natur"
 const INNEN := "res://assets/city/innen"
 const ESSEN := "res://assets/city/essen"
+## W17/ASSETS: kuratierte CC0-Kits für die Urlaubs-Kulissen (Kenney
+## Watercraft/Survival/Nature Kit — Lizenzen in assets/city/LIZENZ.md).
+const URLAUB := "res://assets/city/urlaub"
 
 ## Archetyp-Daten (Keys → strings/de+en/urlaub.json).
 const ARCHETYP_DATEN := {
@@ -453,6 +456,11 @@ func _baue_strand_kulisse() -> void:
 	add_child(meer)
 	# Düne als sanfter Abschluss hinter dem Handtuch-Bereich.
 	_quader("Duene", Vector3(-6.5, 0.25, -4.5), Vector3(6.0, 0.5, 3.0), Color(0.9, 0.8, 0.6))
+	# W17/ASSETS: echte Boote/Bojen (Kenney Watercraft Kit, CC0) — das
+	# Meer war vorher eine leere Shader-Fläche ohne einen einzigen Blickfang.
+	_prop("%s/watercraft-kit/boat-sail-a.glb" % URLAUB, Vector3(6.4, -0.06, -12.5), -35.0, 1.1)
+	_prop("%s/watercraft-kit/buoy.glb" % URLAUB, Vector3(-3.4, -0.14, -9.5), 0.0, 0.8)
+	_prop("%s/watercraft-kit/buoy-flag.glb" % URLAUB, Vector3(1.8, -0.14, -8.4), 40.0, 0.8)
 
 
 func _baue_berge_kulisse() -> void:
@@ -486,6 +494,12 @@ func _baue_strand_props() -> void:
 	_baue_sonnenschirm(Vector3(-3.3, 0.0, -1.9), Color(0.94, 0.62, 0.66))
 	_baue_sandburg(Vector3(1.6, 0.0, -1.4))
 	_prop("%s/log.glb" % NATUR, Vector3(-4.6, 0.0, 0.8), 35.0, 2.2)
+	# W17/ASSETS: Palmen rahmen den Strand, ein Ruderboot liegt im Sand
+	# (Kenney Nature/Watercraft Kit, CC0 — Palmen fehlten im Web-Bestand).
+	_prop("%s/nature-kit/tree_palm.glb" % URLAUB, Vector3(-5.8, 0.0, -3.4), 25.0, 2.6)
+	_prop("%s/nature-kit/tree_palmDetailedTall.glb" % URLAUB, Vector3(5.6, 0.0, -4.2), 160.0, 3.4)
+	_prop("%s/nature-kit/tree_palmBend.glb" % URLAUB, Vector3(5.0, 0.0, 1.4), -80.0, 2.4)
+	_prop("%s/watercraft-kit/boat-row-small.glb" % URLAUB, Vector3(4.4, 0.0, -2.4), -25.0, 0.7)
 	_handtuch("Handtuch0", Vector3(2.9, 0.0, 0.4), Color(0.95, 0.75, 0.4))
 	_handtuch("Handtuch1", Vector3(-1.0, 0.0, 0.9), Color(0.55, 0.75, 0.95))
 	for i in _tap_positionen().size():
@@ -493,8 +507,13 @@ func _baue_strand_props() -> void:
 
 
 func _baue_berge_props() -> void:
-	_baue_zelt(Vector3(-2.8, 0.0, -2.0), 20.0)
+	# 145° statt 20°: die Stoffbahnen des Kit-Zelts liegen auf den ±X-
+	# Flanken, die Giebel sind offen — in der 3/4-Ansicht zeigt der Stoff
+	# zur Kamera UND die A-Silhouette bleibt lesbar.
+	_baue_zelt(Vector3(-2.8, 0.0, -2.0), 145.0)
 	_baue_lagerfeuer(Vector3(0.2, 0.0, -0.6))
+	# W17/ASSETS: Wanderweg-Wegweiser (Kenney Survival Kit, CC0).
+	_prop("%s/survival-kit/signpost.glb" % URLAUB, Vector3(-4.6, 0.0, -2.6), -20.0, 3.0)
 	_prop("%s/tree_default.glb" % NATUR, Vector3(-5.2, 0.0, -4.5), 10.0, 1.6)
 	_prop("%s/tree_detailed.glb" % NATUR, Vector3(5.4, 0.0, -5.0), 70.0, 1.5)
 	_prop("%s/tree_oak.glb" % NATUR, Vector3(4.2, 0.0, -3.0), 0.0, 1.2)
@@ -666,6 +685,13 @@ func _berg(pos: Vector3, hoehe: float, radius: float, farbe: Color) -> void:
 
 
 func _baue_zelt(pos: Vector3, rot_grad: float) -> void:
+	# W17/ASSETS: echtes Zelt-Modell (Kenney Survival Kit, CC0; die
+	# canvas-Variante — tent.glb ist nur das Gestänge) statt PrismMesh;
+	# der Primitiv-Fallback bleibt für fehlende Kits stehen.
+	var modell := _prop("%s/survival-kit/tent-canvas.glb" % URLAUB, pos, rot_grad, 3.2)
+	if modell != null:
+		modell.name = "Zelt"
+		return
 	var zelt := MeshInstance3D.new()
 	zelt.name = "Zelt"
 	var prisma := PrismMesh.new()
@@ -682,16 +708,19 @@ func _baue_lagerfeuer(pos: Vector3) -> void:
 	feuer.name = "Lagerfeuer"
 	feuer.position = pos
 	add_child(feuer)
-	for i in 5:
-		var stein := MeshInstance3D.new()
-		var kugel := SphereMesh.new()
-		kugel.radius = 0.12
-		kugel.height = 0.2
-		kugel.material = _matt(Color(0.5, 0.48, 0.46))
-		stein.mesh = kugel
-		var winkel := TAU * float(i) / 5.0
-		stein.position = Vector3(cos(winkel) * 0.45, 0.06, sin(winkel) * 0.45)
-		feuer.add_child(stein)
+	# W17/ASSETS: Feuerstelle als Survival-Kit-Modell (Steinring + Scheite,
+	# CC0); ohne Kit bleibt der alte Kugel-Steinkreis als Fallback stehen.
+	if _prop("%s/survival-kit/campfire-pit.glb" % URLAUB, pos, 0.0, 4.0) == null:
+		for i in 5:
+			var stein := MeshInstance3D.new()
+			var kugel := SphereMesh.new()
+			kugel.radius = 0.12
+			kugel.height = 0.2
+			kugel.material = _matt(Color(0.5, 0.48, 0.46))
+			stein.mesh = kugel
+			var winkel := TAU * float(i) / 5.0
+			stein.position = Vector3(cos(winkel) * 0.45, 0.06, sin(winkel) * 0.45)
+			feuer.add_child(stein)
 	var flamme := MeshInstance3D.new()
 	var kegel := CylinderMesh.new()
 	kegel.top_radius = 0.0

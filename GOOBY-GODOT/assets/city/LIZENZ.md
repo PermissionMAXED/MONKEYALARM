@@ -15,6 +15,9 @@ Kuratierte Kopien aus der Web-Referenz `/workspace/GOOBY/public/assets`
 | `deko/*.gltf` | **KayKit City Builder Bits** (`kaykit/kaykit-city`) | CC0 1.0 (KayKit, kaylousberg.com) — `deko/LICENSE.txt` |
 | `innen/*.gltf` | **KayKit Restaurant Bits** (`kaykit/kaykit-restaurant`) | CC0 1.0 (KayKit, kaylousberg.com) — `innen/LICENSE.txt` |
 | `audio/*.ogg` | Kenney **Interface Sounds** (`kenney/interface-sounds`) | CC0 1.0 — `audio/License-kenney-interface-sounds.txt` |
+| `urlaub/watercraft-kit/*.glb` | Kenney **Watercraft Kit** (`kenney/watercraft-kit`, Web-Referenz) | CC0 1.0 — `urlaub/watercraft-kit/License-kenney-watercraft-kit.txt` |
+| `urlaub/survival-kit/*.glb` | Kenney **Survival Kit** (kenney.nl, frischer Download W17) | CC0 1.0 — `urlaub/survival-kit/License-kenney-survival-kit.txt` |
+| `urlaub/nature-kit/*.glb` | Kenney **Nature Kit** (kenney.nl, frischer Download W17 — Palmen fehlen in der Web-Referenz) | CC0 1.0 — `urlaub/nature-kit/License-kenney-nature-kit.txt` |
 
 Hinweis: Das GOOBERANDO-Logo liegt separat unter `assets/brand/gooberando.png`
 (vom Orchestrator generiert, projektinternes Artwork).

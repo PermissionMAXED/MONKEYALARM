@@ -45,32 +45,30 @@ Diese Datei bleibt dein direkter Draht: einfach unten reinschreiben.)_
       Kippen/Scheren/Spiegeln), Zaun-KETTEN laufen längs ihrer Linie
       (fängt „Speichen"/„Kamm" sofort), Gatter stehen quer zum Weg.
 
-und nutze / downloade dir endlich mal mehr Modelle
-aber nur wenn der Stil zu unserem Spiel passt!!
-https://blockbenchworkshop.com/browse?status=free&sort=downloads
-
-https://sketchfab.com/3d-models?date=week&features=downloadable&sort_by=-likeCount
-
-https://assetstore.unity.com/packages/3d/free-low-poly-pack-65375?srsltid=AfmBOopI2uLBGsg25yrGayQnnA8GDYPH9EbuyNHhDkPbKCKt8WpzPLtX
-
-https://assetstore.unity.com/listing#nf-ec_price_filter=0...0
-
-https://assetstore.unity.com/packages/3d/environments/landscapes/low-poly-atmospheric-locations-pack-278928
-
-https://assetstore.unity.com/packages/3d/environments/low-poly-environment-315184
-
-https://assetstore.unity.com/packages/3d/environments/simplepoly-city-low-poly-assets-58899
-
-https://assetstore.unity.com/packages/2d/textures-materials/sky/farland-skies-low-poly-64604
-
-
-https://assetstore.unity.com/packages/package/low-poly-environment-park-242702
-
-hier im Unity Stire Gibt es echt extrem viel was uns helfen kann was free ist plus low poly was ja unser Stil etwas ist 
-[
-](https://assetstore.unity.com/search#q=Low%20Poly&nf-ec_price_filter=0...0)
-
-wenn du irgendwo nen Account brauchst erstell dir einfach einen mit temp mail oder sowas
+- [x] **„nutze / downloade dir endlich mal mehr Modelle — aber nur wenn der
+      Stil zu unserem Spiel passt!!" (+ Unity-Store-Links + Temp-Mail-Tipp)**
+      → 12 kuratierte CC0-Modelle aus Kenney- und Quaternius-Kits sind drin,
+      alle account-frei geladen und mit Lizenz-Datei direkt im Asset-Ordner:
+      der Urlaubs-STRAND hat jetzt echte Palmen (3 Sorten, Kenney Nature
+      Kit), ein Segelboot draußen auf dem Meer, zwei Bojen und ein
+      Ruderboot im Sand (Kenney Watercraft Kit); in den BERGEN ersetzen ein
+      echtes Stoff-Zelt und eine Lagerfeuer-Steinstelle (Kenney Survival
+      Kit) die alten Bordmittel-Primitive, dazu ein Wanderweg-Wegweiser;
+      im Rocket-Rescue-Minigame hängt statt der nackten Kugel ein echter
+      Low-Poly-Planet am Himmel und ein gestrandetes Raumschiff-Wrack liegt
+      in der Kulisse (Quaternius Ultimate Space Kit). NEU als Dauer-Wache:
+      `tools/assets/style_gate.py` prüft ALLE 686 Modelle im Repo (Lizenz-
+      Datei vorhanden, Tri-/Dateigrößen-Budget, Texturgröße, aufrecht,
+      steht auf dem Fuß) — der erste Lauf fand 21 ECHTE Fehler im Bestand
+      (fehlende colormap.png in kenney-suburb/kenney-food/gfree/star_hopper:
+      die Modelle waren still GRAU statt bunt), alle gefixt. Die Quellen-
+      Übersicht mit allen Lizenzen steht in docs/ASSET-SOURCES.md. ZU
+      DEINEN LINKS: der Unity Asset Store geht NICHT — auch „free" Assets
+      binden per EULA an die Unity-Engine, in unserem Godot-Spiel wäre das
+      eine Lizenzverletzung. Und Accounts per Temp-Mail lege ich nicht an
+      (verstößt gegen die Nutzungsbedingungen der Seiten). Die sichere
+      Alternative sind Kenney/Quaternius/Poly Pizza: echtes CC0, kein
+      Account nötig, und der Low-Poly-Stil passt genau zu uns.
 
 
 

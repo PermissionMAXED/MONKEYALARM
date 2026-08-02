@@ -8,6 +8,7 @@ NUR seinen eigenen Unterordner; fremde Dateien werden nie überschrieben.
 |---|---|---|
 | `star_hopper/*.glb` | Kenney **Space Kit** + **Food Kit** | CC0 1.0 — `License-kenney-space-kit.txt` |
 | `rocket_rescue/*.glb` | Kenney **Space Kit** + **Nature Kit** | CC0 1.0 — `License-kenney-*.txt` |
+| `rocket_rescue/quaternius/*.gltf` | **Quaternius Ultimate Space Kit** (quaternius.com, Download W17) | CC0 1.0 — `License-quaternius-ultimate-space-kit.txt` |
 | `burger_build/*.glb` | Kenney **Food Kit** + **Furniture Kit** | CC0 1.0 — `License-kenney-*.txt` |
 | `veggie_chop/*.glb` | Kenney **Food Kit** + **Furniture Kit** | CC0 1.0 — `License-kenney-*.txt` |
 | `hide_seek/*.glb` | Kenney **Nature Kit** | CC0 1.0 — `License-kenney-nature-kit.txt` |

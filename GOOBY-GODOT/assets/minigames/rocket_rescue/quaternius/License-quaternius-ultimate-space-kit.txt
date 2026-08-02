@@ -1,0 +1,21 @@
+------------------------------------------------------
+Ultimate Space Kit by Quaternius
+https://quaternius.com/packs/ultimatespacekit.html
+Consider supporting me on Patreon, even $1 helps me a lot!
+
+https://www.patreon.com/quaternius
+-------------------------------------------------------
+License:
+CC0 1.0 Universal (CC0 1.0)
+Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+-------------------------------------------------------
+Credit not necessary, but if you want to credit me, you can write it like this:
+Ultimate Space Kit was created by Quaternius
+https://www.patreon.com/quaternius
+
+Hinweis (Kuratierung W17): Planet_4.gltf + Spaceship_FinnTheFrog.gltf,
+heruntergeladen am 2026-08-02 ueber den offiziellen Download-Link der
+Pack-Seite (Google-Drive-Ordner des Packs). Die License.txt im
+Drive-Ordner traegt versehentlich die Kopfzeile "Ultimate Platformer
+Pack" (Packaging-Fehler der Quelle); Lizenz ist identisch CC0 1.0.
