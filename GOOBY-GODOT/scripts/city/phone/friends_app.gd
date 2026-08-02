@@ -11,11 +11,22 @@ extends VBoxContainer
 ## weiter aus `FriendListUi`. Offline-first: ohne Netz-Client degradiert die
 ## App freundlich (Code „—“, Senden gesperrt, Hinweis-Zeile) statt zu fehlen.
 ## Sounds nach W16-Grammatik: Outcome schlägt Press (Netz-Ausgang klingt).
+##
+## W18 LOOP-Polish (Telefon): (1) Leerzustand kennt den GRUND — offline
+## erzählt er „Liste kommt zurück, sobald du online bist“ statt fälschlich
+## „teile deinen Code“ (der offline gar nicht da ist). (2) Online-PUNKTE:
+## jede Freundeszeile trägt den Messenger-Punkt (grün/grau) an der Ecke des
+## Presence-Icons, der Listen-Titel zählt „· n online“ mit. (3) Code-Teilen:
+## während „Verbinde…“ zeigt die Karte „…“ statt „—“ (der Code kommt gleich),
+## unter dem Code steht der Teilen-Hinweis, Kopieren tippt haptisch und der
+## „Kopiert!“-Moment übersteht Doppel-Tipps (Token statt stapelnder Timer).
 
 ## Höhe der Freundesliste in Design-px (×f skaliert, PhoneShell-Deckel).
 const LISTE_HOEHE := 300.0
 ## Fallback-Anzeige, solange kein Freundes-Code bekannt ist.
 const KEIN_CODE := "—"
+## Anzeige, solange die Verbindung läuft — der Code ist unterwegs.
+const CODE_LAEDT := "…"
 
 ## Tests/Screenshots: NetClient-Instanz injizieren statt /root/Net.
 var net_override: NetClient = null
@@ -24,13 +35,21 @@ var _net: NetClient
 var _status_chip: Button
 var _offline_hinweis: Label
 var _code_wert: Label
+var _teilen_hinweis: Label
 var _kopieren_btn: Button
 var _eingabe: LineEdit
 var _senden_btn: Button
 var _feedback: Label
 var _anfragen_titel: Label
 var _anfragen_box: VBoxContainer
+var _liste_titel: Label
 var _liste: VBoxContainer
+## Letzter bekannter Netz-Status (für Leerzustand + Code-Anzeige).
+var _status: int = NetClient.Status.OFFLINE
+## Letzter Freundes-Stand — Statuswechsel rendern damit den Leerzustand um.
+var _freunde_cache: Array = []
+## Kopieren-Token: nur der JÜNGSTE „Kopiert!“-Moment darf zurücksetzen.
+var _kopier_token := 0
 
 
 func _ready() -> void:
@@ -100,6 +119,13 @@ func _baue_code_karte() -> void:
 	_kopieren_btn.pressed.connect(_on_kopieren)
 	ScreenShell.touch_target(_kopieren_btn, ScreenShell.metrics(get_viewport()))
 	zeile.add_child(_kopieren_btn)
+	# Teilen-Hinweis unterm Code: erklärt den Loop (zeigen/kopieren →
+	# Freund fügt dich hinzu) — nur sichtbar, wenn es einen Code GIBT.
+	_teilen_hinweis = PhoneShell.app_label(
+		karte, I18nService.t("net.friends.share_hint"), "CaptionLabel"
+	)
+	_teilen_hinweis.name = "TeilenHinweis"
+	_teilen_hinweis.add_theme_color_override("font_color", FriendListUi.COLOR_HINT)
 
 
 func _baue_hinzufuegen_karte() -> void:
@@ -138,7 +164,9 @@ func _baue_listen() -> void:
 	_anfragen_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_anfragen_box.add_theme_constant_override("separation", 8)
 	add_child(_anfragen_box)
-	PhoneShell.app_label(self, I18nService.t("net.friends.list_title"), "HeadlineLabel")
+	_liste_titel = PhoneShell.app_label(
+		self, I18nService.t("net.friends.list_title"), "HeadlineLabel"
+	)
 	_liste = PhoneShell.app_scroll_liste(self, LISTE_HOEHE)
 
 
@@ -153,8 +181,14 @@ func _render_alles() -> void:
 
 func _render_code() -> void:
 	var code := _net.friend_code if _net != null else ""
-	_code_wert.text = code if not code.is_empty() else KEIN_CODE
+	if code.is_empty():
+		# Verbinden läuft = der Code ist unterwegs („…“ statt totem „—“).
+		var verbindet := _status == NetClient.Status.CONNECTING
+		_code_wert.text = CODE_LAEDT if verbindet else KEIN_CODE
+	else:
+		_code_wert.text = code
 	_kopieren_btn.disabled = code.is_empty()
+	_teilen_hinweis.visible = not code.is_empty()
 
 
 func _render_anfragen(requests: Array) -> void:
@@ -204,19 +238,29 @@ func _baue_anfrage_karte(row: Dictionary) -> void:
 
 
 func _render_freunde(friends: Array) -> void:
+	_freunde_cache = friends
 	for kind in _liste.get_children():
 		_liste.remove_child(kind)
 		kind.queue_free()
+	_liste_titel.text = I18nService.t("net.friends.list_title")
 	if friends.is_empty():
 		var f: float = ScreenShell.metrics(get_viewport())["f"]
-		_liste.add_child(
-			FriendListUi.build_empty_state("net.friends.empty_art", "net.friends.empty", f)
-		)
+		# Leerzustand kennt den GRUND: offline lädt „teile deinen Code“ nur
+		# in die Irre (es gibt keinen Code) — dann erklärt er das Netz.
+		var online := _status == NetClient.Status.ONLINE
+		var text_key := "net.friends.empty" if online else "net.friends.empty_offline"
+		_liste.add_child(FriendListUi.build_empty_state("net.friends.empty_art", text_key, f))
 		PhoneShell.app_fonts_skalieren(self)
 		return
+	var online_zahl := 0
 	for row: Variant in friends:
 		if row is Dictionary:
 			_baue_freund_karte(row)
+			if (row as Dictionary).get("online", false) == true:
+				online_zahl += 1
+	# Online-Zähler im Listen-Titel — die Punkte bekommen eine Summe.
+	if online_zahl > 0:
+		_liste_titel.text += " · " + I18nService.t("net.friends.list_online", {"n": online_zahl})
 	PhoneShell.app_fonts_skalieren(self)
 
 
@@ -226,10 +270,19 @@ func _baue_freund_karte(row: Dictionary) -> void:
 	zeile.add_theme_constant_override("separation", 10)
 	karte.add_child(zeile)
 	var f: float = ScreenShell.metrics(get_viewport())["f"]
+	var online: bool = row.get("online", false) == true
 	var icon := FriendListUi.presence_icon(row)
 	icon.custom_minimum_size = Vector2(20.0, 20.0) * f
 	zeile.add_child(icon)
-	var online: bool = row.get("online", false) == true
+	# Online-Punkt an der Icon-Ecke (Messenger-Grammatik): grün = online,
+	# grau = offline — liest sich schneller als die Icon-Färbung allein.
+	var punkt := FriendListUi.online_dot(online, f)
+	punkt.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	punkt.offset_left = -8.0 * f
+	punkt.offset_top = -8.0 * f
+	punkt.offset_right = 2.0 * f
+	punkt.offset_bottom = 2.0 * f
+	icon.add_child(punkt)
 	var namen := VBoxContainer.new()
 	namen.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	zeile.add_child(namen)
@@ -256,11 +309,14 @@ func _baue_freund_karte(row: Dictionary) -> void:
 
 
 func _on_status_changed(status: int) -> void:
+	_status = status
 	var online := status == NetClient.Status.ONLINE
 	_offline_hinweis.visible = not online
 	_senden_btn.disabled = not online
 	FriendListUi.style_status_chip(_status_chip, status)
 	_render_code()
+	# Leerzustand/Zähler hängen am Status → mit dem letzten Stand umrendern.
+	_render_freunde(_freunde_cache)
 	PhoneShell.app_fonts_skalieren(self)
 
 
@@ -273,14 +329,21 @@ func _on_kopieren() -> void:
 	if code.is_empty():
 		return
 	AudioDirector.try_play(self, "ui_click")
+	# Kopieren ist ein Erfolgs-Moment: kurzer Haptik-Tipp dazu (Grammatik).
+	Haptics.tap(self)
 	DisplayServer.clipboard_set(code)
 	_kopieren_btn.text = I18nService.t("net.friends.copied")
 	# Methoden-Callable statt Lambda (REST5, B2): schließt das Handy vor dem
-	# Timeout, trennt Godot die Verbindung automatisch.
-	get_tree().create_timer(1.4).timeout.connect(_reset_kopieren_text)
+	# Timeout, trennt Godot die Verbindung automatisch. Das Token sorgt bei
+	# Doppel-Tipps dafür, dass nur der JÜNGSTE Timer zurücksetzt — vorher
+	# kappte der erste (ältere) Timer den frischen „Kopiert!“-Moment früh.
+	_kopier_token += 1
+	get_tree().create_timer(1.4).timeout.connect(_reset_kopieren_text.bind(_kopier_token))
 
 
-func _reset_kopieren_text() -> void:
+func _reset_kopieren_text(token: int) -> void:
+	if token != _kopier_token:
+		return
 	_kopieren_btn.text = I18nService.t("net.friends.copy")
 
 

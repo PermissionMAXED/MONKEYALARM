@@ -37,6 +37,26 @@ static func icon_name(kind: String) -> String:
 	return str(KIND_ICONS.get(kind, FALLBACK_ICON))
 
 
+## Kleiner Online-Punkt (Messenger-Grammatik): grün = online, grau = offline,
+## mit Papier-Ring, damit er auf jedem Karten-Grund lesbar bleibt. Reine
+## Anzeige (MOUSE_FILTER_IGNORE) — Aufrufer hängen ihn z. B. an die Ecke des
+## Presence-Icons (PhoneFriendsApp-Freundeszeile).
+static func online_dot(online: bool, ui_scale := 1.0) -> Panel:
+	var s := maxf(ui_scale, 1.0)
+	var dot := Panel.new()
+	dot.name = "OnlineDot"
+	var style := StyleBoxFlat.new()
+	style.bg_color = COLOR_ONLINE if online else COLOR_OFFLINE
+	style.border_color = AcTokens.PAPER
+	style.set_border_width_all(maxi(int(roundf(1.6 * s)), 1))
+	# Radius ≥ halbe Kantenlänge → Godot klemmt auf den Vollkreis.
+	style.set_corner_radius_all(int(ceilf(6.0 * s)))
+	dot.add_theme_stylebox_override("panel", style)
+	dot.custom_minimum_size = Vector2.ONE * roundf(10.0 * s)
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return dot
+
+
 ## Fertiges, eingefärbtes Presence-Icon für eine Freundeszeile.
 static func presence_icon(row: Dictionary) -> TextureRect:
 	var online: bool = row.get("online", false) == true

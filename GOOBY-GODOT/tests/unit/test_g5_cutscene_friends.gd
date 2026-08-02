@@ -312,6 +312,151 @@ func test_friends_app_anfragen_und_freundeszeilen() -> void:
 	await _unpin()
 
 
+# --------------------------------- Freunde-App LOOP-Polish (W18: Telefon)
+
+
+## Steht der erwartete Leerzustand-Text in der Freundesliste?
+func _leerzustand_hat_text(app: PhoneFriendsApp, erwartet: String) -> bool:
+	for label: Node in app._liste.find_children("*", "Label", true, false):
+		if (label as Label).text == erwartet:
+			return true
+	return false
+
+
+func test_friends_app_leerzustand_kennt_offline_und_online() -> void:
+	await _pin(Vector2i(1280, 720))
+	var gs := FakeGameState.new()
+	var shell := await _oeffne_shell(gs)
+	shell.oeffne_app("freunde")
+	await wait_frames(3)
+	var app := _finde_freunde_app()
+	assert_ne(app, null, "Freunde-App hängt im Gerät")
+	if app == null:
+		shell.schliesse()
+		await _unpin()
+		return
+	# Offline erklärt der Leerzustand das NETZ — „teile deinen Code“ führte
+	# in die Irre (offline gibt es gar keinen Code zu teilen).
+	assert_true(
+		_leerzustand_hat_text(app, I18nService.t("net.friends.empty_offline")),
+		"offline erzählt der Leerzustand vom fehlenden Internet"
+	)
+	assert_false(
+		_leerzustand_hat_text(app, I18nService.t("net.friends.empty")),
+		"die Teilen-Aufforderung bleibt offline weg"
+	)
+	# Online (leer) übernimmt die Teilen-Aufforderung.
+	app._on_status_changed(NetClient.Status.ONLINE)
+	await wait_frames(1)
+	assert_true(
+		_leerzustand_hat_text(app, I18nService.t("net.friends.empty")),
+		"online lädt der Leerzustand zum Code-Teilen ein"
+	)
+	shell.schliesse()
+	await wait_frames(2)
+	await _unpin()
+
+
+func test_friends_app_online_punkte_und_zaehler() -> void:
+	await _pin(Vector2i(1280, 720))
+	var gs := FakeGameState.new()
+	var shell := await _oeffne_shell(gs)
+	shell.oeffne_app("freunde")
+	await wait_frames(3)
+	var app := _finde_freunde_app()
+	assert_ne(app, null, "Freunde-App hängt im Gerät")
+	if app == null:
+		shell.schliesse()
+		await _unpin()
+		return
+	var mira := {
+		"name": "Mira",
+		"goobyName": "Flauschi",
+		"online": true,
+		"coins": 42,
+		"activity": {"kind": "park"},
+	}
+	var ben := {"name": "Ben", "goobyName": "Mono", "online": false, "coins": 7}
+	app._render_freunde([mira, ben])
+	await wait_frames(2)
+	# Jede Zeile trägt den Online-Punkt: grün für online, grau für offline.
+	var farben: Array[Color] = []
+	for punkt: Node in app._liste.find_children("*", "Panel", true, false):
+		var style := (punkt as Panel).get_theme_stylebox("panel")
+		assert_true(style is StyleBoxFlat, "Online-Punkt hat den Kreis-Style")
+		if style is StyleBoxFlat:
+			farben.append((style as StyleBoxFlat).bg_color)
+	assert_eq(farben.size(), 2, "genau ein Punkt pro Freundeszeile")
+	assert_true(farben.has(FriendListUi.COLOR_ONLINE), "Mira leuchtet grün")
+	assert_true(farben.has(FriendListUi.COLOR_OFFLINE), "Ben bleibt grau")
+	# Der Listen-Titel zählt mit („· 1 online“) …
+	var erwartet := (
+		I18nService.t("net.friends.list_title")
+		+ " · "
+		+ I18nService.t("net.friends.list_online", {"n": 1})
+	)
+	assert_eq(app._liste_titel.text, erwartet, "Titel zählt die Online-Freunde")
+	# … und lässt den Zähler weg, wenn niemand online ist.
+	app._render_freunde([ben])
+	await wait_frames(1)
+	assert_eq(
+		app._liste_titel.text,
+		I18nService.t("net.friends.list_title"),
+		"ohne Online-Freunde bleibt der Titel pur"
+	)
+	shell.schliesse()
+	await wait_frames(2)
+	await _unpin()
+
+
+func test_friends_app_code_teilen_flow() -> void:
+	await _pin(Vector2i(1280, 720))
+	var rig := NetTestRig.boot(tree)
+	var app := PhoneFriendsApp.new()
+	app.net_override = rig.client
+	tree.root.add_child(app)
+	await wait_frames(2)
+	# Offline: kein Code, kein Teilen-Hinweis, Kopieren gesperrt.
+	assert_eq(app._code_wert.text, "—", "offline zeigt die Karte —")
+	assert_false(app._teilen_hinweis.visible, "ohne Code kein Teilen-Hinweis")
+	assert_true(app._kopieren_btn.disabled, "ohne Code nichts zu kopieren")
+	# Verbinden läuft: der Code ist unterwegs — „…“ statt totem Strich.
+	rig.client.connect_now()
+	await wait_frames(2)
+	assert_eq(app._code_wert.text, "…", "während Verbinde… zeigt die Karte …")
+	assert_true(app._kopieren_btn.disabled, "Kopieren bleibt bis zum Code zu")
+	# WELCOME bringt den Code: Hinweis an, Kopieren offen.
+	rig.link().open()
+	await wait_frames(3)
+	rig.link().respond_to(
+		"HELLO", "WELCOME", {"friendCode": "GOOBY-TEIL", "heartbeatSec": 20, "serverTime": 0}
+	)
+	await wait_frames(3)
+	assert_eq(app._code_wert.text, "GOOBY-TEIL", "der Code steht groß in der Karte")
+	assert_true(app._teilen_hinweis.visible, "Teilen-Hinweis erklärt den Loop")
+	assert_false(app._kopieren_btn.disabled, "Kopieren ist offen")
+	# Kopieren: „Kopiert!“-Moment; ein Doppel-Tipp stapelt keine Timer —
+	# nur das JÜNGSTE Token darf den Knopf-Text zurücksetzen.
+	app._on_kopieren()
+	assert_eq(app._kopieren_btn.text, I18nService.t("net.friends.copied"))
+	app._on_kopieren()
+	app._reset_kopieren_text(1)
+	assert_eq(
+		app._kopieren_btn.text,
+		I18nService.t("net.friends.copied"),
+		"der ältere Timer kappt den frischen Kopiert!-Moment nicht"
+	)
+	app._reset_kopieren_text(2)
+	assert_eq(
+		app._kopieren_btn.text,
+		I18nService.t("net.friends.copy"),
+		"das jüngste Token setzt regulär zurück"
+	)
+	app.queue_free()
+	await rig.shutdown(tree)
+	await _unpin()
+
+
 # ---------------------------------------------- Gooberando-Breiten (P16)
 
 

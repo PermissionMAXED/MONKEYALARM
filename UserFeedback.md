@@ -272,6 +272,17 @@ Welle 5 ist gelandet (Pakete unten), der Loop läuft weiter:
 
 **Schon in W18 gelandet** (vorgezogene Warteschlangen-Pakete + Playtest-Funde):
 
+- [x] **Telefon-Politur: Freunde-App im IGohbie (LOOP)** — der leere
+      Freunde-Screen kennt jetzt den GRUND (offline erklärt er das fehlende
+      Internet, statt zum Code-Teilen aufzurufen, obwohl es offline gar
+      keinen Code gibt), jede Freundeszeile trägt einen Messenger-
+      Online-Punkt (grün/grau mit Papier-Ring) an der Ecke des
+      Presence-Icons und der Listen-Titel zählt „· n online" mit; die
+      Code-Karte zeigt beim Verbinden „…" statt totem „—", erklärt unterm
+      Code den Teilen-Loop („Zeig den Code einem Freund …"), Kopieren
+      tippt haptisch und der „Kopiert!"-Moment übersteht Doppel-Tipps;
+      3 neue Dauer-Wachen, Voll-Lauf 3541 Tests / 0 rot.
+
 - [x] **Funkelpark-Dressing „mehr Modelle, nur stilpassend"** — die kahle
       Park-Wiese ist jetzt ein Ort: 13 frisch kuratierte CC0-Modelle von
       Kenney (Fantasy-Town- + Food-Kit, account-frei, Lizenz-Dateien liegen
