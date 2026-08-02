@@ -8,6 +8,8 @@ friends walk right through.
 **Status: W0 — scaffold only.** The project builds and loads as an empty `@Mod`; the actual game
 content (projector block, shield logic, 50 effects, GUI, networking, shaders) is ported in later
 waves. Progress, open questions and deviations are tracked in [`UserFeedback.md`](UserFeedback.md).
+Third-party compatibility (Sodium, Iris, Distant Horizons, Create, Create Aeronautics) is
+documented in [`docs/COMPAT.md`](docs/COMPAT.md).
 
 ## Toolchain
 
