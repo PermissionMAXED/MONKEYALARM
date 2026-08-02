@@ -35,6 +35,14 @@ var reduced_motion := false:
 
 func _ready() -> void:
 	apply_to_window(get_tree().root)
+	# LOOP-Polish (Pregame-RM-Audit): der PERSISTIERTE „Bewegung reduziert“-
+	# Schalter kam nach einem App-Neustart nie im Motion-Gate an — nur der
+	# Settings-Screen setzte reduced_motion (live beim Umschalten). Boot-Sync
+	# aus AppSettings (lädt laut Autoload-Reihenfolge VOR UiTheme); Läufe
+	# ohne persistierte Settings bleiben beim Default false.
+	var settings := get_node_or_null("/root/AppSettings")
+	if settings != null and settings.has_method("is_reduced_motion"):
+		reduced_motion = settings.is_reduced_motion()
 
 
 ## Theme + Cream-ClearColor auf ein Window anwenden (Root oder Popups).

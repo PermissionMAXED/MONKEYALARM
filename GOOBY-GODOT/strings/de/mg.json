@@ -32,6 +32,7 @@
 			"play": "Spielen!",
 			"back": "‹ Zurück",
 			"energy": "Kostet {energy} Energie pro Runde",
+			"energy_have": "Gooby hat {have}",
 			"too_sleepy": "Gooby ist zu müde zum Spielen — erst schlafen!"
 		},
 		"diff": {

@@ -20,6 +20,15 @@ const CARD_BASE_WIDTH := 520.0
 const GOOBY_MOTIV_PFAD := "res://assets/acui/gooby_loading_motif.png"
 ## Sticker-Durchmesser in Design-px (Web-Motiv-Maß, skaliert mit UiScale).
 const GOOBY_STICKER_PX := 72.0
+## LOOP-Polish Energie-Klartext: HUD-Blitz (weißes SVG, Stat-Farbe per
+## self_modulate — Muster hud.gd Stat-Pills) neben der Kosten-Zeile.
+const ENERGY_ICON_PFAD := "res://assets/ui/icons/energy.svg"
+const ENERGY_ICON_PX := 18.0
+## LOOP-Polish Daumenzone (H §1.3 „Daumen-Bogen“, G3-Leitidee „Knöpfe weg
+## aus der Mitte“): Wunsch-Abstand Karten-Unterkante → Safe-Unterkante in
+## Design-px. Hat der Safe-Bereich Luft, rückt die Karte so weit nach
+## unten, dass Spielen/Zurück in Daumennähe liegen (s. _apply_touch_floor).
+const THUMB_RAND := 40.0
 
 ## Tests: Navigation abschaltbar; State-Override wie beim Host.
 var auto_navigate := true
@@ -35,6 +44,8 @@ var _card: PanelContainer
 var _cover: TextureRect
 var _gooby: LoadingVeilSticker
 var _best_label: Label
+var _energy_note: Label
+var _energy_icon: TextureRect
 var _hint_label: Label
 var _diff_buttons: Dictionary = {}
 var _orient_buttons: Dictionary = {}
@@ -60,6 +71,14 @@ func _ready() -> void:
 	_refresh_buttons()
 	_apply_touch_floor()
 	get_viewport().size_changed.connect(_apply_touch_floor)
+	# LOOP-Polish RM: „Bewegung reduziert“ wirkt LIVE auf den Gooby-Sticker
+	# (Muster wallpaper.gd) — vorher klebte der Bau-Zeit-Zustand fest.
+	var theme_svc := get_node_or_null("/root/UiTheme")
+	if theme_svc != null and theme_svc.has_signal("reduced_motion_changed"):
+		theme_svc.reduced_motion_changed.connect(_on_reduced_motion_changed)
+	# Karte federt beim Öffnen auf (Web --ease-spring) — deferred, damit die
+	# Pivot-Mitte auf dem fertig gelegten Karten-Rect sitzt; RM: steht sofort.
+	_entrance.call_deferred()
 
 
 func _load_selections() -> void:
@@ -120,15 +139,29 @@ func _build_ui() -> void:
 	rows.add_child(_best_label)
 
 	# §C6 Web-Parität: der Start kostet Energie — das steht wie im Web-
-	# Pregame sichtbar am Screen (E10-P1-2).
-	var energy_note := Label.new()
-	energy_note.theme_type_variation = &"CaptionLabel"
-	energy_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	energy_note.text = I18nService.t(
-		"mg.pregame.energy",
-		{"energy": int(_meta.get("energy_cost", MinigameRegistry.DEFAULT_ENERGY_COST))}
-	)
-	rows.add_child(energy_note)
+	# Pregame sichtbar am Screen (E10-P1-2). LOOP-Polish Klartext: Blitz-Icon
+	# + Kosten UND aktueller Energiestand in EINER Zeile (Text/Farben in
+	# _refresh_energy_note — vorher stand die nackte Kostenzahl ohne
+	# Bezugsgröße da, und Müdigkeit zeigte sich erst nach dem Fehl-Tipp).
+	var energy_row := HBoxContainer.new()
+	energy_row.name = "EnergyRow"
+	energy_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	energy_row.add_theme_constant_override("separation", 6)
+	rows.add_child(energy_row)
+	_energy_icon = TextureRect.new()
+	_energy_icon.name = "EnergyIcon"
+	if ResourceLoader.exists(ENERGY_ICON_PFAD):
+		_energy_icon.texture = load(ENERGY_ICON_PFAD)
+	_energy_icon.custom_minimum_size = Vector2.ONE * ENERGY_ICON_PX
+	_energy_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_energy_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_energy_icon.self_modulate = AcTokens.STAT_ENERGY
+	energy_row.add_child(_energy_icon)
+	_energy_note = Label.new()
+	_energy_note.name = "EnergyNote"
+	_energy_note.theme_type_variation = &"CaptionLabel"
+	_energy_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	energy_row.add_child(_energy_note)
 
 	# W13B/DRIVE (Doc G §6): NUR Fahr-Spiele zeigen das gewählte Autohaus-
 	# Auto („Dein Auto: <Name> — Tempo ▮▮▯▯▯“) — der Host injiziert dieselben
@@ -200,10 +233,16 @@ func _build_ui() -> void:
 	_hint_label = Label.new()
 	_hint_label.theme_type_variation = &"CaptionLabel"
 	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# BEWUSST kein Autowrap: ein beim Aufbau sichtbares Autowrap-Label
+	# vergiftet die erste Karten-Minhöhe (Godot-Umbruch-Cache, bekannter
+	# P56-Fall „Riesen-Plate“) — Cover kollabierte, Fit-Pass schrumpfte
+	# alles. Der too_sleepy-Einzeiler passt in die 520er-Karte.
 	# Token statt Freihand-Rot (Farbkanon, vgl. QW #20).
 	_hint_label.add_theme_color_override("font_color", AcTokens.DANGER)
 	_hint_label.hide()
 	rows.add_child(_hint_label)
+	# Nach dem Hinweis-Label füllen: müde Goobys sehen die Sperre SOFORT.
+	_refresh_energy_note()
 
 
 ## FIX-B-Handoff (E5-F4/E7-P1-3): 48-px-Touch-Floor gilt PHYSISCH.
@@ -246,6 +285,8 @@ func _apply_touch_floor() -> void:
 		_gooby.offset_right = d / 2.0
 		_gooby.offset_top = -d * 0.62
 		_gooby.offset_bottom = d * 0.38
+	if _energy_icon != null:
+		_energy_icon.custom_minimum_size = Vector2.ONE * roundf(ENERGY_ICON_PX * float(m["f"]))
 	# Quer-Überlauf (G3): reicht der Cover-Schrumpf nicht (Endlos-Chip +
 	# CarLine + ModifierBanner + Dance-Sektion zusammen), schrumpfen die
 	# Schriften proportional zurück — Fit-Pass wie results.gd, nie unter
@@ -257,6 +298,16 @@ func _apply_touch_floor() -> void:
 			break
 		f_fit = maxf(f_fit * safe_h * 0.94 / need, 1.0)
 		ScreenShell.scale_fonts(_card, f_fit)
+	# LOOP-Polish Daumenzone: hat der Safe-Bereich LUFT (Hochkant, große
+	# Tablets), rückt die Karte nach unten, bis ihre Unterkante THUMB_RAND
+	# über der Safe-Unterkante liegt — die Spielen/Zurück-Reihe wandert in
+	# Daumennähe statt in der Bildmitte zu schweben. Rechenweg: Unterkante
+	# = Safe-Unterkante − Rand ⇔ Top-Offset += Luft − 2·Rand (geklemmt auf
+	# ≥ 0 ⇒ ohne Luft bleibt die exakte Zentrierung von heute). Nur der
+	# Container-Top-Offset wandert; die X-Zentrierung bleibt unberührt.
+	var luft := safe_h - _card.get_combined_minimum_size().y
+	var shift := maxf(luft - 2.0 * THUMB_RAND * float(m["f"]), 0.0)
+	_center.offset_top = float(insets["top"]) + shift
 
 
 ## FERTIG-1 (EVAL Rang 12): Bonus-Event-Banner — die sichtbare Anzeige VOR
@@ -336,6 +387,65 @@ func _add_car_line(rows: VBoxContainer) -> void:
 	rows.add_child(line)
 
 
+## LOOP-Polish Energie-Klartext (E10-P1-2-Ausbau): „Kostet 8 Energie pro
+## Runde · Gooby hat 62“ statt der nackten Kostenzahl ohne Bezugsgröße.
+## Müde (§C1-Gate, energy ≤ 15): Zeile + Blitz in DANGER und der
+## too_sleepy-Hinweis steht SOFORT da statt erst nach dem Fehl-Tipp auf
+## Spielen. Knapp (< 25, Stats.LOW_STAT): warnendes Gelb. Ohne State
+## (Tests ohne GameState) bleibt es bei der reinen Kostenzeile.
+func _refresh_energy_note() -> void:
+	if _energy_note == null:
+		return
+	var kosten := int(_meta.get("energy_cost", MinigameRegistry.DEFAULT_ENERGY_COST))
+	var text := I18nService.t("mg.pregame.energy", {"energy": kosten})
+	var energie := _current_energy()
+	if energie >= 0.0:
+		text += " · " + I18nService.t("mg.pregame.energy_have", {"have": int(roundf(energie))})
+	_energy_note.text = text
+	if energie >= 0.0 and Stats.is_exhausted({"energy": energie}):
+		_energy_note.add_theme_color_override("font_color", AcTokens.DANGER)
+		_energy_icon.self_modulate = AcTokens.DANGER
+		if _hint_label != null:
+			_hint_label.text = I18nService.t("mg.pregame.too_sleepy")
+			_hint_label.show()
+	elif energie >= 0.0 and Stats.is_low(energie):
+		_energy_note.add_theme_color_override("font_color", AcTokens.YELLOW_DARK)
+		_energy_icon.self_modulate = AcTokens.YELLOW_DARK
+	else:
+		_energy_note.remove_theme_color_override("font_color")
+		_energy_icon.self_modulate = AcTokens.STAT_ENERGY
+
+
+## Aktueller Energiestand aus dem Save (geklemmt 0–100) — −1 ohne State.
+func _current_energy() -> float:
+	var gs := _resolve_state()
+	if gs == null:
+		return -1.0
+	var state: Dictionary = gs.state()
+	var gooby: Variant = state.get("gooby")
+	if not (gooby is Dictionary):
+		return -1.0
+	var stats: Variant = (gooby as Dictionary).get("stats")
+	if not (stats is Dictionary):
+		return -1.0
+	return Stats.clamp_stat((stats as Dictionary).get("energy"))
+
+
+## LOOP-Polish RM: Auffeder-Moment der Karte — zentral RM-gated in UiMotion,
+## zusätzlich übers AppSettings-Gate (BEIDE Quellen, s. _reduced_motion).
+func _entrance() -> void:
+	if _card == null or not is_inside_tree() or _reduced_motion():
+		return
+	UiMotion.pop_in(_card)
+
+
+## Live-Schalter (Muster wallpaper.gd): Settings-Toggle „Bewegung
+## reduziert“ friert den Gooby-Sticker sofort ein bzw. weckt ihn wieder.
+func _on_reduced_motion_changed(_enabled: bool) -> void:
+	if _gooby != null:
+		_gooby.set_animated(not _reduced_motion())
+
+
 func _section_label(text: String) -> Label:
 	var label := Label.new()
 	label.theme_type_variation = &"SoftLabel"
@@ -397,10 +507,14 @@ func _on_orientation_pressed(orient: String) -> void:
 func _on_play_pressed() -> void:
 	if _is_exhausted():
 		# §C1 Web-Parität (framework.js launch-Gate): erschöpfte Goobys
-		# spielen nicht — Hinweis statt Start (E10-P1-2).
+		# spielen nicht — Hinweis statt Start (E10-P1-2); der Hinweis steht
+		# seit dem Energie-Klartext schon da, der Fehl-Tipp schüttelt ihn
+		# (RM-gated in UiMotion) und tickt die Warn-Haptik.
 		AudioDirector.try_play(self, "ui_error")
+		Haptics.warn(self)
 		_hint_label.text = I18nService.t("mg.pregame.too_sleepy")
 		_hint_label.show()
+		UiMotion.schuetteln(_hint_label)
 		return
 	AudioDirector.try_play(self, "ui_confirm")
 	var params := {
@@ -435,8 +549,13 @@ func _resolve_state() -> Node:
 	return null
 
 
-## Reduced-Motion-Gate (Muster minigame_host.gd): friert den Gooby-Sticker.
+## Reduced-Motion-Gate: friert Sticker + Auffeder-Moment. LOOP-Polish:
+## BEIDE Quellen zählen — der persistierte AppSettings-Schalter (Muster
+## minigame_host.gd) UND der Live-Zustand UiTheme.reduced_motion (die
+## Quelle aller UiMotion-Helfer) — damit die Karte nie halb animiert.
 func _reduced_motion() -> bool:
+	if ThemeService.is_reduced_motion(self):
+		return true
 	var settings := get_node_or_null("/root/AppSettings")
 	if settings != null and settings.has_method("is_reduced_motion"):
 		return settings.is_reduced_motion()
