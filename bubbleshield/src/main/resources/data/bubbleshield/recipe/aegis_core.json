@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "E": {
+      "item": "minecraft:echo_shard"
+    },
+    "N": {
+      "item": "minecraft:netherite_ingot"
+    },
+    "C": {
+      "item": "bubbleshield:prismatic_core"
+    }
+  },
+  "pattern": [
+    "ENE",
+    "NCN",
+    "ENE"
+  ],
+  "result": {
+    "count": 1,
+    "id": "bubbleshield:aegis_core"
+  }
+}
