@@ -39,3 +39,47 @@
 - **Java:** 21 (Toolchain via Gradle erzwungen; foojay-resolver lädt bei Bedarf nach).
 - **Seiten:** `side="BOTH"`; Shield-Logik ist serverautoritativ, Rendering/GUI/Screen-FX rein clientseitig (wie Upstream) — Dedicated-Server-Kompatibilität muss beim Client-Port (W3) über `Dist`-Trennung gesichert werden.
 - **Fabric-API-Abhängigkeiten entfallen:** Networking (`ShieldPayloads`/`ServerNet`) wird auf NeoForge-`StreamCodec`/`PayloadRegistrar` portiert; Menus auf `IMenuTypeExtension`.
+
+## Eval Sol
+
+**Result: FAIL (full W0-W7/upstream parity and multiplayer release gate).** The current
+NeoForge port builds and its dedicated-server core works, but the missing automated
+suite, missing W6 client stack, and unexecuted two-client network path are blockers to
+calling the port complete.
+
+Parity baseline: `/tmp/bbs-shield` at `57da3e2` (`cursor/bubble-shield-mod`).
+
+| Severity | Rank | Wave / area | Finding and evidence | Closure |
+|----------|------|-------------|----------------------|---------|
+| P1 | 1 | W0-W7 validation | The port has no `src/test` or `gametest` classes. `./gradlew build` is green only because `test NO-SOURCE`. `./gradlew runGameTestServer` logs `IllegalArgumentException: No test functions were given!`, yet Gradle still reports `BUILD SUCCESSFUL`. Upstream has 24 GameTest classes and 212 `@GameTest` methods covering shapes, modes, fuel/strength, networking rate limits, NBT, combat, linking, visuals, and UX. | Port the relevant suite to NeoForge and make the task fail when the game-test server fails. |
+| P1 | 2 | W6 / client parity | W6 is absent. `ShieldRenderTypes` sends every effect through one white-texture membrane and every beam through one fallback pipeline; `ShieldPipelines`, `InteriorPipelines`, `InteriorRenderer`, `SceneCopy`, `ScreenEffectManager`, and `ProximityHum` are not present or registered. The upstream surface/beam shaders, interior rendering, screen effects, and proximity audio therefore have no 1.21.1 equivalent. | Implement the 1.21.1 shader/post-chain strategy and port/register the omitted client systems and assets. |
+| P1 | 3 | W3/W7 multiplayer networking | Static review finds all five C2S and three S2C payloads registered, server owner/distance/loaded-chunk/rate-limit gates present, and client sync/remove/impact handlers wired. However, the live dedicated server had zero clients, so no real NeoForge handshake, codec round trip, owner/whitelist interaction, impact batch, reconnect, respawn, dimension resync, or remove broadcast was exercised. W7's recorded evidence is integrated singleplayer only. | Run the two-client plan below against `runServer`; retain logs/video for both clients and the server. |
+| P1 | 4 | Server feature parity | Upstream registers `/bubbleshield` (list/info/set/log/status) and `CoreLootInjector` (Resonant/Aegis cores and Patch Kits in structure loot). Neither class exists in the port and `BubbleShield` still has `TODO(W5+): BubbleShieldCommand.register() + CoreLootInjector`. This blocks command telemetry/retuning and intended survival acquisition. | Port both systems with NeoForge events and their upstream tests. |
+| P2 | 5 | Effect context semantics | Upstream computes the effect context with `Level.isDarkOutside()`; the port uses `Level.isNight()`. Those predicates are not equivalent for weather/sky-darkness edge cases, so context-sensitive effect selection can diverge. | Map the upstream darkness predicate exactly or document and test the intentional 1.21.1 behavior. |
+| P2 | — | Projectile attribution | The documented 1.21.1 `EntityReference` downgrade means a reflected arrow cannot retain an offline shield owner's UUID; it becomes unowned. This is a known gameplay/advancement attribution deviation. | Add a compatible persisted-owner strategy if exact attribution is required. |
+| PASS | — | Shapes | `ShieldShape`, `ShieldGeometry`, and client `SphereMesh` are byte-identical to upstream: all 10 shapes, containment, anti-tunneling, and emitted geometry are present. W4 runtime evidence additionally covers Sphere/Cube/Dome; the other seven currently rely on review and prior W5 visual switching because the shape GameTests are absent. | Restore GameTests for regression coverage. |
+| PASS | — | Modes and fuel | `ShieldMode` and `FuelMap` are byte-identical. The mode/fuel/regen/drain paths in `ShieldLogic` match upstream apart from version-adapter calls. The live server probe observed fuel 300→299, and W4 records DEFENSE/PULSE/ECO behavior. | Restore Mode/Strength/Capacitor GameTests. |
+| PASS | — | Build and dedicated runtime | `./gradlew build` completed successfully. The existing current-branch `runServer` process reached `Done`, loaded 840 effects/120 behaviors, and stayed healthy. A fresh RCON core-action probe activated a Sphere/Defense shield, drained fuel, intercepted and removed an inbound arrow, changed health 150→147, and changed `absorbed_total` 10.5→13.5. | None for boot/server-core smoke; this does not substitute for multiplayer. |
+
+### Multiplayer test execution and limits
+
+| Step | Result |
+|------|--------|
+| Dedicated `runServer` boot and status/RCON access | PASS; server reachable, zero connected players. |
+| Headless server-authoritative shield action (activate, drain fuel, intercept projectile, inspect NBT) | PASS. |
+| NeoForge `runGameTestServer` | FAIL; no test functions are registered. |
+| Two real clients joining the dedicated server | NOT RUN; an unmodified Minecraft client requires rendering and interactive input, and this evaluation environment exposes no GUI automation executor. RCON can exercise world/server logic but cannot originate or receive the mod's C2S/S2C payloads. |
+
+Required manual/GUI multiplayer plan:
+
+1. Start `runServer`, then launch two matching NeoForge clients with distinct offline test
+   identities and join the dedicated server.
+2. Client A places/fuels/activates a projector and changes every shape, every mode,
+   diameter, effect/cycle, beam, color, name, and whitelist entry; verify authoritative
+   echo on A and replica/render/HUD updates on B.
+3. With B unlisted, verify player expulsion and projectile interception; whitelist B and
+   verify passage, aperture/contact events, boss bar, and no expulsion. Repeat DEFENSE,
+   PULSE, and ECO and confirm fuel deltas.
+4. Exercise impact/break/remove batches, then reconnect, respawn, and change dimension;
+   verify snapshots are cleared/re-sent with no ghost or stale cross-dimension shield.
+5. Attempt a mismatched protocol-version client and verify a clean handshake rejection.
