@@ -11,10 +11,24 @@ extends "res://tests/tools/playtest_flows/flow_basis.gd"
 ## die falls-da-Schritte und der Results-Knopf fängt den Flow auf.
 ## Aufruf:  PT_MG_ID=<id> tools/ci/run_playtest.sh flow_minigame <BxH> mg_<id>
 ## Hochkant 1320x2868; Querformat-Spiele (gvz/gobnom/goalieGooby/
-## harborHopper) mit 2868x1320 starten.
+## harborHopper/runner/toyRacer/ranchHerde/ranchParcours/ranchTonnen/
+## ranchZeit/ranchTurnier) mit 2868x1320 starten.
+##
+## PT-MG-B (Spiele 20-38): die Ranch-Spiele haben eigene Level-/Lauf-
+## Selects (RanchLevelSelect bzw. RcompLevelSelect, Kacheln tragen wie bei
+## GvZ die Nummer im Text); ranchTurnier — die Ranch-WETTBEWERBE — hat
+## statt Level-Select ein Turnier-Menue und bekommt sein eigenes Rezept
+## (_turnier_rezept: Schau-Kuer, endet nach 5 Kommandos von selbst).
 
 ## Spiele mit spielinternem Level-Select (Klassenname des Select-Screens).
-const LEVEL_SELECT := {"gvz": "GvzLevelSelect", "gobnom": "GobnomLevelSelect"}
+const LEVEL_SELECT := {
+	"gvz": "GvzLevelSelect",
+	"gobnom": "GobnomLevelSelect",
+	"ranchHerde": "RanchLevelSelect",
+	"ranchParcours": "RanchLevelSelect",
+	"ranchTonnen": "RcompLevelSelect",
+	"ranchZeit": "RcompLevelSelect",
+}
 
 ## Vom „kachel sichtbar machen“-tue-Schritt gemerkter Knopf (Muster
 ## flow_stadt: erst scrollen+merken, dann tipp_pos auf die Mitte).
@@ -276,6 +290,139 @@ func _rezept() -> Array[Dictionary]:
 				],
 				0.5
 			)
+		"lanternFloat":
+			folge = _haltefolge(
+				[Vector2(0.25, 0.6), Vector2(0.75, 0.6), Vector2(0.5, 0.6)], [1.2], 1.0
+			)
+		"memoryMatch":
+			folge = _tapfolge(
+				[
+					Vector2(0.3, 0.4),
+					Vector2(0.55, 0.4),
+					Vector2(0.3, 0.55),
+					Vector2(0.55, 0.55),
+					Vector2(0.72, 0.4),
+					Vector2(0.72, 0.55),
+				],
+				0.9
+			)
+		"miniGolf":
+			folge = _wischfolge(
+				[
+					[Vector2(0.5, 0.66), Vector2(0.5, 0.86), 0.6],
+					[Vector2(0.5, 0.6), Vector2(0.44, 0.82), 0.6],
+					[Vector2(0.5, 0.55), Vector2(0.56, 0.8), 0.6],
+				],
+				3.0
+			)
+		"pancakeTower":
+			folge = _tapfolge(
+				[
+					Vector2(0.5, 0.6),
+					Vector2(0.5, 0.6),
+					Vector2(0.5, 0.6),
+					Vector2(0.5, 0.6),
+					Vector2(0.5, 0.6),
+				],
+				1.4
+			)
+		"pipeFlow":
+			folge = _tapfolge(
+				[
+					Vector2(0.3, 0.38),
+					Vector2(0.5, 0.38),
+					Vector2(0.7, 0.38),
+					Vector2(0.4, 0.52),
+					Vector2(0.6, 0.52),
+					Vector2(0.5, 0.62),
+				],
+				0.8
+			)
+		"purblePlace":
+			folge = _knopffolge(["Rund", "Aufs Band!", "▶", "▶", "▶", "◀"], 1.2)
+		"ranchHerde":
+			folge = _tapfolge(
+				[
+					Vector2(0.55, 0.5),
+					Vector2(0.45, 0.42),
+					Vector2(0.6, 0.55),
+					Vector2(0.5, 0.45),
+				],
+				1.6
+			)
+		"ranchParcours":
+			folge = _knopffolge(["Galopp"], 1.5) + _knopffolge(["Sprung", "Sprung", "Sprung"], 2.0)
+		"ranchTonnen", "ranchZeit":
+			# Gangart-Wische rechts müssen unter WISCH_MAX_MS (250 ms)
+			# bleiben — 0,12 s Harness-Dauer + Frame-Latenz passt knapp.
+			folge = (
+				_wischfolge(
+					[
+						[Vector2(0.75, 0.7), Vector2(0.75, 0.5), 0.12],
+						[Vector2(0.75, 0.7), Vector2(0.75, 0.5), 0.12],
+						[Vector2(0.75, 0.7), Vector2(0.75, 0.5), 0.12],
+					],
+					0.8
+				)
+				+ _wischfolge([[Vector2(0.22, 0.6), Vector2(0.38, 0.6), 1.5]], 1.0)
+				+ _warteschritt(4.0)
+			)
+		"ranchTurnier":
+			folge = _turnier_rezept()
+		"rocketRescue":
+			folge = _haltefolge(
+				[Vector2(0.5, 0.6), Vector2(0.2, 0.6), Vector2(0.8, 0.6), Vector2(0.5, 0.6)],
+				[1.0, 0.7, 0.7, 1.2],
+				0.7
+			)
+		"runner", "shoppingSurf":
+			folge = _wischfolge(
+				[
+					[Vector2(0.5, 0.65), Vector2(0.5, 0.4), 0.25],
+					[Vector2(0.5, 0.65), Vector2(0.25, 0.65), 0.25],
+					[Vector2(0.5, 0.65), Vector2(0.75, 0.65), 0.25],
+					[Vector2(0.5, 0.65), Vector2(0.5, 0.4), 0.25],
+					[Vector2(0.5, 0.5), Vector2(0.5, 0.75), 0.25],
+				],
+				1.2
+			)
+		"snailMail":
+			folge = (
+				_wischfolge([[Vector2(0.3, 0.72), Vector2(0.68, 0.42), 2.0]], 1.0)
+				+ _wischfolge([[Vector2(0.35, 0.65), Vector2(0.62, 0.38), 1.6]], 1.0)
+				+ _warteschritt(5.0)
+			)
+		"starHopper":
+			folge = _tapfolge(
+				[
+					Vector2(0.25, 0.6),
+					Vector2(0.75, 0.6),
+					Vector2(0.75, 0.6),
+					Vector2(0.25, 0.6),
+				],
+				1.2
+			)
+		"toyRacer":
+			folge = _haltefolge(
+				[Vector2(0.4, 0.6), Vector2(0.62, 0.6), Vector2(0.5, 0.6)], [1.3], 0.9
+			)
+		"trampoline":
+			folge = (
+				_tapfolge([Vector2(0.5, 0.62), Vector2(0.5, 0.62)], 1.1)
+				+ _wischfolge([[Vector2(0.5, 0.55), Vector2(0.5, 0.3), 0.25]], 1.2)
+				+ _tapfolge([Vector2(0.5, 0.62)], 1.0)
+				+ _wischfolge([[Vector2(0.35, 0.5), Vector2(0.7, 0.5), 0.25]], 1.2)
+			)
+		"veggieChop":
+			folge = _wischfolge(
+				[
+					[Vector2(0.3, 0.55), Vector2(0.7, 0.45), 0.25],
+					[Vector2(0.7, 0.55), Vector2(0.3, 0.45), 0.25],
+					[Vector2(0.35, 0.6), Vector2(0.7, 0.35), 0.25],
+					[Vector2(0.65, 0.6), Vector2(0.3, 0.35), 0.25],
+				],
+				1.0
+			)
 		_:
 			folge = _tapfolge([Vector2(0.5, 0.6), Vector2(0.4, 0.55), Vector2(0.6, 0.65)], 0.8)
 	return folge
@@ -344,6 +491,74 @@ func _abschluss_schritte() -> Array[Dictionary]:
 # ── Rezept-Bausteine ─────────────────────────────────────────────────────────
 
 
+## Turnier-Liga (ranchTurnier) = die Ranch-WETTBEWERBE: im Turnier-Menue
+## die Schau-Kür wählen (endet nach 5 Kommandos VON SELBST — die Reit-
+## Disziplinen brauchen echtes Reiten bis ins Ziel), Einweisung mit
+## Starterfeld lesen, „Los geht's!“, dann den „Jetzt!“-Knopf im Kommando-
+## Takt (3 s + je 4 s) drücken, Endstand mit „Weiter“ wegtippen und die
+## Siegerehrung („Zur Übersicht“, nur bei Platz 1–3) — landet zurück im
+## Turnier-Menü, das Beenden übernimmt der Abschluss-Baustein.
+## Menü-Kacheln/Einweisung/Endstand leben in SCROLL-Spalten: tipp_text
+## fände geclippte Knöpfe zwar, träfe aber daneben (Pionier-Lauf blieb im
+## Menü stehen) — deshalb der scroll-sichere Dreischritt _knopf_schritte.
+func _turnier_rezept() -> Array[Dictionary]:
+	var folge: Array[Dictionary] = _warteschritt(1.5)
+	folge += _knopf_schritte("Schau-Wettbewerb", {"text": "Los geht"}, 1.0)
+	folge += _knopf_schritte("Los geht", {}, 2.5)
+	for _i in 6:
+		folge += _knopffolge(["Jetzt!"], 3.6)
+	folge += _warteschritt(2.0)
+	folge += _knopf_schritte("Weiter", {}, 1.5)
+	folge += _knopffolge(["Zur Übersicht"], 1.5)
+	return folge
+
+
+## Scroll-sicherer Text-Tap (Muster kachel/level): warten bis der Knopf
+## sichtbar ist, über alle Scroll-Vorfahren ins Bild holen + merken, auf
+## die Kanvas-Mitte tippen (optional mit erwarte-Nachbedingung).
+func _knopf_schritte(text: String, erwarte: Dictionary, pause_s: float) -> Array[Dictionary]:
+	var tipp := {
+		"name": "knopf_tippen",
+		"aktion": "tipp_pos",
+		"pos_funktion": _merk_knopf_mitte,
+		"timeout_s": 30.0,
+	}
+	if not erwarte.is_empty():
+		tipp["erwarte"] = erwarte
+	return [
+		{"name": "knopf_da", "aktion": "warte_bis", "text": text, "timeout_s": 30.0},
+		{
+			"name": "knopf_sichtbar_machen",
+			"aktion": "tue",
+			"funktion": _merke_knopf_text.bind(text),
+		},
+		tipp,
+		{"name": "spiel_takt", "aktion": "warte", "sekunden": pause_s},
+	]
+
+
+## Knopf-Serie über sichtbaren Text (falls-da, kurzer Timeout): fehlt der
+## Knopf gerade — z. B. „Zur Übersicht“ ohne Podiumsplatz —, läuft der
+## Flow weiter; die Screenshots zeigen, was wirklich da war.
+func _knopffolge(texte: Array, pause_s: float) -> Array[Dictionary]:
+	var liste: Array[Dictionary] = []
+	for text: String in texte:
+		(
+			liste
+			. append(
+				{
+					"name": "spiel_knopf",
+					"aktion": "tipp_falls_da",
+					"text": text,
+					"timeout_s": 3.0,
+					"pflicht": false,
+				}
+			)
+		)
+		liste.append({"name": "spiel_takt", "aktion": "warte", "sekunden": pause_s})
+	return liste
+
+
 ## Tap-Serie an rel-Punkten, dazwischen jeweils `pause_s` warten.
 func _tapfolge(punkte: Array, pause_s: float) -> Array[Dictionary]:
 	var liste: Array[Dictionary] = []
@@ -402,6 +617,17 @@ func _merke_kachel() -> bool:
 	if not (kachel is Control):
 		return false
 	return _scrolle_und_merke(kachel as Control)
+
+
+## Knopf mit Text (Teilstring, Groß/klein egal) suchen, über die
+## Scroll-Falz ins Bild holen und merken (Baustein von _knopf_schritte).
+func _merke_knopf_text(text: String) -> bool:
+	var nadel := text.to_lower()
+	var knopf := _suche_control(
+		func(c: Control) -> bool:
+			return c is BaseButton and str(c.get("text")).to_lower().contains(nadel)
+	)
+	return _scrolle_und_merke(knopf)
 
 
 ## Erste freigeschaltete Level-Kachel im Select merken (Knopf mit Ziffer im

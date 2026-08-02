@@ -251,6 +251,11 @@ func _build_hud() -> void:
 	add_child(_time_label)
 	_stat_label = Label.new()
 	_stat_label.theme_type_variation = &"CaptionLabel"
+	# PT-MG-B F5: die Zeile liegt auf den Baumkronen — gleiche helle
+	# Schrift + dunkelgrüne Kontur wie der Hinweis, sonst kaum lesbar.
+	_stat_label.add_theme_color_override("font_color", Color(1.0, 1.0, 0.97))
+	_stat_label.add_theme_color_override("font_outline_color", Color(0.14, 0.26, 0.13, 0.9))
+	_stat_label.add_theme_constant_override("outline_size", 6)
 	add_child(_stat_label)
 	_hint_label = Label.new()
 	_hint_label.theme_type_variation = &"SoftLabel"
