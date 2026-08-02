@@ -154,6 +154,58 @@ func test_ebenen_wechsel_aktualisiert_chips_und_status() -> void:
 	await _cleanup(room, gs)
 
 
+# ── PT-home F4: Sprechblasen weichen dem Bau-Dock aus ────────────────────────
+
+
+func test_sprechblase_weicht_dem_bau_dock_aus() -> void:
+	var vorher := await _pin_fenster(Vector2i(1280, 720))
+	AcBubble.warteschlange = AcBubble.Warteschlange.new()
+	UiAnchors.reset_for_tests()
+	var gs := _fresh_gs()
+	var room := await _open_room(gs, "res://scenes/home/wohnzimmer.tscn")
+	var build: BuildMode = room.get_node("BuildMode")
+	build.open()
+	await wait_frames(4)
+	var dock: Control = (build._dock_ui as BuildUiDock).dock
+	# Das Dock ist als Bottom-Belegung im UiAnchors-Vertrag angemeldet.
+	assert_true(
+		UiAnchors.occupants(UiAnchors.ZONE_BOTTOM).has(dock),
+		"Bau-Dock reserviert die Bottom-Zone (PT-home F4)"
+	)
+	# Eine unten-mittige Blase (ohne Sprecher zielt sie GENAU auf die
+	# Dock-Fläche) MUSS per dodge über die Dock-Oberkante rutschen.
+	var bubble := AcBubble.show_bubble(
+		room.ui_layer(), I18nService.t("build.bett_quest"), {"dauer_s": 600.0}
+	)
+	bubble.auto_zeit = false
+	await wait_frames(2)
+	bubble.advance_time(0.05)
+	var kapsel := bubble.get_node("Kapsel") as Control
+	var dock_rect := dock.get_global_rect()
+	var kapsel_rect := kapsel.get_global_rect()
+	assert_true(
+		kapsel_rect.end.y <= dock_rect.position.y + 0.6,
+		(
+			"Blase endet über der Dock-Oberkante (%.1f <= %.1f)"
+			% [kapsel_rect.end.y, dock_rect.position.y]
+		)
+	)
+	assert_false(
+		kapsel_rect.intersects(dock_rect),
+		"Blase überlappt das Dock nicht (Blase %s vs. Dock %s)" % [kapsel_rect, dock_rect]
+	)
+	# Baumodus zu → Dock unsichtbar → die Reservierung ist inert
+	# (occupied_rects zählt nur SICHTBARE Belegungen, s. UiAnchors).
+	build.close()
+	await wait_frames(1)
+	assert_false(dock.is_visible_in_tree(), "zu = Dock unsichtbar, Belegung inert")
+	bubble.dismiss()
+	await _cleanup(room, gs)
+	await _unpin_fenster(vorher)
+	AcBubble.warteschlange = AcBubble.Warteschlange.new()
+	UiAnchors.reset_for_tests()
+
+
 # ── GardenUi: unten-mittige Karte statt TOP_WIDE (G1 ui-bau §4) ──────────────
 
 

@@ -188,6 +188,13 @@ func _build_dock(ebenen_keys: Array[String]) -> void:
 	dock.name = "BauDock"
 	dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(dock)
+	# PT-home F4: das Dock meldet sich als Bottom-Belegung im UiAnchors-
+	# Vertrag an — Goobys Sprechblasen (AcBubble dodgt ZONE_BOTTOM) rutschen
+	# damit ÜBER die Action-Bar/Ebenen-Chips statt sie zu überlappen.
+	# occupied_rects zählt nur SICHTBARE Belegungen: solange der Baumodus zu
+	# ist (ui.visible false), ist die Reservierung inert; beim Freigeben des
+	# Raums prunt UiAnchors den toten Eintrag selbst.
+	UiAnchors.reserve(UiAnchors.ZONE_BOTTOM, dock)
 	_build_action_bar()
 	_build_ebenen_leiste(ebenen_keys)
 	_build_drawer()

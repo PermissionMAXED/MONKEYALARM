@@ -47,6 +47,13 @@ Tagesquests-Blatt, der Rest des Laufs fiel kaskadierend durch
   (Türen) verdecken. Denkbar: Karte beim Tap auf verdeckte 3D-Ziele
   durchlässig machen oder die Lane tiefer legen. Kein trivialer Fix — an die
   nächste UI-Welle.
+- **GEFIXT (UI-Welle, Nachtrag):** die Karte ist jetzt genau dann
+  durchlässig, wenn HINTER dem Tap-Punkt ein Welt-Tap-Ziel liegt
+  (`whats_next_hint._input` prüft per Kamera-Ray gegen die neue Gruppe
+  `DoorTransition.TAP_ZIEL_GRUPPE` und schaltet die Karte für genau dieses
+  Event auf `MOUSE_FILTER_IGNORE`; das × behält als eigener STOP-Button
+  Vorrang). Wache:
+  `test_uifinal_polish.gd::test_hint_laesst_tap_auf_verdeckte_tuer_durch`.
 
 ### F2 — Harness-Report nannte bei Callable-Bedingungen den falschen Text (gefixt)
 
@@ -62,6 +69,17 @@ Willkommen/Editor-Karten stehen im Leitformat bei ~42 % statt 50 %
 (Beleg: `pt_fuettern2/001…006`). Bekannter Pionier-Befund (G7), gehört zur
 UI-Welle — hier nur bestätigt, nicht gefixt.
 
+**GEFIXT (UI-Welle, Nachtrag):** Wurzel war NICHT das Karten-Layout,
+sondern `UiScale.safe_insets_canvas` unter xvfb: das Fenster (2868×1320)
+ist größer als der virtuelle X-Screen (1280×1024), `get_display_safe_area()`
+liefert den GANZEN Screen — daraus wurden Fake-Insets rechts/unten
+(15-%-Deckel → Safe-Zentrum exakt bei 42,5 %), die JEDE safe-zentrierte UI
+nach links oben schoben. Fix: eine Safe-Area, die den kompletten Screen
+umschließt, ist kein Cutout → Insets 0 (`UiScale.safe_area_hat_cutout`,
+pure; echte Notches bleiben unangetastet). Wache:
+`test_fix1_ui_scale.gd::test_safe_area_ohne_cutout_zaehlt_nicht_als_notch`;
+Beweis: Wiederholungslauf `flow_home_basis`, Welcome-Karte mittig.
+
 ### F4 — Sprechblasen überlappen im Baumodus die Aktionsleiste (Optik, niedrig)
 
 Goobys Sprechblasen („Platzier dein Bett! …“) legen sich über die obere
@@ -70,6 +88,12 @@ blieben in den Läufen tippbar (Blase ist kein Klick-Schlucker), es ist rein
 optisch (Belege: `pt_bau/014_bau_dock_ansehen.png`, `018_ghost_liegt.png`).
 Verwandt mit dem bekannten P57-Rest „Guide-Karte über Bau-Dock“ — an die
 UI-Welle.
+
+**GEFIXT (Nachtrag):** das Bau-Dock meldet sich jetzt als Bottom-Belegung im
+UiAnchors-Vertrag an (`build_ui_dock.gd`) — Sprechblasen (AcBubble dodgt
+`ZONE_BOTTOM`) rutschen damit ÜBER die Dock-Oberkante statt Action-Bar/
+Ebenen-Chips zu überlappen; zu = Dock unsichtbar = Reservierung inert. Wache:
+`test_g4_build.gd::test_sprechblase_weicht_dem_bau_dock_aus`.
 
 ### F5 — Decken-Geist als breiter Querstreifen nach dem Tür-Travel (beobachten)
 
