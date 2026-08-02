@@ -413,8 +413,11 @@ Der Job dann:
 
 1. baut wie bei jedem Push die verifizierte unsignierte .ipa (`ios-ipa`),
 2. benennt sie versioniert um (`GOOBY-godot-unsigned-v5.1.0.ipa`),
-3. erstellt/aktualisiert das GitHub-Release `ipa-v5.1.0` mit deutschem
-   Release-Notes-Gerüst („Was ist neu?“ nach dem Lauf ausfüllen!),
+3. generiert die Release-Notes automatisch aus den Commits seit dem letzten
+   `ipa-v*`-Tag (`tools/ci/release_notes.mjs`; Erst-Release = letzte 40
+   Commits, Kurz-Hash + gekapptes Subject, Merge-Commits ausgenommen) und
+   erstellt/aktualisiert damit (`body_path`) das GitHub-Release `ipa-v5.1.0`
+   — nichts mehr von Hand ausfüllen,
 4. bumpt `latest_native` im `updates`-Manifest via
    `tools/ci/bump_latest_native.mjs` — das Script ist fail-closed (striktes
    Semver, Schema-Check, Downgrade-Verweigerung, idempotente Re-Runs) und
