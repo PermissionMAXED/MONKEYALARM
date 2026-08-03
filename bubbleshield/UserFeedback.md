@@ -88,3 +88,21 @@ Required manual/GUI multiplayer plan:
 4. Exercise impact/break/remove batches, then reconnect, respawn, and change dimension;
    verify snapshots are cleared/re-sent with no ghost or stale cross-dimension shield.
 5. Attempt a mismatched protocol-version client and verify a clean handshake rejection.
+
+## Eval Sol Round 2
+
+**Result: PASS (requested W6-W10 re-evaluation gate).** Evaluated rebased branch
+`cursor/bubbleshield-neoforge-1.21.1` at `aaf43a8e`.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Clean build | PASS | `./gradlew clean build` completed with `BUILD SUCCESSFUL` (6 actionable tasks). |
+| NeoForge GameTests | PASS | `./gradlew runGameTestServer` completed all **194** registered tests in 24.95 s: `All 194 required tests passed :)`; Gradle also reported `BUILD SUCCESSFUL`. |
+| W6 lazy surface shaders | PASS | `ShieldPipelines` has an `EffectRegistry.COUNT` shader cache, creates each surface `ShaderInstance` on first `renderType(effectId)` use, caches successful instances, suppresses repeat failures until reload, and clears/closes the cache on `RegisterShadersEvent`. The resource set contains all 840 `fx_NNN.fsh` + 840 matching program JSON files. |
+| W8 screen effects | PASS | `ScreenEffectManager` exists and is wired to client tick, render-frame, logout, and level-unload lifecycle paths via `tick`, `frame`, and `reset`. |
+| W9 Iris compatibility | PASS | `IrisCompat` exists with lazy reflection-only shader-pack detection. `ShieldRenderTypes` gates custom membrane/beam pipelines on `shaderPackInUse()`, and `ScreenEffectManager` gates post FX on `postFxAllowed()`. |
+| W10 GameTests present | PASS | 21 `@GameTestHolder` classes contain exactly **194** executable `@GameTest` methods, matching the runtime total. |
+
+This round validates the requested headless W6-W10 gate. The separate two-real-client
+multiplayer execution plan from the first evaluation remains a manual release-validation
+item and was not part of this re-evaluation.
