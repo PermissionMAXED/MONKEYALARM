@@ -3,6 +3,7 @@ package com.bubbleshield.client;
 import com.bubbleshield.BubbleShield;
 import com.bubbleshield.client.fx.ContactFlash;
 import com.bubbleshield.client.fx.ImpactFxManager;
+import com.bubbleshield.client.fx.ScreenEffectManager;
 import com.bubbleshield.client.gui.BubbleShieldScreen;
 import com.bubbleshield.client.hud.ShieldFlashElement;
 import com.bubbleshield.client.hud.ShieldHudElement;
@@ -19,6 +20,7 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 
@@ -45,12 +47,19 @@ import net.neoforged.neoforge.event.level.LevelEvent;
  * {@code RenderLevelStageEvent.AFTER_TRANSLUCENT_BLOCKS}
  * ({@link ShieldRenderer#render}).
  *
- * <p>TODO(W6): {@code InteriorRenderer}/{@code SceneCopy} bootstrap; TODO(W7):
- * {@code ScreenEffectManager} + {@code ProximityHum} registration land with
- * their waves. W9 compat contract for both: custom pipelines only below the
- * {@code ShieldRenderTypes} Iris gate, and the W8 screen post-effects only
- * while {@code com.bubbleshield.client.compat.IrisCompat#postFxAllowed()} —
- * an active shaderpack owns the shader + post pipelines (see docs/COMPAT.md).
+ * <p>W8 lands {@link ScreenEffectManager}: the in-bubble screen post chain
+ * (legacy {@code shaders/post} format) is applied/cleared at the END of the
+ * client tick (after the fx sequence, matching upstream's END_CLIENT_TICK
+ * registration order), and its continuous {@code GameTime} uniform is fed on
+ * {@code RenderFrameEvent.Pre} — the legacy 1.21.1 post chain has no auto-fed
+ * day-fraction clock. It honors the W9 compat contract: post FX only while
+ * {@code com.bubbleshield.client.compat.IrisCompat#postFxAllowed()} — an
+ * active shaderpack owns the shader + post pipelines (see docs/COMPAT.md);
+ * W6's custom pipelines must likewise only ever slot below the
+ * {@code ShieldRenderTypes} Iris gate.
+ *
+ * <p>TODO(W6): {@code InteriorRenderer}/{@code SceneCopy} bootstrap;
+ * {@code ProximityHum} registration lands with its wave.
  */
 @EventBusSubscriber(modid = BubbleShield.MOD_ID, value = Dist.CLIENT)
 public final class BubbleShieldClient {
@@ -85,8 +94,17 @@ public final class BubbleShieldClient {
 		@SubscribeEvent
 		public static void onClientTickPost(ClientTickEvent.Post event) {
 			// Upstream order lives in ImpactFxManager.endClientTick: trackers first,
-			// then the contact-flash prediction, then the replica ghost sweep.
+			// then the contact-flash prediction, then the replica ghost sweep. The
+			// screen-effect manager registered after it upstream, so it ticks last.
 			ImpactFxManager.endClientTick(Minecraft.getInstance());
+			ScreenEffectManager.tick(Minecraft.getInstance());
+		}
+
+		@SubscribeEvent
+		public static void onRenderFramePre(RenderFrameEvent.Pre event) {
+			// Feeds the continuous GameTime uniform to the active in-bubble post
+			// chain (the legacy PostPass only auto-feeds a 1-second "Time" sawtooth).
+			ScreenEffectManager.frame(Minecraft.getInstance());
 		}
 
 		@SubscribeEvent
@@ -99,6 +117,7 @@ public final class BubbleShieldClient {
 		public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
 			ClientShieldManager.clear();
 			ImpactFxManager.resetAll();
+			ScreenEffectManager.reset(Minecraft.getInstance());
 		}
 
 		@SubscribeEvent
@@ -108,6 +127,7 @@ public final class BubbleShieldClient {
 			if (event.getLevel().isClientSide()) {
 				ClientShieldManager.clear();
 				ImpactFxManager.resetAll();
+				ScreenEffectManager.reset(Minecraft.getInstance());
 			}
 		}
 	}

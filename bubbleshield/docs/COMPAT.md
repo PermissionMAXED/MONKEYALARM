@@ -55,8 +55,8 @@ Consequences while a shaderpack is active:
   (the gate is a behavioural no-op until W6 lands — pre-W6 the fallback is the
   only pipeline — but the branch is the frozen contract).
 - **Post FX are disabled**: `IrisCompat.postFxAllowed()` is the frozen contract
-  the W8 screen post-effect port (`ScreenEffectManager`, the
-  `post_effect/effect_NN` chains) must gate on — a shaderpack owns the post
+  the W8 screen post-effect port (`ScreenEffectManager`, the legacy
+  `shaders/post/effect_NN.json` chains) gates on — a shaderpack owns the post
   pipeline, and layering our chains over it double-processes the frame and
   breaks packs that re-bind the main target.
 - GUI-pass visuals (contact flash overlay, shield HUD) stay on: Iris leaves the
