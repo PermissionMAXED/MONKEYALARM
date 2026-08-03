@@ -1,5 +1,28 @@
 # UserFeedback — Bubble Shield NeoForge 1.21.1 Port
 
+> **Kanonische Datei:** Diese Datei (`bubbleshield/UserFeedback.md`) ist die **einzige**
+> `UserFeedback.md` im Repo — bewusst keine Root-Kopie und kein Symlink, damit es genau eine
+> Schreibstelle gibt. Das Root-`README.md` und `bubbleshield/README.md` verweisen hierher.
+
+## Status W0–W11 (ehrlich aus `git log`, Stand 2026-08-03)
+
+| Wave | Status | Beleg (Commits) |
+|------|--------|-----------------|
+| W0 | ✅ gelandet | `28707257` Scaffold (NeoForge 21.1.248, MDG, Runs, README) |
+| W1 | ✅ gelandet | `360f5536` Pure-Logic-Port (shield/effect/advancements/payloads) |
+| W2 | ✅ gelandet | `e683c21f` Registries + Block/BE/Menu, `abc3673c` Datapack + Assets |
+| W3 | ✅ gelandet | `8eb4f983` Networking komplett (PayloadRegistrar, ServerNet, Lifecycle-Events) |
+| W4 | ✅ gelandet | `f82cd23b` Server-Gameplay-Verifikation end-to-end (kein Code-Fix nötig) |
+| W5 | ✅ gelandet | `e1b33307` Client-Render-Fundament, `6ebb3ca5` Wave-Log |
+| W6 | ✅ gelandet | `9506ae2d` 840 Surface- + 8 Beam-Programme, `aaf43a8e` ShieldPipelines (lazy compile, fail-soft). **Ohne** Interior-Stack (`InteriorRenderer`/`InteriorSheets`) und `ProximityHum` — siehe W11. |
+| W7 | ✅ gelandet | Dateien via `966cf427` „[W7-inflight]“ (parallele Session, vom W5-Slot committet, damit der Branch-Tip kompiliert), Entrypoint-Wiring in `e1b33307`, Wave-Log-Zeile in `6ebb3ca5`. **Kein eigenständiger [W7]-Commit.** |
+| W8 | ✅ gelandet | `c62b4f5c` Generatoren + 840 Legacy-Post-Chains, `f0db3ac1` ScreenEffectManager, `2c81faa1` Wave-Log |
+| W9 | ✅ gelandet | `4da777d0` IrisCompat (Soft-Detect), `f3b719df` docs/COMPAT.md |
+| W10 | ✅ gelandet | `78b49d89` /bubbleshield-Command + CoreLootInjector, `b0588b33` 194/212 GameTests (zweimal flake-frei grün), `7e6ea75a` docs/TESTPLAN_MULTIPLAYER.md |
+| W11 | ⏳ offen | **Kein [W11]-Commit im Log.** Bekannte Restlücken laut W6/W8/W10-Commits und Eval: Interior-Stack + `ProximityHum` (Rest von Eval-P1 Rang 2), Reaktivierung der zurückgestellten GameTests (`postEffectAssetsExist` seit W8 wieder möglich; 6 Interior-Tests warten auf den Interior-Stack; 11 WorldIntegration-Tests bleiben 26.2-only), realer Zwei-Client-Lauf nach `docs/TESTPLAN_MULTIPLAYER.md` (Eval-P1 Rang 3). |
+
+**Loop läuft weiter** — die nächste(n) Welle(n) schließen die W11-Restlücken; diese Tabelle wird pro Welle fortgeschrieben.
+
 ## Wave-Log
 
 | Wave | Datum      | Inhalt                                                                                                                                                                | Build |
@@ -46,6 +69,13 @@
 - **Dritt-Mods (W9):** Sodium/Iris/Distant Horizons/Create/Create Aeronautics → `docs/COMPAT.md`. Iris nur als Runtime-Soft-Detect (`IrisCompat`, Reflection), keinerlei harte oder optionale Deps in `mods.toml`/`build.gradle`; Invariante: keine Mixins, insbesondere keine `LevelRenderer`-Mixins (Sodium-Audit).
 
 ## Eval Sol
+
+> **Stand 2026-08-03 (nach W10/W8/W6):** Der FAIL-Befund unten ist der Eval-Schnappschuss
+> (`a6330e59`, erhoben **vor** W10/W8/W6). Seitdem: Rang 1 geschlossen (W10: 194/212 GameTests
+> grün, zweimal flake-frei), Rang 4 geschlossen (W10: Command + LootInjector), Rang 2
+> teilgeschlossen (W6 Surface/Beam-Pipelines + W8 Screen-FX; Interior-Stack + `ProximityHum`
+> weiterhin offen → W11), Rang 3 weiterhin offen (Zwei-Client-Plan liegt als
+> `docs/TESTPLAN_MULTIPLAYER.md` vor, unausgeführt).
 
 **Result: FAIL (full W0-W7/upstream parity and multiplayer release gate).** The current
 NeoForge port builds and its dedicated-server core works, but the missing automated

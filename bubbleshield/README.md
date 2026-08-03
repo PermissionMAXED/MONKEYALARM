@@ -5,9 +5,10 @@ NeoForge port of the [Bubble Shield Fabric mod](https://github.com/MedusaV9/Mine
 furnace-like block that keep hostile players and their projectiles out while letting whitelisted
 friends walk right through.
 
-**Status: W0 — scaffold only.** The project builds and loads as an empty `@Mod`; the actual game
-content (projector block, shield logic, 50 effects, GUI, networking, shaders) is ported in later
-waves. Progress, open questions and deviations are tracked in [`UserFeedback.md`](UserFeedback.md).
+**Status:** see the W0–W11 wave-status table in [`UserFeedback.md`](UserFeedback.md)
+(currently W0–W10 landed, W11 open; the port loop continues). Progress, open questions and
+deviations are tracked in [`UserFeedback.md`](UserFeedback.md) — the **canonical and only**
+`UserFeedback.md` in this repo (the root `README.md` points here instead of a root copy/symlink).
 Third-party compatibility (Sodium, Iris, Distant Horizons, Create, Create Aeronautics) is
 documented in [`docs/COMPAT.md`](docs/COMPAT.md).
 

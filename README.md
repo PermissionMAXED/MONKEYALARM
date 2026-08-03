@@ -44,3 +44,9 @@ npm run build    # production build (dist/)
 | Space | Jump |
 | Mouse | Look |
 | Left click | Catch (police, within range while facing a monkey) |
+
+## Bubble Shield port — UserFeedback
+
+`UserFeedback.md` for the Bubble Shield NeoForge 1.21.1 port lives canonically at
+[`bubbleshield/UserFeedback.md`](bubbleshield/UserFeedback.md). It is intentionally the only copy —
+no root-level file or symlink — so there is exactly one place to write.
