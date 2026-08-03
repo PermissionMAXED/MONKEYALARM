@@ -44,10 +44,12 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  * {@code shieldCenter - cameraPos}; each shield's membrane batch is flushed
  * before its beam so the additive column reads on top of the membrane. The mesh
  * carries raw sphere UVs in [0, 1] and the primary/secondary colors plus the
- * aperture alpha in the vertex color channel — under W5's fallback
- * {@link ShieldRenderTypes} (vanilla position_tex_color over a white texture)
- * the color channel alone paints the surface; TODO(W6) swaps in the animated
- * per-effect surface shaders without touching the meshes.
+ * aperture alpha in the vertex color channel — {@link ShieldRenderTypes}
+ * resolves each draw to the W6 {@code ShieldPipelines} per-effect/per-style
+ * program (animated procedural surface, recolor-safe from the vertex palette)
+ * or, whenever that program is unavailable (Iris gate, failed compile), to the
+ * W5 fallback (vanilla position_tex_color over a white texture) where the
+ * color channel alone paints the surface. The meshes are identical either way.
  *
  * <p><b>WP-Dyn:</b> each shield gets one {@link DeformState} per frame — the
  * strongest recent impacts from the {@link ImpactTracker} (per-kind effective

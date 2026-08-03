@@ -10,19 +10,19 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * W5 fallback render types for the shield membrane and the projector beam:
- * vanilla {@code position_tex_color} shader over a plain white texture, so every
+ * Render type dispatch for the shield membrane and the projector beam. Since
+ * W6 the primary pipelines are the custom {@link ShieldPipelines} programs
+ * (per-effect {@code bubble/fx_NNN} surface shaders, per-style
+ * {@code beam/beam_<name>} shaders); the W5 fallback types kept here — vanilla
+ * {@code position_tex_color} over a plain white texture, so every
  * {@link SphereMesh}/{@link BeamMesh} vertex ({@code POSITION_TEX_COLOR} quads,
- * raw UVs in [0, 1], palette + alpha in the vertex color) renders VISIBLY with no
- * custom shader assets. Upstream's per-effect surface pipelines and the eight
- * beam style pipelines (bubble/beam .fsh fragment shaders keyed by
- * {@code EffectDefinition.surface()} / {@code BeamStyle.renderIndex()}) are
- * TODO(W6) — this class keeps their exact lookup signatures
- * ({@link #renderType(int)} / {@link #beamRenderType(int)}) so W6's
- * {@code ShieldPipelines} port is a drop-in swap inside {@link ShieldRenderer}.
+ * raw UVs in [0, 1], palette + alpha in the vertex color) renders VISIBLY with
+ * no custom shader assets — remain the guaranteed-safe path whenever a custom
+ * program is unavailable (Iris gate, failed compile, mid-reload window).
  *
  * <p>State choices mirror the frozen upstream pipeline contract as closely as
- * vanilla shards allow: the membrane blends translucently, draws BOTH faces
+ * vanilla shards allow (and {@link ShieldPipelines} mirrors THESE shards for
+ * its custom types): the membrane blends translucently, draws BOTH faces
  * (the bubble is seen from inside) and does not write depth (a huge dome
  * writing depth would clip particles/rain behind it); quads are sorted
  * back-to-front on upload. The beam blends ADDITIVELY
@@ -33,10 +33,8 @@ import net.minecraft.resources.ResourceLocation;
  * <p><b>W9 Iris gate:</b> both lookups consult {@link IrisCompat} first — while
  * a shaderpack is active, Iris owns the shader pipeline and modded
  * {@code ShaderInstance}s misrender (no gbuffer/shadow-pass variants), so the
- * vanilla-shader fallback types here are ALWAYS returned. Pre-W6 the fallback
- * is the only pipeline, making the gate behaviourally a no-op today; it is
- * kept explicit because it is the frozen contract W6 slots under: custom
- * per-effect/beam pipelines may only ever be returned on the path below the
+ * vanilla-shader fallback types here are ALWAYS returned. The W6 custom
+ * per-effect/beam pipelines are only ever consulted on the path below the
  * gate (see docs/COMPAT.md).
  *
  * <p>Extends {@link RenderType} purely to reach the protected
@@ -84,10 +82,10 @@ final class ShieldRenderTypes extends RenderType {
 	}
 
 	/**
-	 * The membrane render type for the given effect id. W5 fallback: one shared
-	 * translucent white-texture type for all {@code EffectRegistry.COUNT} effects
-	 * (the per-vertex palette still differentiates them); TODO(W6) dispatch on
-	 * {@code EffectRegistry.get(effectId).surface()} like upstream ShieldPipelines.
+	 * The membrane render type for the given effect id: the effect's dedicated
+	 * {@link ShieldPipelines} surface program when available, else the shared
+	 * W5 translucent white-texture fallback (the per-vertex palette still
+	 * differentiates effects there).
 	 */
 	static RenderType renderType(int effectId) {
 		// W9: an active shaderpack forces the vanilla-shader fallback membrane.
@@ -95,15 +93,17 @@ final class ShieldRenderTypes extends RenderType {
 			return MEMBRANE;
 		}
 
-		// TODO(W6): per-effect surface pipeline dispatch goes HERE, below the gate.
-		return MEMBRANE;
+		// W6: per-effect surface pipeline dispatch, below the gate. Null while
+		// the program is unavailable (lazy compile failed this reload cycle).
+		RenderType custom = ShieldPipelines.renderType(effectId);
+		return custom != null ? custom : MEMBRANE;
 	}
 
 	/**
-	 * The beam render type for the given {@code BeamStyle.renderIndex()}. W5
-	 * fallback: one shared additive type for all styles (the CPU-side vertex
-	 * profile still shapes the column); TODO(W6) index into the eight beam_*.fsh
-	 * pipelines like upstream ShieldPipelines.
+	 * The beam render type for the given {@code BeamStyle.renderIndex()}: the
+	 * style's dedicated {@link ShieldPipelines} beam program when available,
+	 * else the shared W5 additive fallback (the CPU-side vertex profile still
+	 * shapes the column there).
 	 */
 	static RenderType beamRenderType(int renderIndex) {
 		// W9: an active shaderpack forces the vanilla-shader fallback beam.
@@ -111,7 +111,9 @@ final class ShieldRenderTypes extends RenderType {
 			return BEAM;
 		}
 
-		// TODO(W6): beam_*.fsh pipeline dispatch goes HERE, below the gate.
-		return BEAM;
+		// W6: beam_*.fsh pipeline dispatch, below the gate. Null while the
+		// style's event-registered program is unavailable.
+		RenderType custom = ShieldPipelines.beamRenderType(renderIndex);
+		return custom != null ? custom : BEAM;
 	}
 }
