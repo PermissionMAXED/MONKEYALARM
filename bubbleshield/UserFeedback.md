@@ -136,3 +136,25 @@ Required manual/GUI multiplayer plan:
 This round validates the requested headless W6-W10 gate. The separate two-real-client
 multiplayer execution plan from the first evaluation remains a manual release-validation
 item and was not part of this re-evaluation.
+
+## Multiplayer Test
+
+**2026-08-03 — PASS für den ausgeführten Zwei-Client-Scope.** `./gradlew runServer`
+lief im tmux-Session `multiplayer-test-server`; zwei echte NeoForge-1.21.1-Clients
+(`Dev` und `TesterB`) verbanden sich über TCP mit dem Dedicated Server. Server und
+beide Clients blieben ohne Payload-/Codec-/Handshake-Fehler verbunden.
+
+| Testplan-Bereich | Ergebnis und Laufzeitbeleg |
+|------------------|----------------------------|
+| §1 Handshake + Join-Resync | PASS: Beide realen Clients jointen ohne Channel-Mismatch. `TesterB` wurde bei aktivem Dome gekickt und neu verbunden; die Membran erschien danach ohne weitere Mutation erneut (Join-Resync, genau eine sichtbare Replik). |
+| §2 C2S-Mutation + S2C-Sync | PASS (repräsentativer Sweep): Client A öffnete die echte Projektor-GUI. Ein Shape-Klick lief durch `SetSettingsC2S`, änderte den autoritativen NBT-Wert `shape: 0→1` (Sphere→Dome) und erschien live auf Client B. GUI-Moduswechsel wurden als `mode: 1` (PULSE), `2` (ECO) und zurück `0` (DEFENSE) bestätigt. Der vollständige 10-Shape-/Effekt-/Farb-/Namens-Sweep wurde nicht wiederholt. |
+| §3 Barriere + Whitelist | PASS: Unlisted `TesterB` wurde in DEFENSE aus dem Dome von `[2.5,202.0,0.5]` nach `[9.25,200.0,0.5]` expelliert. Whitelist-Add aus Client As GUI erzeugte Name **und** UUID im Server-NBT; danach blieb B bei `[2.5,200.0,0.5]`. Remove leerte beide Listen, danach griff die Barriere wieder. PULSE/ECO ließen B erwartungsgemäß innen; die DOME-Unterhälfte bei `y=200` blieb absichtlich offen. |
+| §3.2 Projektil/Impact | PASS: Ein per RCON oberhalb der Membran erzeugter NoGravity-Pfeil wurde entfernt; Shield-HP fielen `150→147`, während beide Clients verbunden waren. Die bestehenden Impact-Batch-GameTests decken Codec, Coalescing, Cap-8 und BREAK-Erhalt ab. |
+| §4 Remove | PASS: `/setblock ... air` entfernte Membran und Projektor sofort auf Client B; erneutes Setzen/Aktivieren synchronisierte die Replik wieder. Break-Depletion/Volley-Audio wurde in diesem Lauf nicht manuell wiederholt. |
+| §5 Lifecycle | PASS für Disconnect/Rejoin; Respawn, Dimension und Server-Restart nicht manuell ausgeführt. |
+| §6 Protokoll-Mismatch | NICHT AUSGEFÜHRT; kein absichtlich inkompatibles Client-Artefakt gebaut. |
+| Automatisierte Ergänzung | PASS: `./gradlew runGameTestServer` meldete `All 196 required tests passed :)`; `./gradlew build` war grün. Die Mock-Connections durchlaufen echte C2S-Handler und fangen Sync/Remove/Impact-S2C-Payloads im `EmbeddedChannel` ab. |
+
+Artefakte: Screenshots belegen Zwei-Client-Join, Whitelist-Sync, Join-Resync und
+Remove-Broadcast; ein 14-s-Xvfb-Mitschnitt zeigt die animierte Client-B-Replik.
+Kein Bugfix war erforderlich.
