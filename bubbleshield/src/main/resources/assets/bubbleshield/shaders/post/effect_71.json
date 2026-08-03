@@ -1,0 +1,66 @@
+{
+    "targets": [
+        "swap"
+    ],
+    "passes": [
+        {
+            "name": "bubbleshield:sfx_071",
+            "intarget": "minecraft:main",
+            "outtarget": "swap",
+            "uniforms": [
+                {
+                    "name": "Primary",
+                    "values": [
+                        1.0,
+                        0.2392,
+                        0.0,
+                        1.0
+                    ]
+                },
+                {
+                    "name": "Secondary",
+                    "values": [
+                        0.1059,
+                        0.3686,
+                        0.1255,
+                        1.0
+                    ]
+                },
+                {
+                    "name": "ParamsA",
+                    "values": [
+                        1.152,
+                        0.256,
+                        0.0,
+                        0.0
+                    ]
+                },
+                {
+                    "name": "ParamsB",
+                    "values": [
+                        0.8804,
+                        0.6957,
+                        0.35,
+                        0.35
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "minecraft:blit",
+            "intarget": "swap",
+            "outtarget": "minecraft:main",
+            "uniforms": [
+                {
+                    "name": "ColorModulate",
+                    "values": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            ]
+        }
+    ]
+}
